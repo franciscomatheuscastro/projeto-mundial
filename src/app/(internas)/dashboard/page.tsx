@@ -1,6 +1,6 @@
 import { auth, signOut } from "@/src/auth";
 import { redirect } from "next/navigation";
-import { MenuInterno } from "@/src/components/MenuInterno";
+import { MenuInterno } from "@/src/app/components/MenuInterno";
 
 export default async function DashboardPage() {
   const session = await auth();
