@@ -1,4 +1,4 @@
-import { signIn } from "@/src/auth";
+import { auth, signIn } from "@/src/auth";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 
@@ -9,6 +9,12 @@ type LoginPageProps = {
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const session = await auth();
+
+  if (session?.user) {
+    redirect("/dashboard");
+  }
+
   const params = await searchParams;
   const temErro = params?.erro === "1";
 

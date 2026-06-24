@@ -1,52 +1,54 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-
-const itensMenu = [
-  { nome: "Dashboard", href: "/dashboard" },
-  { nome: "Pacientes", href: "/pacientes" },
-  { nome: "Agenda", href: "/agenda" },
-  { nome: "Atendimentos", href: "/atendimentos" },
-  { nome: "Prontuários", href: "/prontuarios" },
-  { nome: "Relatórios", href: "/relatorios" },
-  { nome: "Usuários", href: "/usuarios" },
-];
+import { signOut } from "@/src/auth";
 
 export function MenuInterno() {
-  const pathname = usePathname();
+  async function sair() {
+    "use server";
+
+    await signOut({
+      redirectTo: "/login",
+    });
+  }
 
   return (
-    <aside className="hidden w-72 shrink-0 border-r border-white/10 bg-slate-900/80 p-6 lg:block">
+    <aside className="fixed left-0 top-0 z-40 flex h-screen w-72 flex-col bg-gradient-to-b from-blue-700 via-blue-600 to-cyan-500 px-6 py-6 text-white">
       <div className="mb-10">
-        <p className="text-xs font-bold uppercase tracking-[0.3em] text-cyan-400">
-          Mundial
-        </p>
-        <h1 className="mt-2 text-2xl font-black text-white">
-          Psicossocial
-        </h1>
+        <div className="text-sm tracking-[0.3em] text-blue-100">GRUPO</div>
+        <div className="text-3xl font-bold">
+          Mundial<span className="font-light">RH</span>
+        </div>
       </div>
 
-      <nav className="space-y-2">
-        {itensMenu.map((item) => {
-          const ativo =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
+      <nav className="flex flex-1 flex-col gap-2">
+        <Link href="/dashboard" className="rounded-xl px-4 py-3 font-medium hover:bg-white/15">
+          Dashboard
+        </Link>
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`block rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-                ativo
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
-                  : "text-slate-400 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              {item.nome}
-            </Link>
-          );
-        })}
+        <Link href="/modelos-pesquisa" className="rounded-xl px-4 py-3 font-medium hover:bg-white/15">
+          Modelos de Pesquisa
+        </Link>
+
+        <Link href="/clientes" className="rounded-xl px-4 py-3 font-medium hover:bg-white/15">
+          Clientes
+        </Link>
+
+        <Link href="/pesquisas" className="rounded-xl px-4 py-3 font-medium hover:bg-white/15">
+          Pesquisas
+        </Link>
       </nav>
+
+      <div className="rounded-2xl bg-white/10 p-4">
+        <p className="text-sm font-semibold">MundialSafe</p>
+        <p className="mt-1 text-xs text-blue-100">
+          Segurança, clima e inteligência organizacional.
+        </p>
+      </div>
+
+      <form action={sair} className="mt-4">
+        <button className="w-full rounded-xl bg-white px-4 py-3 text-sm font-bold text-blue-700 hover:bg-blue-50">
+          Sair
+        </button>
+      </form>
     </aside>
   );
 }
