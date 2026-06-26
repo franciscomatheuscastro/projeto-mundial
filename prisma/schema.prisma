@@ -64,41 +64,25 @@ model ModeloPesquisa {
   ativo        Boolean  @default(true)
   modeloPadrao Boolean  @default(false)
 
+  perguntas Json @default("[]")
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  perguntas    PerguntaPesquisa[]
   pesquisas    PesquisaCliente[]
-}
-
-model PerguntaPesquisa {
-  id            String       @id @default(cuid())
-  modeloId      String
-  titulo        String
-  descricao     String?
-  tipo          TipoPergunta
-  ordem         Int
-  obrigatoria   Boolean      @default(true)
-
-  // Para MULTIPLA_ESCOLHA, salvar como texto JSON:
-  // ["Ruim", "Regular", "Bom", "Excelente"]
-  opcoes        String?
-
-  criadoEm      DateTime     @default(now())
-  atualizadoEm  DateTime     @updatedAt
-
-  modelo        ModeloPesquisa @relation(fields: [modeloId], references: [id], onDelete: Cascade)
-  respostas     RespostaPergunta[]
 }
 
 model PesquisaCliente {
   id           String                @id @default(cuid())
   clienteId    String
   modeloId     String
+
   titulo       String
   descricao    String?
   token        String                @unique
   status       StatusPesquisaCliente @default(ABERTA)
+
+  perguntas Json @default("[]")
 
   criadoEm     DateTime              @default(now())
   atualizadoEm DateTime              @updatedAt
@@ -108,28 +92,21 @@ model PesquisaCliente {
   respostas    RespostaPesquisa[]
 }
 
+
+
+
 model RespostaPesquisa {
   id           String   @id @default(cuid())
   pesquisaId   String
+
   nome         String?
   email        String?
   setor        String?
   cargo        String?
 
+  respostas    Json
+
   criadoEm     DateTime @default(now())
 
   pesquisa     PesquisaCliente @relation(fields: [pesquisaId], references: [id], onDelete: Cascade)
-  respostas    RespostaPergunta[]
-}
-
-model RespostaPergunta {
-  id           String   @id @default(cuid())
-  respostaId   String
-  perguntaId   String
-  valor        String
-
-  criadoEm     DateTime @default(now())
-
-  resposta     RespostaPesquisa @relation(fields: [respostaId], references: [id], onDelete: Cascade)
-  pergunta     PerguntaPesquisa @relation(fields: [perguntaId], references: [id])
 }

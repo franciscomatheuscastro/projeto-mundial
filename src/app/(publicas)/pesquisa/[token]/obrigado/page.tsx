@@ -1,5 +1,3 @@
-// src/app/(publicas)/pesquisa/[token]/obrigado/page.tsx
-
 export default function ObrigadoPesquisaPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
@@ -13,7 +11,8 @@ export default function ObrigadoPesquisaPage() {
         </h1>
 
         <p className="mt-2 text-sm text-slate-500">
-          Obrigado por participar da pesquisa. Suas respostas foram registradas com sucesso.
+          Obrigado por participar da pesquisa. Suas respostas foram registradas
+          com sucesso.
         </p>
       </div>
     </main>

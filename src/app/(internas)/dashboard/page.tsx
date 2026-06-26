@@ -13,7 +13,7 @@ export default async function DashboardPage() {
       <header className="border-b bg-white px-8 py-6">
         <p className="text-sm font-semibold text-blue-600">MundialSafe</p>
         <h1 className="text-3xl font-bold text-slate-900">
-          Painel Transordi
+          Painel Mundial
         </h1>
         <p className="mt-1 text-slate-500">
           Gestão de pesquisas, clima organizacional e relatórios.
