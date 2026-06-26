@@ -93,8 +93,6 @@ model PesquisaCliente {
 }
 
 
-
-
 model RespostaPesquisa {
   id           String   @id @default(cuid())
   pesquisaId   String
