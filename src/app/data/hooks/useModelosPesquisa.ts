@@ -34,6 +34,31 @@ export function useModelosPesquisa() {
     }
   }
 
+  async function excluirModelo(id: string) {
+    return new Promise<void>((resolve, reject) => {
+      startTransition(async () => {
+        try {
+          setErro(null);
+
+          await Backend.modelosPesquisa.excluir(id);
+          await carregarModelos();
+
+          if (modeloSelecionado?.id === id) {
+            setModeloSelecionado(null);
+          }
+
+          resolve();
+        } catch (error) {
+          const mensagem =
+            error instanceof Error ? error.message : "Erro ao excluir modelo.";
+
+          setErro(mensagem);
+          reject(error);
+        }
+      });
+    });
+  }
+
   async function carregarModeloPorId(id: string) {
     try {
       setCarregando(true);
@@ -192,7 +217,7 @@ export function useModelosPesquisa() {
     carregando,
     processando,
     erro,
-
+    excluirModelo,
     carregarModelos,
     carregarModeloPorId,
     salvarModelo,

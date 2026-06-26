@@ -65,6 +65,31 @@ export function usePesquisasCliente() {
     }
   }
 
+  async function excluirPesquisa(id: string) {
+    return new Promise<void>((resolve, reject) => {
+      startTransition(async () => {
+        try {
+          setErro(null);
+
+          await Backend.pesquisasCliente.excluir(id);
+          await carregarPesquisas();
+
+          if (pesquisaSelecionada?.id === id) {
+            setPesquisaSelecionada(null);
+          }
+
+          resolve();
+        } catch (error) {
+          const mensagem =
+            error instanceof Error ? error.message : "Erro ao excluir pesquisa.";
+
+          setErro(mensagem);
+          reject(error);
+        }
+      });
+    });
+  }
+
   async function carregarRelatorio(id: string) {
     try {
       setCarregando(true);
@@ -173,6 +198,7 @@ export function usePesquisasCliente() {
     processando,
     erro,
 
+    excluirPesquisa,
     carregarPesquisas,
     carregarPesquisaPorId,
     carregarRelatorio,

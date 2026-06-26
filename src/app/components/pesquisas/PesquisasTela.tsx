@@ -26,6 +26,7 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
     carregarRelatorio,
     carregarDadosFormulario,
     salvarPesquisa,
+    excluirPesquisa,
     alterarStatus,
   } = usePesquisasCliente();
 
@@ -58,6 +59,19 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
     });
 
     router.push(`/pesquisas/${resultado.id}`);
+    router.refresh();
+  }
+
+  async function excluirPesquisaAtual(id: string) {
+    const confirmado = confirm(
+      "Tem certeza que deseja excluir esta pesquisa? As respostas também serão excluídas."
+    );
+
+    if (!confirmado) return;
+
+    await excluirPesquisa(id);
+
+    router.push("/pesquisas");
     router.refresh();
   }
 
@@ -153,6 +167,14 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
                         >
                           Abrir
                         </Link>
+
+                        <button
+                          type="button"
+                          onClick={() => excluirPesquisaAtual(pesquisa.id)}
+                          className="ml-4 text-sm font-medium text-red-600 hover:text-red-800"
+                        >
+                          Excluir
+                        </button>
                       </td>
                     </tr>
                   ))

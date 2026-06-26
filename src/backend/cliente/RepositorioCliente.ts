@@ -35,6 +35,35 @@ export default class RepositorioCliente {
     });
   }
 
+  static async excluir(id: string): Promise<string> {
+    const cliente = await prisma.cliente.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            pesquisas: true,
+          },
+        },
+      },
+    });
+
+    if (!cliente) {
+      throw new Error("Cliente não encontrado.");
+    }
+
+    if (cliente._count.pesquisas > 0) {
+      throw new Error(
+        "Não é possível excluir este cliente, pois ele possui pesquisas vinculadas."
+      );
+    }
+
+    await prisma.cliente.delete({
+      where: { id },
+    });
+
+    return id;
+  }
+
   static async obterTodos(): Promise<ClienteComResumo[]> {
     const clientes = await prisma.cliente.findMany({
       orderBy: {

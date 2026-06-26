@@ -107,6 +107,35 @@ export default class RepositorioModeloPesquisa {
     });
   }
 
+  static async excluir(id: string) {
+    const modelo = await prisma.modeloPesquisa.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            pesquisas: true,
+          },
+        },
+      },
+    });
+
+    if (!modelo) {
+      throw new Error("Modelo de pesquisa não encontrado.");
+    }
+
+    if (modelo._count.pesquisas > 0) {
+      throw new Error(
+        "Não é possível excluir este modelo, pois ele já possui pesquisas vinculadas."
+      );
+    }
+
+    await prisma.modeloPesquisa.delete({
+      where: { id },
+    });
+
+    return id;
+  }
+
   static async obterPorId(id: string): Promise<ModeloPesquisaDetalhado> {
     const modelo = await prisma.modeloPesquisa.findUnique({
       where: { id },

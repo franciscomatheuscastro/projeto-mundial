@@ -33,6 +33,31 @@ export function useClientes() {
     }
   }
 
+  async function excluirCliente(id: string) {
+    return new Promise<void>((resolve, reject) => {
+      startTransition(async () => {
+        try {
+          setErro(null);
+
+          await Backend.clientes.excluir(id);
+          await carregarClientes();
+
+          if (clienteSelecionado?.id === id) {
+            setClienteSelecionado(null);
+          }
+
+          resolve();
+        } catch (error) {
+          const mensagem =
+            error instanceof Error ? error.message : "Erro ao excluir cliente.";
+
+          setErro(mensagem);
+          reject(error);
+        }
+      });
+    });
+  }
+
   async function carregarClientePorId(id: string) {
     try {
       setCarregando(true);
@@ -84,11 +109,10 @@ export function useClientes() {
     clientes,
     clienteSelecionado,
     setClienteSelecionado,
-
     carregando,
     processando,
     erro,
-
+    excluirCliente,
     carregarClientes,
     carregarClientePorId,
     salvarCliente,

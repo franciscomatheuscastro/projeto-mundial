@@ -20,6 +20,7 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
     processando,
     erro,
     carregarClientePorId,
+    excluirCliente,
     salvarCliente,
   } = useClientes();
 
@@ -64,6 +65,19 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
     });
 
     router.push(`/clientes/${resultado.id}`);
+    router.refresh();
+  }
+
+  async function excluirClienteAtual(id: string) {
+    const confirmado = confirm(
+      "Tem certeza que deseja excluir este cliente?"
+    );
+
+    if (!confirmado) return;
+
+    await excluirCliente(id);
+
+    router.push("/clientes");
     router.refresh();
   }
 
@@ -179,6 +193,14 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
                         >
                           Editar
                         </Link>
+                        <button
+                          type="button"
+                          onClick={() => excluirClienteAtual(cliente.id)}
+                          disabled={processando}
+                          className="ml-4 text-sm font-medium text-red-600 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Excluir
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -296,6 +318,16 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
           >
             {processando ? "Salvando..." : "Salvar cliente"}
           </button>
+          {modo === "editar" && clienteId && (
+            <button
+              type="button"
+              onClick={() => excluirClienteAtual(clienteId)}
+              disabled={processando}
+              className="mt-3 w-full rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Excluir cliente
+            </button>
+          )}
         </form>
 
         {modo === "editar" && (

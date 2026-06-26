@@ -6,6 +6,7 @@ import excluirUsuario from "./usuario/excluirUsuario";
 import salvarCliente from "./cliente/salvarCliente";
 import obterTodosClientes from "./cliente/obterTodos";
 import obterClientePorId from "./cliente/obterPorId";
+import excluirCliente from "./cliente/excluirCliente";
 
 import salvarModeloPesquisa from "./modeloPesquisa/salvarModeloPesquisa";
 import obterTodosModelosPesquisa from "./modeloPesquisa/obterTodos";
@@ -14,7 +15,9 @@ import adicionarPerguntaModeloPesquisa from "./modeloPesquisa/adicionarPergunta"
 import salvarPerguntaModeloPesquisa from "./modeloPesquisa/salvarPergunta";
 import excluirPerguntaModeloPesquisa from "./modeloPesquisa/excluirPergunta";
 import duplicarModeloPesquisa from "./modeloPesquisa/duplicarModeloPesquisa";
+import excluirModeloPesquisa from "./modeloPesquisa/excluirModeloPesquisa";
 
+import excluirPesquisaCliente from "./pesquisaCliente/excluirPesquisa";
 import salvarPesquisa from "./pesquisaCliente/salvarPesquisa";
 import obterTodosPesquisasCliente from "./pesquisaCliente/obterTodos";
 import obterPesquisaClientePorId from "./pesquisaCliente/obterPorId";
@@ -37,6 +40,7 @@ export default class Backend {
     salvar: salvarCliente,
     obterTodos: obterTodosClientes,
     obterPorId: obterClientePorId,
+    excluir: excluirCliente,
   };
 
   static readonly modelosPesquisa = {
@@ -47,6 +51,7 @@ export default class Backend {
     salvarPergunta: salvarPerguntaModeloPesquisa,
     excluirPergunta: excluirPerguntaModeloPesquisa,
     duplicar: duplicarModeloPesquisa,
+    excluir: excluirModeloPesquisa,
   };
 
   static readonly pesquisasCliente = {
@@ -56,6 +61,7 @@ export default class Backend {
     obterRelatorio: obterRelatorioPesquisaCliente,
     alterarStatus: alterarStatusPesquisaCliente,
     obterDadosFormulario: obterDadosFormularioPesquisaCliente,
+    excluir: excluirPesquisaCliente,
   };
 
   static readonly respostasPesquisa = {

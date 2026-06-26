@@ -153,6 +153,22 @@ export default class RepositorioPesquisaCliente {
     return this.formatarDetalhada(pesquisa);
   }
 
+  static async excluir(id: string) {
+    const pesquisa = await prisma.pesquisaCliente.findUnique({
+      where: { id },
+    });
+
+    if (!pesquisa) {
+      throw new Error("Pesquisa não encontrada.");
+    }
+
+    await prisma.pesquisaCliente.delete({
+      where: { id },
+    });
+
+    return id;
+  }
+
   static async alterarStatus(id: string, status: StatusPesquisaCliente) {
     const pesquisa = await prisma.pesquisaCliente.update({
       where: { id },

@@ -27,6 +27,7 @@ export default function ModelosPesquisaTela({ modo, modeloId }: Props) {
     salvarPergunta,
     excluirPergunta,
     duplicarModelo,
+    excluirModelo,
   } = useModelosPesquisa();
 
   const [titulo, setTitulo] = useState("");
@@ -69,6 +70,19 @@ export default function ModelosPesquisaTela({ modo, modeloId }: Props) {
     const novoModelo = await duplicarModelo(modeloId);
 
     router.push(`/modelos-pesquisa/${novoModelo.id}`);
+    router.refresh();
+  }
+
+  async function excluirModeloAtual(id: string) {
+    const confirmado = confirm(
+      "Tem certeza que deseja excluir este modelo de pesquisa?"
+    );
+
+    if (!confirmado) return;
+
+    await excluirModelo(id);
+
+    router.push("/modelos-pesquisa");
     router.refresh();
   }
 
@@ -175,6 +189,13 @@ export default function ModelosPesquisaTela({ modo, modeloId }: Props) {
                         >
                           Editar
                         </Link>
+                        <button
+                          type="button"
+                          onClick={() => excluirModeloAtual(modelo.id)}
+                          className="ml-4 text-sm font-medium text-red-600 hover:text-red-800"
+                        >
+                          Excluir
+                        </button>
                       </td>
                     </tr>
                   ))

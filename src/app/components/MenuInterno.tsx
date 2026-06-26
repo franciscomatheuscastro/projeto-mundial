@@ -37,12 +37,7 @@ export function MenuInterno() {
         </Link>
       </nav>
 
-      <div className="rounded-2xl bg-white/10 p-4">
-        <p className="text-sm font-semibold">MundialSafe</p>
-        <p className="mt-1 text-xs text-blue-100">
-          Segurança, clima e inteligência organizacional.
-        </p>
-      </div>
+      
 
       <form action={sair} className="mt-4">
         <button className="w-full rounded-xl bg-white px-4 py-3 text-sm font-bold text-blue-700 hover:bg-blue-50">
