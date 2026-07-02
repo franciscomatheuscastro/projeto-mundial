@@ -15,6 +15,27 @@ enum PerfilUsuario {
   RECEPCAO
 }
 
+enum StatusAgendamento {
+  AGENDADO
+  REALIZADO
+  CANCELADO
+  REAGENDADO
+}
+
+enum TipoAgendamento {
+  APRESENTACAO_PLANO
+  REUNIAO_ALINHAMENTO
+  DEVOLUTIVA
+  OUTRO
+}
+
+enum StatusPlanoAcao {
+  RASCUNHO
+  EM_ANDAMENTO
+  CONCLUIDO
+  ARQUIVADO
+}
+
 enum TipoPergunta {
   TEXTO
   TEXTO_LONGO
@@ -90,6 +111,8 @@ model PesquisaCliente {
   cliente      Cliente               @relation(fields: [clienteId], references: [id])
   modelo       ModeloPesquisa        @relation(fields: [modeloId], references: [id])
   respostas    RespostaPesquisa[]
+
+  planosAcao   PlanoAcao[]
 }
 
 
@@ -107,4 +130,47 @@ model RespostaPesquisa {
   criadoEm     DateTime @default(now())
 
   pesquisa     PesquisaCliente @relation(fields: [pesquisaId], references: [id], onDelete: Cascade)
+}
+
+model PlanoAcao {
+  id           String          @id @default(cuid())
+  pesquisaId   String
+
+  titulo       String
+  diagnostico  String?
+  objetivo     String?
+  conclusao    String?
+  status       StatusPlanoAcao @default(RASCUNHO)
+
+  acoes        Json            @default("[]")
+
+  criadoEm     DateTime        @default(now())
+  atualizadoEm DateTime        @updatedAt
+
+  agendamentos Agendamento[]
+
+  pesquisa     PesquisaCliente @relation(fields: [pesquisaId], references: [id], onDelete: Cascade)
+}
+
+model Agendamento {
+  id           String            @id @default(cuid())
+
+  planoAcaoId  String?
+
+  titulo       String
+  descricao    String?
+  dataHora     DateTime
+  duracaoMin   Int               @default(60)
+  local        String?
+  linkReuniao  String?
+
+  tipo         TipoAgendamento   @default(APRESENTACAO_PLANO)
+  status       StatusAgendamento @default(AGENDADO)
+
+  participantes Json             @default("[]")
+
+  criadoEm     DateTime          @default(now())
+  atualizadoEm DateTime          @updatedAt
+
+  planoAcao    PlanoAcao?        @relation(fields: [planoAcaoId], references: [id], onDelete: SetNull)
 }

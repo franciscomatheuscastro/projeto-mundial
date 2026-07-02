@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent } from "react";
-import { randomUUID } from "crypto";
+import { useRouter } from "next/navigation";
 import { PesquisaPublica } from "@/src/core/model/RespostaPesquisa";
 import { useRespostaPesquisaPublica } from "@/src/app/data/hooks/useRespostaPesquisaPublica";
 
@@ -10,6 +10,7 @@ type Props = {
 };
 
 export default function PesquisaPublicaTela({ pesquisa }: Props) {
+  const router = useRouter();
   const { erro, processando, salvarResposta } = useRespostaPesquisaPublica();
 
   async function enviarResposta(event: FormEvent<HTMLFormElement>) {
@@ -17,8 +18,8 @@ export default function PesquisaPublicaTela({ pesquisa }: Props) {
 
     const formData = new FormData(event.currentTarget);
 
-    const respostas = pesquisa.perguntas.map((pergunta) => ({
-      id: randomUUID(),
+    const respostas = pesquisa.perguntas.map((pergunta, index) => ({
+      id: `${pergunta.id}-${index}`,
       perguntaId: pergunta.id,
       valor: String(formData.get(`pergunta_${pergunta.id}`) ?? "").trim(),
     }));
@@ -32,6 +33,8 @@ export default function PesquisaPublicaTela({ pesquisa }: Props) {
       cargo: String(formData.get("cargo") ?? "").trim() || null,
       respostas,
     });
+
+    router.push("/pesquisa/obrigado");
   }
 
   return (
@@ -100,6 +103,7 @@ export default function PesquisaPublicaTela({ pesquisa }: Props) {
 
           <div className="rounded-xl bg-white p-6 shadow-sm">
             <button
+              type="submit"
               disabled={processando}
               className="w-full rounded-lg bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -185,7 +189,7 @@ function CampoResposta({ pergunta }: { pergunta: any }) {
   if (pergunta.tipo === "MULTIPLA_ESCOLHA") {
     return (
       <div className="space-y-2">
-        {pergunta.opcoes.map((opcao: string) => (
+        {(pergunta.opcoes || []).map((opcao: string) => (
           <label
             key={opcao}
             className="flex cursor-pointer items-center rounded-lg border p-3 text-sm font-medium hover:bg-slate-50"

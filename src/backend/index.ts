@@ -28,6 +28,17 @@ import obterDadosFormularioPesquisaCliente from "./pesquisaCliente/obterDadosFor
 import obterPesquisaPublicaPorToken from "./respostaPesquisa/obterPorToken";
 import salvarRespostaPesquisa from "./respostaPesquisa/salvarRespostaPesquisa";
 
+import salvarPlanoAcao from "./planoAcao/salvarPlanoAcao";
+import obterTodosPlanosAcao from "./planoAcao/obterTodos";
+import obterPlanoAcaoPorId from "./planoAcao/obterPorId";
+import obterPlanosAcaoPorPesquisa from "./planoAcao/obterPorPesquisa";
+import excluirPlanoAcao from "./planoAcao/excluirPlanoAcao";
+
+import salvarAgendamento from "./agendamento/salvarAgendamento";
+import obterTodosAgendamentos from "./agendamento/obterTodos";
+import obterAgendamentoPorId from "./agendamento/obterPorId";
+import excluirAgendamento from "./agendamento/excluirAgendamento";
+
 export default class Backend {
   static readonly usuarios = {
     salvar: salvarUsuario,
@@ -67,6 +78,21 @@ export default class Backend {
   static readonly respostasPesquisa = {
     obterPorToken: obterPesquisaPublicaPorToken,
     salvar: salvarRespostaPesquisa,
+  };
+
+  static readonly planosAcao = {
+    salvar: salvarPlanoAcao,
+    obterTodos: obterTodosPlanosAcao,
+    obterPorId: obterPlanoAcaoPorId,
+    obterPorPesquisa: obterPlanosAcaoPorPesquisa,
+    excluir: excluirPlanoAcao,
+  };
+
+  static readonly agendamentos = {
+    salvar: salvarAgendamento,
+    obterTodos: obterTodosAgendamentos,
+    obterPorId: obterAgendamentoPorId,
+    excluir: excluirAgendamento,
   };
 
 }
