@@ -6,11 +6,15 @@ import { usePlanosAcao } from "@/src/app/data/hooks/usePlanosAcao";
 
 type Props = {
   id: string;
+  contexto?: "mundial" | "cliente";
 };
 
-export default function PlanoAcaoDetalheTela({ id }: Props) {
+export default function PlanoAcaoDetalheTela({
+  id,
+  contexto = "mundial",
+}: Props) {
   const { planoSelecionado, carregando, erro, carregarPlanoPorId } =
-    usePlanosAcao(false);
+    usePlanosAcao(false, contexto);
 
   useEffect(() => {
     carregarPlanoPorId(id);

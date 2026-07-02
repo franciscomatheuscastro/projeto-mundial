@@ -46,7 +46,21 @@ export function MenuInterno() {
             <MenuLink href="/agendamentos">Agendamentos</MenuLink>
           </div>
         </div>
+
+
+      <div>
+        <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.28em] text-blue-100/80">
+          Compliance
+        </p>
+
+        <div className="ml-3 flex flex-col gap-1 border-l border-white/20 pl-3">
+          <MenuLink href="/denuncias">Canal de denúncias</MenuLink>
+        </div>
+      </div>
+
       </nav>
+
+
 
       <form action={sair} className="mt-4">
         <button className="w-full rounded-xl bg-white px-4 py-3 text-sm font-bold text-blue-700 hover:bg-blue-50">

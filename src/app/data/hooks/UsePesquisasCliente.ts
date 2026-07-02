@@ -11,7 +11,12 @@ import {
   PesquisaClienteResumo,
 } from "@/src/core/model/PesquisaCliente";
 
-export function usePesquisasCliente() {
+type Contexto = "mundial" | "cliente";
+
+export function usePesquisasCliente(
+  carregarAoIniciar = true,
+  contexto: Contexto = "mundial"
+) {
   const [pesquisas, setPesquisas] = useState<PesquisaClienteResumo[]>([]);
   const [pesquisaSelecionada, setPesquisaSelecionada] =
     useState<PesquisaClienteDetalhada | null>(null);
@@ -25,7 +30,7 @@ export function usePesquisasCliente() {
     });
 
   const [erro, setErro] = useState<string | null>(null);
-  const [carregando, setCarregando] = useState(true);
+  const [carregando, setCarregando] = useState(carregarAoIniciar);
   const [processando, startTransition] = useTransition();
 
   async function carregarPesquisas() {
@@ -33,7 +38,11 @@ export function usePesquisasCliente() {
       setCarregando(true);
       setErro(null);
 
-      const dados = await Backend.pesquisasCliente.obterTodos();
+      const dados =
+        contexto === "cliente"
+          ? await Backend.pesquisasCliente.obterMinhas()
+          : await Backend.pesquisasCliente.obterTodos();
+
       setPesquisas(dados);
     } catch (error) {
       setErro(
@@ -49,9 +58,12 @@ export function usePesquisasCliente() {
       setCarregando(true);
       setErro(null);
 
-      const dados = await Backend.pesquisasCliente.obterPorId(id);
-      setPesquisaSelecionada(dados);
+      const dados =
+        contexto === "cliente"
+          ? await Backend.pesquisasCliente.obterMinhaPorId(id)
+          : await Backend.pesquisasCliente.obterPorId(id);
 
+      setPesquisaSelecionada(dados);
       return dados;
     } catch (error) {
       const mensagem =
@@ -95,9 +107,12 @@ export function usePesquisasCliente() {
       setCarregando(true);
       setErro(null);
 
-      const dados = await Backend.pesquisasCliente.obterRelatorio(id);
-      setRelatorio(dados);
+      const dados =
+        contexto === "cliente"
+          ? await Backend.pesquisasCliente.obterMeuRelatorio(id)
+          : await Backend.pesquisasCliente.obterRelatorio(id);
 
+      setRelatorio(dados);
       return dados;
     } catch (error) {
       const mensagem =
@@ -184,8 +199,10 @@ export function usePesquisasCliente() {
   }
 
   useEffect(() => {
-    carregarPesquisas();
-  }, []);
+    if (carregarAoIniciar) {
+      carregarPesquisas();
+    }
+  }, [carregarAoIniciar, contexto]);
 
   return {
     pesquisas,

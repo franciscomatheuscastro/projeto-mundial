@@ -1,5 +1,3 @@
-import { auth } from "@/src/auth";
-import { redirect } from "next/navigation";
 import PesquisasTela from "@/src/app/components/pesquisas/PesquisasTela";
 
 type PageProps = {
@@ -8,14 +6,8 @@ type PageProps = {
   }>;
 };
 
-export default async function DetalhePesquisaPage({ params }: PageProps) {
-  const session = await auth();
-
-  if (!session?.user) {
-    redirect("/login");
-  }
-
+export default async function PesquisaDetalhePage({ params }: PageProps) {
   const { id } = await params;
 
-  return <PesquisasTela modo="detalhe" pesquisaId={id} />;
+  return <PesquisasTela modo="detalhe" pesquisaId={id} contexto="mundial" />;
 }

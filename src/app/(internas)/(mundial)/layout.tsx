@@ -1,6 +1,6 @@
 import { auth } from "@/src/auth";
 import { redirect } from "next/navigation";
-import { MenuInterno } from "@/src/app/components/MenuInterno";
+import { MenuInterno } from "@/src/app/components/menu-interno/mundial/MenuInterno";
 
 export default async function InternasLayout({
   children,

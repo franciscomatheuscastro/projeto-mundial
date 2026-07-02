@@ -12,6 +12,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const session = await auth();
 
   if (session?.user) {
+    if ((session.user as any).perfil === "CLIENTE") {
+      redirect("/cliente");
+    }
+
     redirect("/dashboard");
   }
 
@@ -28,7 +32,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       await signIn("credentials", {
         email,
         senha,
-        redirectTo: "/dashboard",
+        redirectTo: "/",
       });
     } catch (error) {
       if (error instanceof AuthError) {

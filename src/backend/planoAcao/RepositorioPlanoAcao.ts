@@ -56,21 +56,14 @@ export default class RepositorioPlanoAcao {
   static async salvar(plano: PlanoAcao): Promise<PlanoAcaoDetalhado> {
     const titulo = plano.titulo?.trim();
 
-    if (!titulo) {
-      throw new Error("Título do plano de ação é obrigatório.");
-    }
-
-    if (!plano.pesquisaId) {
-      throw new Error("Pesquisa é obrigatória.");
-    }
+    if (!titulo) throw new Error("Título do plano de ação é obrigatório.");
+    if (!plano.pesquisaId) throw new Error("Pesquisa é obrigatória.");
 
     const pesquisa = await prisma.pesquisaCliente.findUnique({
       where: { id: plano.pesquisaId },
     });
 
-    if (!pesquisa) {
-      throw new Error("Pesquisa não encontrada.");
-    }
+    if (!pesquisa) throw new Error("Pesquisa não encontrada.");
 
     const dados = {
       pesquisaId: plano.pesquisaId,
@@ -82,27 +75,23 @@ export default class RepositorioPlanoAcao {
       acoes: normalizarAcoes(plano.acoes),
     };
 
+    const include = {
+      pesquisa: {
+        include: {
+          cliente: true,
+        },
+      },
+    };
+
     const resultado = plano.id
       ? await prisma.planoAcao.update({
           where: { id: plano.id },
           data: dados,
-          include: {
-            pesquisa: {
-              include: {
-                cliente: true,
-              },
-            },
-          },
+          include,
         })
       : await prisma.planoAcao.create({
           data: dados,
-          include: {
-            pesquisa: {
-              include: {
-                cliente: true,
-              },
-            },
-          },
+          include,
         });
 
     return montarDetalhado(resultado);
@@ -110,9 +99,27 @@ export default class RepositorioPlanoAcao {
 
   static async obterTodos(): Promise<PlanoAcaoResumo[]> {
     const planos = await prisma.planoAcao.findMany({
-      orderBy: {
-        criadoEm: "desc",
+      orderBy: { criadoEm: "desc" },
+      include: {
+        pesquisa: {
+          include: {
+            cliente: true,
+          },
+        },
       },
+    });
+
+    return planos.map(montarResumo);
+  }
+
+  static async obterMeus(clienteId: string): Promise<PlanoAcaoResumo[]> {
+    const planos = await prisma.planoAcao.findMany({
+      where: {
+        pesquisa: {
+          clienteId,
+        },
+      },
+      orderBy: { criadoEm: "desc" },
       include: {
         pesquisa: {
           include: {
@@ -137,9 +144,32 @@ export default class RepositorioPlanoAcao {
       },
     });
 
-    if (!plano) {
-      throw new Error("Plano de ação não encontrado.");
-    }
+    if (!plano) throw new Error("Plano de ação não encontrado.");
+
+    return montarDetalhado(plano);
+  }
+
+  static async obterPorIdECliente(
+    id: string,
+    clienteId: string
+  ): Promise<PlanoAcaoDetalhado> {
+    const plano = await prisma.planoAcao.findFirst({
+      where: {
+        id,
+        pesquisa: {
+          clienteId,
+        },
+      },
+      include: {
+        pesquisa: {
+          include: {
+            cliente: true,
+          },
+        },
+      },
+    });
+
+    if (!plano) throw new Error("Plano de ação não encontrado.");
 
     return montarDetalhado(plano);
   }
@@ -147,9 +177,7 @@ export default class RepositorioPlanoAcao {
   static async obterPorPesquisa(pesquisaId: string): Promise<PlanoAcaoResumo[]> {
     const planos = await prisma.planoAcao.findMany({
       where: { pesquisaId },
-      orderBy: {
-        criadoEm: "desc",
-      },
+      orderBy: { criadoEm: "desc" },
       include: {
         pesquisa: {
           include: {
@@ -167,9 +195,7 @@ export default class RepositorioPlanoAcao {
       where: { id },
     });
 
-    if (!plano) {
-      throw new Error("Plano de ação não encontrado.");
-    }
+    if (!plano) throw new Error("Plano de ação não encontrado.");
 
     await prisma.planoAcao.delete({
       where: { id },

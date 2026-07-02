@@ -1,22 +1,22 @@
 import { PerfilUsuario } from "@prisma/client";
 
-export type Usuario = {
+export interface Usuario {
   id?: string;
   nome: string;
   email: string;
   senha?: string;
   perfil: PerfilUsuario;
   ativo?: boolean;
-  criadoEm?: Date;
-  atualizadoEm?: Date;
-};
+  clienteId?: string | null;
+}
 
-export type UsuarioSemSenha = {
+export interface UsuarioSemSenha {
   id: string;
   nome: string;
   email: string;
   perfil: PerfilUsuario;
   ativo: boolean;
+  clienteId: string | null;
   criadoEm: Date;
   atualizadoEm: Date;
-};
+}

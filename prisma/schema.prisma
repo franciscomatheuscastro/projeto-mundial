@@ -13,6 +13,7 @@ enum PerfilUsuario {
   PSICOLOGO
   ASSISTENTE_SOCIAL
   RECEPCAO
+  CLIENTE
 }
 
 enum StatusAgendamento {
@@ -58,6 +59,9 @@ model Usuario {
   perfil       PerfilUsuario @default(RECEPCAO)
   ativo        Boolean       @default(true)
 
+  clienteId    String?
+  cliente      Cliente?      @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+
   criadoEm     DateTime      @default(now())
   atualizadoEm DateTime      @updatedAt
 }
@@ -75,7 +79,10 @@ model Cliente {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  pesquisas    PesquisaCliente[]
+  usuarios       Usuario[]
+  pesquisas      PesquisaCliente[]
+  colaboradores  ColaboradorCliente[]
+  denuncias      Denuncia[]
 }
 
 model ModeloPesquisa {
@@ -174,3 +181,68 @@ model Agendamento {
 
   planoAcao    PlanoAcao?        @relation(fields: [planoAcaoId], references: [id], onDelete: SetNull)
 }
+
+
+
+
+enum StatusDenuncia {
+  RECEBIDA
+  EM_ANALISE
+  EM_TRATATIVA
+  CONCLUIDA
+  ARQUIVADA
+}
+
+enum GravidadeDenuncia {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+model ColaboradorCliente {
+  id           String   @id @default(cuid())
+  clienteId    String
+
+  nome         String
+  email        String?
+  telefone     String?
+  setor        String?
+  cargo        String?
+  ativo        Boolean  @default(true)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  cliente      Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+}
+
+model Denuncia {
+  id             String            @id @default(cuid())
+  clienteId      String
+
+  protocolo      String            @unique
+  titulo         String
+  descricao      String
+  categoria      String?
+  localOcorrido  String?
+  dataOcorrido   DateTime?
+
+  anonima        Boolean           @default(true)
+  nomeDenunciante     String?
+  emailDenunciante    String?
+  telefoneDenunciante String?
+
+  status         StatusDenuncia    @default(RECEBIDA)
+  gravidade      GravidadeDenuncia @default(MEDIA)
+
+  respostaPublica String?
+  tratativas      Json             @default("[]")
+
+  criadoEm       DateTime          @default(now())
+  atualizadoEm   DateTime          @updatedAt
+
+  cliente        Cliente           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+}
+
+

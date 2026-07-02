@@ -8,6 +8,7 @@ export default async function salvarUsuario(usuario: Usuario) {
   const resultado = await RepositorioUsuario.salvar(usuario);
 
   revalidatePath("/usuarios");
+  revalidatePath("/clientes");
   revalidatePath("/dashboard");
 
   return resultado;

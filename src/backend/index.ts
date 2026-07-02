@@ -24,6 +24,9 @@ import obterPesquisaClientePorId from "./pesquisaCliente/obterPorId";
 import obterRelatorioPesquisaCliente from "./pesquisaCliente/ObterRelatorio";
 import alterarStatusPesquisaCliente from "./pesquisaCliente/alterarStatus";
 import obterDadosFormularioPesquisaCliente from "./pesquisaCliente/obterDadosFormulario";
+import obterMinhasPesquisasCliente from "./pesquisaCliente/obterMinhas";
+import obterMinhaPesquisaClientePorId from "./pesquisaCliente/obterMinhaPorId";
+import obterMeuRelatorioPesquisaCliente from "./pesquisaCliente/obterMeuRelatorio";
 
 import obterPesquisaPublicaPorToken from "./respostaPesquisa/obterPorToken";
 import salvarRespostaPesquisa from "./respostaPesquisa/salvarRespostaPesquisa";
@@ -33,11 +36,27 @@ import obterTodosPlanosAcao from "./planoAcao/obterTodos";
 import obterPlanoAcaoPorId from "./planoAcao/obterPorId";
 import obterPlanosAcaoPorPesquisa from "./planoAcao/obterPorPesquisa";
 import excluirPlanoAcao from "./planoAcao/excluirPlanoAcao";
+import obterMeusPlanosAcao from "./planoAcao/obterMeus";
+import obterMeuPlanoAcaoPorId from "./planoAcao/obterMeuPorId";
 
 import salvarAgendamento from "./agendamento/salvarAgendamento";
 import obterTodosAgendamentos from "./agendamento/obterTodos";
 import obterAgendamentoPorId from "./agendamento/obterPorId";
 import excluirAgendamento from "./agendamento/excluirAgendamento";
+import obterMeusAgendamentos from "./agendamento/obterMeus";
+import obterMeuAgendamentoPorId from "./agendamento/obterMeuPorId";
+
+import criarDenunciaPublica from "./denuncia/criarDenunciaPublica";
+import consultarDenunciaPublica from "./denuncia/consultarDenunciaPublica";
+import obterTodosDenuncias from "./denuncia/obterTodos";
+import obterDenunciaPorId from "./denuncia/obterPorId";
+import obterDenunciasPorCliente from "./denuncia/obterPorCliente";
+import salvarDenuncia from "./denuncia/salvarDenuncia";
+import adicionarTratativaDenuncia from "./denuncia/adicionarTratativa";
+import obterMinhasDenuncias from "./denuncia/obterMinhasDenuncias";
+import obterMinhaDenunciaPorId from "./denuncia/obterMinhaDenunciaPorId";
+import salvarMinhaDenuncia from "./denuncia/salvarMinhaDenuncia";
+import adicionarMinhaTratativa from "./denuncia/adicionarMinhaTratativa";
 
 export default class Backend {
   static readonly usuarios = {
@@ -73,6 +92,10 @@ export default class Backend {
     alterarStatus: alterarStatusPesquisaCliente,
     obterDadosFormulario: obterDadosFormularioPesquisaCliente,
     excluir: excluirPesquisaCliente,
+
+    obterMinhas: obterMinhasPesquisasCliente,
+    obterMinhaPorId: obterMinhaPesquisaClientePorId,
+    obterMeuRelatorio: obterMeuRelatorioPesquisaCliente,
   };
 
   static readonly respostasPesquisa = {
@@ -86,6 +109,9 @@ export default class Backend {
     obterPorId: obterPlanoAcaoPorId,
     obterPorPesquisa: obterPlanosAcaoPorPesquisa,
     excluir: excluirPlanoAcao,
+
+    obterMeus: obterMeusPlanosAcao,
+    obterMeuPorId: obterMeuPlanoAcaoPorId,
   };
 
   static readonly agendamentos = {
@@ -93,6 +119,25 @@ export default class Backend {
     obterTodos: obterTodosAgendamentos,
     obterPorId: obterAgendamentoPorId,
     excluir: excluirAgendamento,
+
+    obterMeus: obterMeusAgendamentos,
+    obterMeuPorId: obterMeuAgendamentoPorId,
   };
+
+  static readonly denuncias = {
+    criarPublica: criarDenunciaPublica,
+    consultarPublica: consultarDenunciaPublica,
+    obterTodos: obterTodosDenuncias,
+    obterPorId: obterDenunciaPorId,
+    obterPorCliente: obterDenunciasPorCliente,
+    salvar: salvarDenuncia,
+    adicionarTratativa: adicionarTratativaDenuncia,
+
+    obterMinhas: obterMinhasDenuncias,
+    obterMinhaPorId: obterMinhaDenunciaPorId,
+    salvarMinha: salvarMinhaDenuncia,
+    adicionarMinhaTratativa,
+  };
+    
 
 }

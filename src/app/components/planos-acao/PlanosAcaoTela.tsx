@@ -4,10 +4,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePlanosAcao } from "@/src/app/data/hooks/usePlanosAcao";
 
-export default function PlanosAcaoTela() {
+type Props = {
+  contexto?: "mundial" | "cliente";
+};
+
+export default function PlanosAcaoTela({ contexto = "mundial" }: Props) {
   const router = useRouter();
   const { planos, carregando, erro, excluirPlano, processando } =
-    usePlanosAcao();
+    usePlanosAcao(true, contexto);
+
+  const baseHref = contexto === "cliente" ? "/meus-planos-acao" : "/planos-acao";
 
   async function excluirPlanoAtual(id: string) {
     const confirmado = confirm("Deseja excluir este plano de ação?");
@@ -23,16 +29,20 @@ export default function PlanosAcaoTela() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">Planos de ação</h1>
           <p className="text-sm text-slate-500">
-            Gestão dos planos criados a partir das pesquisas de clima.
+            {contexto === "cliente"
+              ? "Acompanhe os planos de ação vinculados à sua empresa."
+              : "Gestão dos planos criados a partir das pesquisas de clima."}
           </p>
         </div>
 
-        <Link
-          href="/planos-acao/novo"
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          Novo plano
-        </Link>
+        {contexto === "mundial" && (
+          <Link
+            href="/planos-acao/novo"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Novo plano
+          </Link>
+        )}
       </header>
 
       <section className="px-8 py-6">
@@ -63,7 +73,7 @@ export default function PlanosAcaoTela() {
             <thead className="bg-slate-50">
               <tr>
                 <Th>Plano</Th>
-                <Th>Cliente</Th>
+                {contexto === "mundial" && <Th>Cliente</Th>}
                 <Th>Pesquisa</Th>
                 <Th>Ações</Th>
                 <Th>Status</Th>
@@ -73,9 +83,15 @@ export default function PlanosAcaoTela() {
 
             <tbody>
               {carregando ? (
-                <LinhaVazia colunas={6} texto="Carregando planos de ação..." />
+                <LinhaVazia
+                  colunas={contexto === "mundial" ? 6 : 5}
+                  texto="Carregando planos de ação..."
+                />
               ) : planos.length === 0 ? (
-                <LinhaVazia colunas={6} texto="Nenhum plano de ação cadastrado." />
+                <LinhaVazia
+                  colunas={contexto === "mundial" ? 6 : 5}
+                  texto="Nenhum plano de ação cadastrado."
+                />
               ) : (
                 planos.map((plano) => (
                   <tr key={plano.id} className="border-t">
@@ -83,10 +99,12 @@ export default function PlanosAcaoTela() {
                       {plano.titulo}
                     </td>
 
-                    <td className="px-4 py-4 text-sm text-slate-700">
-                      {plano.pesquisa.cliente.empresa ||
-                        plano.pesquisa.cliente.nome}
-                    </td>
+                    {contexto === "mundial" && (
+                      <td className="px-4 py-4 text-sm text-slate-700">
+                        {plano.pesquisa.cliente.empresa ||
+                          plano.pesquisa.cliente.nome}
+                      </td>
+                    )}
 
                     <td className="px-4 py-4 text-sm text-slate-700">
                       {plano.pesquisa.titulo}
@@ -102,20 +120,22 @@ export default function PlanosAcaoTela() {
 
                     <td className="px-4 py-4 text-right">
                       <Link
-                        href={`/planos-acao/${plano.id}`}
+                        href={`${baseHref}/${plano.id}`}
                         className="text-sm font-medium text-blue-600 hover:text-blue-800"
                       >
                         Abrir
                       </Link>
 
-                      <button
-                        type="button"
-                        disabled={processando}
-                        onClick={() => excluirPlanoAtual(plano.id)}
-                        className="ml-4 text-sm font-medium text-red-600 hover:text-red-800 disabled:opacity-60"
-                      >
-                        Excluir
-                      </button>
+                      {contexto === "mundial" && (
+                        <button
+                          type="button"
+                          disabled={processando}
+                          onClick={() => excluirPlanoAtual(plano.id)}
+                          className="ml-4 text-sm font-medium text-red-600 hover:text-red-800 disabled:opacity-60"
+                        >
+                          Excluir
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -138,17 +158,8 @@ function Card({ titulo, valor }: { titulo: string; valor: number | string }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const classes =
-    status === "CONCLUIDO"
-      ? "bg-green-100 text-green-700"
-      : status === "EM_ANDAMENTO"
-      ? "bg-blue-100 text-blue-700"
-      : status === "ARQUIVADO"
-      ? "bg-red-100 text-red-700"
-      : "bg-slate-100 text-slate-700";
-
   return (
-    <span className={`rounded-full px-2 py-1 text-xs font-medium ${classes}`}>
+    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
       {status}
     </span>
   );
@@ -175,10 +186,7 @@ function Th({
 function LinhaVazia({ colunas, texto }: { colunas: number; texto: string }) {
   return (
     <tr>
-      <td
-        colSpan={colunas}
-        className="px-4 py-10 text-center text-sm text-slate-500"
-      >
+      <td colSpan={colunas} className="px-4 py-10 text-center text-sm text-slate-500">
         {texto}
       </td>
     </tr>

@@ -6,11 +6,15 @@ import { useAgendamentos } from "@/src/app/data/hooks/useAgendamentos";
 
 type Props = {
   id: string;
+  contexto?: "mundial" | "cliente";
 };
 
-export default function AgendamentoDetalheTela({ id }: Props) {
+export default function AgendamentoDetalheTela({
+  id,
+  contexto = "mundial",
+}: Props) {
   const { agendamentoSelecionado, carregando, erro, carregarAgendamentoPorId } =
-    useAgendamentos(false);
+    useAgendamentos(false, contexto);
 
   useEffect(() => {
     carregarAgendamentoPorId(id);

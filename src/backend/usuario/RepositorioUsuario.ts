@@ -15,6 +15,10 @@ export default class RepositorioUsuario {
       throw new Error("E-mail é obrigatório.");
     }
 
+    if (usuario.perfil === PerfilUsuario.CLIENTE && !usuario.clienteId) {
+      throw new Error("Usuário cliente precisa estar vinculado a um cliente.");
+    }
+
     const usuarioExistente = await prisma.usuario.findUnique({
       where: { email },
     });
@@ -23,11 +27,22 @@ export default class RepositorioUsuario {
       throw new Error("E-mail já cadastrado.");
     }
 
+    if (
+      usuario.id &&
+      usuarioExistente &&
+      usuarioExistente.id !== usuario.id
+    ) {
+      throw new Error("E-mail já cadastrado para outro usuário.");
+    }
+
     let senhaCriptografada: string | undefined;
 
     if (usuario.senha) {
       senhaCriptografada = await bcrypt.hash(usuario.senha, 10);
     }
+
+    const clienteId =
+      usuario.perfil === PerfilUsuario.CLIENTE ? usuario.clienteId : null;
 
     if (usuario.id) {
       return prisma.usuario.update({
@@ -37,6 +52,7 @@ export default class RepositorioUsuario {
           email,
           perfil: usuario.perfil,
           ativo: usuario.ativo ?? true,
+          clienteId,
           ...(senhaCriptografada && { senha: senhaCriptografada }),
         },
         select: {
@@ -45,6 +61,7 @@ export default class RepositorioUsuario {
           email: true,
           perfil: true,
           ativo: true,
+          clienteId: true,
           criadoEm: true,
           atualizadoEm: true,
         },
@@ -62,6 +79,7 @@ export default class RepositorioUsuario {
         senha: senhaCriptografada!,
         perfil: usuario.perfil ?? PerfilUsuario.RECEPCAO,
         ativo: usuario.ativo ?? true,
+        clienteId,
       },
       select: {
         id: true,
@@ -69,6 +87,7 @@ export default class RepositorioUsuario {
         email: true,
         perfil: true,
         ativo: true,
+        clienteId: true,
         criadoEm: true,
         atualizadoEm: true,
       },
@@ -86,6 +105,7 @@ export default class RepositorioUsuario {
         email: true,
         perfil: true,
         ativo: true,
+        clienteId: true,
         criadoEm: true,
         atualizadoEm: true,
       },
@@ -101,6 +121,7 @@ export default class RepositorioUsuario {
         email: true,
         perfil: true,
         ativo: true,
+        clienteId: true,
         criadoEm: true,
         atualizadoEm: true,
       },

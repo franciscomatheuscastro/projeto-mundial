@@ -8,7 +8,12 @@ import {
   PlanoAcaoResumo,
 } from "@/src/core/model/PlanoAcao";
 
-export function usePlanosAcao(carregarAoIniciar = true) {
+type Contexto = "mundial" | "cliente";
+
+export function usePlanosAcao(
+  carregarAoIniciar = true,
+  contexto: Contexto = "mundial"
+) {
   const [planos, setPlanos] = useState<PlanoAcaoResumo[]>([]);
   const [planoSelecionado, setPlanoSelecionado] =
     useState<PlanoAcaoDetalhado | null>(null);
@@ -22,7 +27,11 @@ export function usePlanosAcao(carregarAoIniciar = true) {
       setCarregando(true);
       setErro(null);
 
-      const dados = await Backend.planosAcao.obterTodos();
+      const dados =
+        contexto === "cliente"
+          ? await Backend.planosAcao.obterMeus()
+          : await Backend.planosAcao.obterTodos();
+
       setPlanos(dados);
     } catch (error) {
       setErro(
@@ -40,9 +49,12 @@ export function usePlanosAcao(carregarAoIniciar = true) {
       setCarregando(true);
       setErro(null);
 
-      const dados = await Backend.planosAcao.obterPorId(id);
-      setPlanoSelecionado(dados);
+      const dados =
+        contexto === "cliente"
+          ? await Backend.planosAcao.obterMeuPorId(id)
+          : await Backend.planosAcao.obterPorId(id);
 
+      setPlanoSelecionado(dados);
       return dados;
     } catch (error) {
       const mensagem =
@@ -52,7 +64,6 @@ export function usePlanosAcao(carregarAoIniciar = true) {
 
       setErro(mensagem);
       setPlanoSelecionado(null);
-
       throw error;
     } finally {
       setCarregando(false);
@@ -136,7 +147,7 @@ export function usePlanosAcao(carregarAoIniciar = true) {
     if (carregarAoIniciar) {
       carregarPlanos();
     }
-  }, [carregarAoIniciar]);
+  }, [carregarAoIniciar, contexto]);
 
   return {
     planos,

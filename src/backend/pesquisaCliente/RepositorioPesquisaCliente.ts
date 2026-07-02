@@ -259,6 +259,112 @@ export default class RepositorioPesquisaCliente {
     };
   }
 
+
+  static async obterMinhas(clienteId: string) {
+    const pesquisas = await prisma.pesquisaCliente.findMany({
+      where: { clienteId },
+      orderBy: {
+        criadoEm: "desc",
+      },
+      include: {
+        cliente: {
+          select: {
+            id: true,
+            nome: true,
+          },
+        },
+        modelo: {
+          select: {
+            id: true,
+            titulo: true,
+          },
+        },
+        _count: {
+          select: {
+            respostas: true,
+          },
+        },
+      },
+    });
+
+    return pesquisas.map((pesquisa) => ({
+      id: pesquisa.id,
+      titulo: pesquisa.titulo,
+      descricao: pesquisa.descricao,
+      token: pesquisa.token,
+      status: pesquisa.status,
+      criadoEm: pesquisa.criadoEm,
+      atualizadoEm: pesquisa.atualizadoEm,
+      cliente: pesquisa.cliente,
+      modelo: pesquisa.modelo,
+      totalRespostas: pesquisa._count.respostas,
+    }));
+  }
+
+  static async obterPorIdECliente(id: string, clienteId: string) {
+    const pesquisa = await prisma.pesquisaCliente.findFirst({
+      where: {
+        id,
+        clienteId,
+      },
+      include: this.includeCompleto(),
+    });
+
+    if (!pesquisa) throw new Error("Pesquisa não encontrada.");
+
+    return this.formatarDetalhada(pesquisa);
+  }
+
+  static async obterRelatorioPorCliente(id: string, clienteId: string) {
+    const pesquisa = await this.obterPorIdECliente(id, clienteId);
+    const perguntas = pesquisa.perguntas;
+
+    const perguntasComResumo = perguntas.map((pergunta) => {
+      const respostasDaPergunta = pesquisa.respostas.flatMap(
+        (respostaCliente: RespostaPesquisaCliente) =>
+          respostaCliente.respostas.filter(
+            (resposta: RespostaPesquisaItem) =>
+              resposta.perguntaId === pergunta.id
+          )
+      );
+
+      const valoresNumericos = respostasDaPergunta
+        .map((resposta: RespostaPesquisaItem) => Number(resposta.valor))
+        .filter((valor: number) => !Number.isNaN(valor));
+
+      const media =
+        valoresNumericos.length > 0
+          ? valoresNumericos.reduce(
+              (total: number, valor: number) => total + valor,
+              0
+            ) / valoresNumericos.length
+          : 0;
+
+      return {
+        pergunta,
+        totalRespostas: respostasDaPergunta.length,
+        media,
+        respostas: respostasDaPergunta,
+      };
+    });
+
+    const mediasValidas = perguntasComResumo.filter(
+      (item) => item.totalRespostas > 0 && item.media > 0
+    );
+
+    const mediaGeral =
+      mediasValidas.length > 0
+        ? mediasValidas.reduce((total: number, item) => total + item.media, 0) /
+          mediasValidas.length
+        : 0;
+
+    return {
+      ...pesquisa,
+      perguntasComResumo,
+      mediaGeral,
+    };
+  }
+
   private static includeCompleto() {
     return {
       cliente: true,

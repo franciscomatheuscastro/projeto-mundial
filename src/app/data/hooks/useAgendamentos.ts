@@ -8,7 +8,12 @@ import {
   AgendamentoResumo,
 } from "@/src/core/model/Agendamento";
 
-export function useAgendamentos(carregarAoIniciar = true) {
+type Contexto = "mundial" | "cliente";
+
+export function useAgendamentos(
+  carregarAoIniciar = true,
+  contexto: Contexto = "mundial"
+) {
   const [agendamentos, setAgendamentos] = useState<AgendamentoResumo[]>([]);
   const [agendamentoSelecionado, setAgendamentoSelecionado] =
     useState<AgendamentoDetalhado | null>(null);
@@ -22,7 +27,11 @@ export function useAgendamentos(carregarAoIniciar = true) {
       setCarregando(true);
       setErro(null);
 
-      const dados = await Backend.agendamentos.obterTodos();
+      const dados =
+        contexto === "cliente"
+          ? await Backend.agendamentos.obterMeus()
+          : await Backend.agendamentos.obterTodos();
+
       setAgendamentos(dados);
     } catch (error) {
       setErro(
@@ -40,9 +49,12 @@ export function useAgendamentos(carregarAoIniciar = true) {
       setCarregando(true);
       setErro(null);
 
-      const dados = await Backend.agendamentos.obterPorId(id);
-      setAgendamentoSelecionado(dados);
+      const dados =
+        contexto === "cliente"
+          ? await Backend.agendamentos.obterMeuPorId(id)
+          : await Backend.agendamentos.obterPorId(id);
 
+      setAgendamentoSelecionado(dados);
       return dados;
     } catch (error) {
       const mensagem =
@@ -52,7 +64,6 @@ export function useAgendamentos(carregarAoIniciar = true) {
 
       setErro(mensagem);
       setAgendamentoSelecionado(null);
-
       throw error;
     } finally {
       setCarregando(false);
@@ -114,7 +125,7 @@ export function useAgendamentos(carregarAoIniciar = true) {
     if (carregarAoIniciar) {
       carregarAgendamentos();
     }
-  }, [carregarAoIniciar]);
+  }, [carregarAoIniciar, contexto]);
 
   return {
     agendamentos,

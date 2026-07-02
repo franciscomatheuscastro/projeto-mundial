@@ -6,12 +6,19 @@ import { useRouter } from "next/navigation";
 import { StatusPesquisaCliente } from "@prisma/client";
 import { usePesquisasCliente } from "@/src/app/data/hooks/UsePesquisasCliente";
 
+type Contexto = "mundial" | "cliente";
+
 type Props = {
   modo: "lista" | "nova" | "detalhe" | "relatorio";
   pesquisaId?: string;
+  contexto?: Contexto;
 };
 
-export default function PesquisasTela({ modo, pesquisaId }: Props) {
+export default function PesquisasTela({
+  modo,
+  pesquisaId,
+  contexto = "mundial",
+}: Props) {
   const router = useRouter();
 
   const {
@@ -28,22 +35,28 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
     salvarPesquisa,
     excluirPesquisa,
     alterarStatus,
-  } = usePesquisasCliente();
+  } = usePesquisasCliente(true, contexto);
 
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [clienteId, setClienteId] = useState("");
   const [modeloId, setModeloId] = useState("");
 
+  const baseHref = contexto === "cliente" ? "/minhas-pesquisas" : "/pesquisas";
+
   useEffect(() => {
-    if (modo === "nova") carregarDadosFormulario();
+    if (modo === "nova" && contexto === "mundial") carregarDadosFormulario();
     if (modo === "detalhe" && pesquisaId) carregarPesquisaPorId(pesquisaId);
     if (modo === "relatorio" && pesquisaId) carregarRelatorio(pesquisaId);
-  }, [modo, pesquisaId]);
+  }, [modo, pesquisaId, contexto]);
 
   const linkPublico = useMemo(() => {
     if (!pesquisaSelecionada?.token) return "";
-    if (typeof window === "undefined") return `/pesquisa/${pesquisaSelecionada.token}`;
+
+    if (typeof window === "undefined") {
+      return `/pesquisa/${pesquisaSelecionada.token}`;
+    }
+
     return `${window.location.origin}/pesquisa/${pesquisaSelecionada.token}`;
   }, [pesquisaSelecionada?.token]);
 
@@ -102,16 +115,20 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
           <div>
             <h1 className="text-xl font-bold text-slate-900">Pesquisas</h1>
             <p className="text-sm text-slate-500">
-              Gere links de pesquisa para clientes responderem.
+              {contexto === "cliente"
+                ? "Acompanhe as pesquisas vinculadas à sua empresa."
+                : "Gere links de pesquisa para clientes responderem."}
             </p>
           </div>
 
-          <Link
-            href="/pesquisas/nova"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            + Nova pesquisa
-          </Link>
+          {contexto === "mundial" && (
+            <Link
+              href="/pesquisas/nova"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              + Nova pesquisa
+            </Link>
+          )}
         </header>
 
         <section className="px-8 py-6">
@@ -129,7 +146,7 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
               <thead className="bg-slate-50">
                 <tr>
                   <Th>Pesquisa</Th>
-                  <Th>Cliente</Th>
+                  {contexto === "mundial" && <Th>Cliente</Th>}
                   <Th>Modelo</Th>
                   <Th>Respostas</Th>
                   <Th>Status</Th>
@@ -139,42 +156,57 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
 
               <tbody>
                 {carregando ? (
-                  <LinhaVazia colunas={6} texto="Carregando pesquisas..." />
+                  <LinhaVazia
+                    colunas={contexto === "mundial" ? 6 : 5}
+                    texto="Carregando pesquisas..."
+                  />
                 ) : pesquisas.length === 0 ? (
-                  <LinhaVazia colunas={6} texto="Nenhuma pesquisa gerada." />
+                  <LinhaVazia
+                    colunas={contexto === "mundial" ? 6 : 5}
+                    texto="Nenhuma pesquisa gerada."
+                  />
                 ) : (
                   pesquisas.map((pesquisa) => (
                     <tr key={pesquisa.id} className="border-t">
                       <td className="px-4 py-4 font-medium text-slate-900">
                         {pesquisa.titulo}
                       </td>
-                      <td className="px-4 py-4 text-sm text-slate-700">
-                        {pesquisa.cliente.nome}
-                      </td>
+
+                      {contexto === "mundial" && (
+                        <td className="px-4 py-4 text-sm text-slate-700">
+                          {pesquisa.cliente.nome}
+                        </td>
+                      )}
+
                       <td className="px-4 py-4 text-sm text-slate-700">
                         {pesquisa.modelo.titulo}
                       </td>
+
                       <td className="px-4 py-4 text-sm text-slate-700">
                         {pesquisa.totalRespostas}
                       </td>
+
                       <td className="px-4 py-4">
                         <StatusBadge status={pesquisa.status} />
                       </td>
+
                       <td className="px-4 py-4 text-right">
                         <Link
-                          href={`/pesquisas/${pesquisa.id}`}
+                          href={`${baseHref}/${pesquisa.id}`}
                           className="text-sm font-medium text-blue-600 hover:text-blue-800"
                         >
                           Abrir
                         </Link>
 
-                        <button
-                          type="button"
-                          onClick={() => excluirPesquisaAtual(pesquisa.id)}
-                          className="ml-4 text-sm font-medium text-red-600 hover:text-red-800"
-                        >
-                          Excluir
-                        </button>
+                        {contexto === "mundial" && (
+                          <button
+                            type="button"
+                            onClick={() => excluirPesquisaAtual(pesquisa.id)}
+                            className="ml-4 text-sm font-medium text-red-600 hover:text-red-800"
+                          >
+                            Excluir
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -188,6 +220,16 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
   }
 
   if (modo === "nova") {
+    if (contexto === "cliente") {
+      return (
+        <main className="min-h-screen bg-slate-100 px-8 py-6">
+          <div className="rounded-xl bg-white p-6 text-sm text-slate-500 shadow-sm">
+            Acesso não permitido.
+          </div>
+        </main>
+      );
+    }
+
     return (
       <main className="min-h-screen bg-slate-100">
         <header className="border-b bg-white px-8 py-4">
@@ -198,7 +240,10 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
         </header>
 
         <section className="mx-auto max-w-3xl px-8 py-8">
-          <form onSubmit={enviarPesquisa} className="rounded-xl bg-white p-6 shadow-sm">
+          <form
+            onSubmit={enviarPesquisa}
+            className="rounded-xl bg-white p-6 shadow-sm"
+          >
             {erro && <AlertaErro mensagem={erro} />}
 
             <Campo
@@ -209,7 +254,12 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
               placeholder="Ex: Pesquisa de Clima 2026"
             />
 
-            <Select label="Cliente" value={clienteId} onChange={setClienteId} required>
+            <Select
+              label="Cliente"
+              value={clienteId}
+              onChange={setClienteId}
+              required
+            >
               <option value="">Selecione um cliente</option>
               {dadosFormulario.clientes.map((cliente) => (
                 <option key={cliente.id} value={cliente.id}>
@@ -276,7 +326,7 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
           </div>
 
           <Link
-            href="/pesquisas"
+            href={baseHref}
             className="rounded-lg border px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Voltar
@@ -310,37 +360,45 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
                 </a>
 
                 <Link
-                  href={`/pesquisas/${pesquisaSelecionada.id}/relatorio`}
+                  href={`${baseHref}/${pesquisaSelecionada.id}/relatorio`}
                   className="mb-3 block w-full rounded-lg bg-slate-900 px-4 py-3 text-center text-sm font-medium text-white hover:bg-slate-700"
                 >
                   Ver relatório
                 </Link>
 
                 <div className="mb-6 text-sm text-slate-500">
-                  Envie esse link para o cliente responder a pesquisa.
+                  Envie esse link para os colaboradores responderem a pesquisa.
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <Info titulo="Status" valor={pesquisaSelecionada.status} />
-                  <Info titulo="Respostas" valor={String(pesquisaSelecionada.totalRespostas)} />
-                  <Info titulo="Perguntas" valor={String(pesquisaSelecionada.perguntas.length)} />
+                  <Info
+                    titulo="Respostas"
+                    valor={String(pesquisaSelecionada.totalRespostas)}
+                  />
+                  <Info
+                    titulo="Perguntas"
+                    valor={String(pesquisaSelecionada.perguntas.length)}
+                  />
                   <Info titulo="Cliente" valor={pesquisaSelecionada.cliente.nome} />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={alternarStatus}
-                  disabled={processando}
-                  className={`mt-6 w-full rounded-lg px-4 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60 ${
-                    pesquisaSelecionada.status === StatusPesquisaCliente.ABERTA
-                      ? "bg-red-600 hover:bg-red-700"
-                      : "bg-green-600 hover:bg-green-700"
-                  }`}
-                >
-                  {pesquisaSelecionada.status === StatusPesquisaCliente.ABERTA
-                    ? "Fechar pesquisa"
-                    : "Reabrir pesquisa"}
-                </button>
+                {contexto === "mundial" && (
+                  <button
+                    type="button"
+                    onClick={alternarStatus}
+                    disabled={processando}
+                    className={`mt-6 w-full rounded-lg px-4 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60 ${
+                      pesquisaSelecionada.status === StatusPesquisaCliente.ABERTA
+                        ? "bg-red-600 hover:bg-red-700"
+                        : "bg-green-600 hover:bg-green-700"
+                    }`}
+                  >
+                    {pesquisaSelecionada.status === StatusPesquisaCliente.ABERTA
+                      ? "Fechar pesquisa"
+                      : "Reabrir pesquisa"}
+                  </button>
+                )}
               </aside>
 
               <div className="rounded-xl bg-white p-6 shadow-sm">
@@ -403,7 +461,7 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
         </div>
 
         <Link
-          href={pesquisaId ? `/pesquisas/${pesquisaId}` : "/pesquisas"}
+          href={pesquisaId ? `${baseHref}/${pesquisaId}` : baseHref}
           className="rounded-lg border px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           Voltar
@@ -422,8 +480,14 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
             <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
               <Card titulo="Respostas" valor={relatorio.respostas.length} />
               <Card titulo="Perguntas" valor={relatorio.perguntas.length} />
-              <Card titulo="Itens avaliados" valor={relatorio.perguntasComResumo.length} />
-              <Card titulo="Média geral" valor={relatorio.mediaGeral.toFixed(1)} />
+              <Card
+                titulo="Itens avaliados"
+                valor={relatorio.perguntasComResumo.length}
+              />
+              <Card
+                titulo="Média geral"
+                valor={relatorio.mediaGeral.toFixed(1)}
+              />
             </div>
 
             <div className="mb-6 rounded-xl bg-white p-6 shadow-sm">
@@ -438,7 +502,10 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
                   </p>
                 ) : (
                   relatorio.perguntasComResumo.map((item) => (
-                    <div key={item.pergunta.id} className="rounded-lg border p-4">
+                    <div
+                      key={item.pergunta.id}
+                      className="rounded-lg border p-4"
+                    >
                       <div className="mb-2 flex items-center justify-between gap-4">
                         <div>
                           <p className="text-sm font-medium text-slate-900">
@@ -500,7 +567,10 @@ export default function PesquisasTela({ modo, pesquisaId }: Props) {
                           );
 
                           return (
-                            <div key={item.id} className="rounded-lg bg-slate-50 p-3">
+                            <div
+                              key={item.id}
+                              className="rounded-lg bg-slate-50 p-3"
+                            >
                               <p className="text-xs font-medium text-slate-500">
                                 {pergunta?.titulo ?? "Pergunta não encontrada"}
                               </p>
@@ -577,7 +647,10 @@ function Th({
 function LinhaVazia({ colunas, texto }: { colunas: number; texto: string }) {
   return (
     <tr>
-      <td colSpan={colunas} className="px-4 py-10 text-center text-sm text-slate-500">
+      <td
+        colSpan={colunas}
+        className="px-4 py-10 text-center text-sm text-slate-500"
+      >
         {texto}
       </td>
     </tr>

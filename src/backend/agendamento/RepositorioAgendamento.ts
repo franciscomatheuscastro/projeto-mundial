@@ -59,10 +59,7 @@ export default class RepositorioAgendamento {
   ): Promise<AgendamentoDetalhado> {
     const titulo = agendamento.titulo?.trim();
 
-    if (!titulo) {
-      throw new Error("Título do agendamento é obrigatório.");
-    }
-
+    if (!titulo) throw new Error("Título do agendamento é obrigatório.");
     if (!agendamento.dataHora) {
       throw new Error("Data e hora do agendamento são obrigatórias.");
     }
@@ -78,9 +75,7 @@ export default class RepositorioAgendamento {
         where: { id: agendamento.planoAcaoId },
       });
 
-      if (!plano) {
-        throw new Error("Plano de ação não encontrado.");
-      }
+      if (!plano) throw new Error("Plano de ação não encontrado.");
     }
 
     const dados = {
@@ -124,9 +119,33 @@ export default class RepositorioAgendamento {
 
   static async obterTodos(): Promise<AgendamentoResumo[]> {
     const agendamentos = await prisma.agendamento.findMany({
-      orderBy: {
-        dataHora: "asc",
+      orderBy: { dataHora: "asc" },
+      include: {
+        planoAcao: {
+          include: {
+            pesquisa: {
+              include: {
+                cliente: true,
+              },
+            },
+          },
+        },
       },
+    });
+
+    return agendamentos.map(montarAgendamento);
+  }
+
+  static async obterMeus(clienteId: string): Promise<AgendamentoResumo[]> {
+    const agendamentos = await prisma.agendamento.findMany({
+      where: {
+        planoAcao: {
+          pesquisa: {
+            clienteId,
+          },
+        },
+      },
+      orderBy: { dataHora: "asc" },
       include: {
         planoAcao: {
           include: {
@@ -159,9 +178,38 @@ export default class RepositorioAgendamento {
       },
     });
 
-    if (!agendamento) {
-      throw new Error("Agendamento não encontrado.");
-    }
+    if (!agendamento) throw new Error("Agendamento não encontrado.");
+
+    return montarAgendamento(agendamento);
+  }
+
+  static async obterPorIdECliente(
+    id: string,
+    clienteId: string
+  ): Promise<AgendamentoDetalhado> {
+    const agendamento = await prisma.agendamento.findFirst({
+      where: {
+        id,
+        planoAcao: {
+          pesquisa: {
+            clienteId,
+          },
+        },
+      },
+      include: {
+        planoAcao: {
+          include: {
+            pesquisa: {
+              include: {
+                cliente: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!agendamento) throw new Error("Agendamento não encontrado.");
 
     return montarAgendamento(agendamento);
   }
@@ -171,9 +219,7 @@ export default class RepositorioAgendamento {
       where: { id },
     });
 
-    if (!agendamento) {
-      throw new Error("Agendamento não encontrado.");
-    }
+    if (!agendamento) throw new Error("Agendamento não encontrado.");
 
     await prisma.agendamento.delete({
       where: { id },

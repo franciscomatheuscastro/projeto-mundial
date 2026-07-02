@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PerfilUsuario } from "@prisma/client";
+import Backend from "@/src/backend";
 import { useClientes } from "@/src/app/data/hooks/useClientes";
 
 type ClientesTelaProps = {
@@ -32,6 +34,26 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
   const [observacoes, setObservacoes] = useState("");
   const [ativo, setAtivo] = useState(true);
 
+  const [criarUsuarioMaster, setCriarUsuarioMaster] = useState(false);
+  const [nomeUsuarioMaster, setNomeUsuarioMaster] = useState("");
+  const [emailUsuarioMaster, setEmailUsuarioMaster] = useState("");
+  const [senhaUsuarioMaster, setSenhaUsuarioMaster] = useState("");
+
+  const [erroLocal, setErroLocal] = useState<string | null>(null);
+  const [copiado, setCopiado] = useState<string | null>(null);
+
+  const baseUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return window.location.origin;
+  }, []);
+
+  const linkCanalDenuncias =
+    modo === "editar" && clienteId
+      ? `${baseUrl}/canal-denuncias/${clienteId}`
+      : "";
+
+  const linkConsultaDenuncias = `${baseUrl}/canal-denuncias/consultar`;
+
   useEffect(() => {
     if (modo === "editar" && clienteId) {
       carregarClientePorId(clienteId);
@@ -50,28 +72,75 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
     }
   }, [modo, clienteSelecionado]);
 
+  useEffect(() => {
+    if (criarUsuarioMaster) {
+      setNomeUsuarioMaster(nome || empresa || "");
+      setEmailUsuarioMaster(email || "");
+    }
+  }, [criarUsuarioMaster]);
+
+  async function copiarTexto(texto: string, tipo: string) {
+    await navigator.clipboard.writeText(texto);
+    setCopiado(tipo);
+
+    setTimeout(() => {
+      setCopiado(null);
+    }, 2000);
+  }
+
   async function enviarFormulario(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const resultado = await salvarCliente({
-      id: modo === "editar" ? clienteId : undefined,
-      nome,
-      empresa,
-      email,
-      telefone,
-      documento,
-      observacoes,
-      ativo,
-    });
+    try {
+      setErroLocal(null);
 
-    router.push(`/clientes/${resultado.id}`);
-    router.refresh();
+      if (criarUsuarioMaster) {
+        if (!nomeUsuarioMaster.trim()) {
+          throw new Error("Nome do usuário master é obrigatório.");
+        }
+
+        if (!emailUsuarioMaster.trim()) {
+          throw new Error("E-mail do usuário master é obrigatório.");
+        }
+
+        if (!senhaUsuarioMaster.trim()) {
+          throw new Error("Senha provisória do usuário master é obrigatória.");
+        }
+      }
+
+      const resultado = await salvarCliente({
+        id: modo === "editar" ? clienteId : undefined,
+        nome,
+        empresa,
+        email,
+        telefone,
+        documento,
+        observacoes,
+        ativo,
+      });
+
+      if (criarUsuarioMaster) {
+        await Backend.usuarios.salvar({
+          nome: nomeUsuarioMaster,
+          email: emailUsuarioMaster,
+          senha: senhaUsuarioMaster,
+          perfil: PerfilUsuario.CLIENTE,
+          ativo: true,
+          clienteId: resultado.id,
+        });
+      }
+
+      router.push(`/clientes/${resultado.id}`);
+      router.refresh();
+    } catch (error) {
+      setErroLocal(
+        error instanceof Error ? error.message : "Erro ao salvar cliente."
+      );
+    }
   }
 
   async function excluirClienteAtual(id: string) {
-    const confirmado = confirm(
-      "Tem certeza que deseja excluir este cliente?"
-    );
+    const confirmado = confirm("Tem certeza que deseja excluir este cliente?");
 
     if (!confirmado) return;
 
@@ -95,7 +164,7 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
           <div>
             <h1 className="text-xl font-bold text-slate-900">Clientes</h1>
             <p className="text-sm text-slate-500">
-              Gerencie os clientes que receberão pesquisas.
+              Gerencie clientes, pesquisas e acessos ao painel da empresa.
             </p>
           </div>
 
@@ -108,9 +177,9 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
         </header>
 
         <section className="px-8 py-6">
-          {erro && (
+          {(erro || erroLocal) && (
             <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-              {erro}
+              {erro || erroLocal}
             </div>
           )}
 
@@ -134,23 +203,9 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
 
               <tbody>
                 {carregando ? (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="px-4 py-10 text-center text-sm text-slate-500"
-                    >
-                      Carregando clientes...
-                    </td>
-                  </tr>
+                  <LinhaVazia colunas={5} texto="Carregando clientes..." />
                 ) : clientes.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="px-4 py-10 text-center text-sm text-slate-500"
-                    >
-                      Nenhum cliente cadastrado.
-                    </td>
-                  </tr>
+                  <LinhaVazia colunas={5} texto="Nenhum cliente cadastrado." />
                 ) : (
                   clientes.map((cliente) => (
                     <tr key={cliente.id} className="border-t">
@@ -193,6 +248,7 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
                         >
                           Editar
                         </Link>
+
                         <button
                           type="button"
                           onClick={() => excluirClienteAtual(cliente.id)}
@@ -221,9 +277,7 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
             {modo === "novo" ? "Novo Cliente" : "Editar Cliente"}
           </h1>
           <p className="text-sm text-slate-500">
-            {modo === "novo"
-              ? "Cadastre uma empresa ou responsável para receber pesquisas."
-              : "Atualize os dados cadastrais e acompanhe pesquisas vinculadas."}
+            Cadastre a empresa e libere o acesso ao painel do cliente.
           </p>
         </div>
 
@@ -235,18 +289,20 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
         </Link>
       </header>
 
-      <section className={
-                    modo === "novo"
-                    ? "mx-auto max-w-3xl px-8 py-8"
-                    : "grid gap-6 px-8 py-8 lg:grid-cols-[520px_1fr]"
-                }>
+      <section
+        className={
+          modo === "novo"
+            ? "mx-auto max-w-3xl px-8 py-8"
+            : "grid gap-6 px-8 py-8 lg:grid-cols-[520px_1fr]"
+        }
+      >
         <form
           onSubmit={enviarFormulario}
           className="h-fit rounded-xl bg-white p-6 shadow-sm"
         >
-          {erro && (
+          {(erro || erroLocal) && (
             <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-              {erro}
+              {erro || erroLocal}
             </div>
           )}
 
@@ -297,7 +353,7 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
               rows={4}
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
-              className="w-full rounded-lg border px-4 py-3 outline-none focus:border-blue-500"
+              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-500"
             />
           </div>
 
@@ -312,12 +368,54 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
             </label>
           )}
 
+          <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 p-4">
+            <label className="mb-4 flex items-center gap-2 text-sm font-medium text-blue-900">
+              <input
+                type="checkbox"
+                checked={criarUsuarioMaster}
+                onChange={(e) => setCriarUsuarioMaster(e.target.checked)}
+              />
+              Criar usuário master para o painel do cliente
+            </label>
+
+            {criarUsuarioMaster && (
+              <div className="space-y-4">
+                <Campo
+                  label="Nome do usuário"
+                  value={nomeUsuarioMaster}
+                  onChange={setNomeUsuarioMaster}
+                  required
+                  placeholder="Ex: Gestor Transordi"
+                />
+
+                <Campo
+                  label="E-mail de acesso"
+                  type="email"
+                  value={emailUsuarioMaster}
+                  onChange={setEmailUsuarioMaster}
+                  required
+                  placeholder="gestor@empresa.com"
+                />
+
+                <Campo
+                  label="Senha provisória"
+                  type="password"
+                  value={senhaUsuarioMaster}
+                  onChange={setSenhaUsuarioMaster}
+                  required
+                  placeholder="Defina uma senha provisória"
+                />
+              </div>
+            )}
+          </div>
+
           <button
             disabled={processando}
             className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {processando ? "Salvando..." : "Salvar cliente"}
           </button>
+
           {modo === "editar" && clienteId && (
             <button
               type="button"
@@ -331,103 +429,103 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
         </form>
 
         {modo === "editar" && (
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Pesquisas do cliente
-                </h2>
-                <p className="text-sm text-slate-500">
-                  Histórico de pesquisas geradas para este cliente.
-                </p>
+          <div className="space-y-6">
+            <div className="rounded-xl bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    Canal de denúncias
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    Link público exclusivo para colaboradores registrarem
+                    denúncias.
+                  </p>
+                </div>
+
+                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                  Ativo
+                </span>
               </div>
 
-              <Link
-                href="/pesquisas/nova"
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-              >
-                + Nova pesquisa
-              </Link>
+              <div className="space-y-4">
+                <BlocoLink
+                  titulo="Link para registrar denúncia"
+                  valor={linkCanalDenuncias}
+                  copiado={copiado === "canal"}
+                  onCopiar={() => copiarTexto(linkCanalDenuncias, "canal")}
+                />
+
+                <BlocoLink
+                  titulo="Link para consultar protocolo"
+                  valor={linkConsultaDenuncias}
+                  copiado={copiado === "consulta"}
+                  onCopiar={() =>
+                    copiarTexto(linkConsultaDenuncias, "consulta")
+                  }
+                />
+              </div>
             </div>
 
-            <div className="overflow-hidden rounded-lg border">
-              <table className="w-full border-collapse">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <Th>Pesquisa</Th>
-                    <Th>Modelo</Th>
-                    <Th>Status</Th>
-                  </tr>
-                </thead>
+            <div className="rounded-xl bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    Pesquisas do cliente
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    Histórico de pesquisas geradas para este cliente.
+                  </p>
+                </div>
 
-                <tbody>
-                  {!clienteSelecionado || carregando ? (
+                <Link
+                  href="/pesquisas/nova"
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+                >
+                  + Nova pesquisa
+                </Link>
+              </div>
+
+              <div className="overflow-hidden rounded-lg border">
+                <table className="w-full border-collapse">
+                  <thead className="bg-slate-50">
                     <tr>
-                      <td
-                        colSpan={3}
-                        className="px-4 py-10 text-center text-sm text-slate-500"
-                      >
-                        Carregando pesquisas...
-                      </td>
+                      <Th>Pesquisa</Th>
+                      <Th>Modelo</Th>
+                      <Th>Status</Th>
                     </tr>
-                  ) : clienteSelecionado.pesquisas.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={3}
-                        className="px-4 py-10 text-center text-sm text-slate-500"
-                      >
-                        Nenhuma pesquisa gerada para este cliente.
-                      </td>
-                    </tr>
-                  ) : (
-                    clienteSelecionado.pesquisas.map((pesquisa) => (
-                      <tr key={pesquisa.id} className="border-t">
-                        <td className="px-4 py-4 text-sm text-slate-900">
-                          {pesquisa.titulo}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-slate-700">
-                          {pesquisa.modelo.titulo}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-slate-700">
-                          {pesquisa.status}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+
+                  <tbody>
+                    {!clienteSelecionado || carregando ? (
+                      <LinhaVazia colunas={3} texto="Carregando pesquisas..." />
+                    ) : clienteSelecionado.pesquisas.length === 0 ? (
+                      <LinhaVazia
+                        colunas={3}
+                        texto="Nenhuma pesquisa gerada para este cliente."
+                      />
+                    ) : (
+                      clienteSelecionado.pesquisas.map((pesquisa) => (
+                        <tr key={pesquisa.id} className="border-t">
+                          <td className="px-4 py-4 text-sm text-slate-900">
+                            {pesquisa.titulo}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-slate-700">
+                            {pesquisa.modelo.titulo}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-slate-700">
+                            {pesquisa.status}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
       </section>
     </main>
-  );
-}
-
-function CardResumo({ titulo, valor }: { titulo: string; valor: number }) {
-  return (
-    <div className="rounded-xl bg-white p-5 shadow-sm">
-      <p className="text-sm text-slate-500">{titulo}</p>
-      <strong className="text-3xl text-slate-900">{valor}</strong>
-    </div>
-  );
-}
-
-function Th({
-  children,
-  direita = false,
-}: {
-  children: React.ReactNode;
-  direita?: boolean;
-}) {
-  return (
-    <th
-      className={`px-4 py-3 text-sm font-semibold text-slate-600 ${
-        direita ? "text-right" : "text-left"
-      }`}
-    >
-      {children}
-    </th>
   );
 }
 
@@ -453,12 +551,86 @@ function Campo({
       </label>
       <input
         type={type}
-        required={required}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        required={required}
         placeholder={placeholder}
-        className="w-full rounded-lg border px-4 py-3 outline-none focus:border-blue-500"
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-500"
       />
     </div>
+  );
+}
+
+function CardResumo({ titulo, valor }: { titulo: string; valor: number }) {
+  return (
+    <div className="rounded-xl bg-white p-5 shadow-sm">
+      <p className="text-sm text-slate-500">{titulo}</p>
+      <strong className="text-3xl text-slate-900">{valor}</strong>
+    </div>
+  );
+}
+
+function BlocoLink({
+  titulo,
+  valor,
+  copiado,
+  onCopiar,
+}: {
+  titulo: string;
+  valor: string;
+  copiado: boolean;
+  onCopiar: () => void;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-sm font-medium text-slate-700">{titulo}</p>
+
+      <div className="flex gap-2">
+        <input
+          readOnly
+          value={valor}
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none"
+        />
+
+        <button
+          type="button"
+          onClick={onCopiar}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          {copiado ? "Copiado" : "Copiar"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Th({
+  children,
+  direita = false,
+}: {
+  children: React.ReactNode;
+  direita?: boolean;
+}) {
+  return (
+    <th
+      className={`px-4 py-3 text-sm font-semibold text-slate-600 ${
+        direita ? "text-right" : "text-left"
+      }`}
+    >
+      {children}
+    </th>
+  );
+}
+
+function LinhaVazia({ colunas, texto }: { colunas: number; texto: string }) {
+  return (
+    <tr>
+      <td
+        colSpan={colunas}
+        className="px-4 py-10 text-center text-sm text-slate-500"
+      >
+        {texto}
+      </td>
+    </tr>
   );
 }
