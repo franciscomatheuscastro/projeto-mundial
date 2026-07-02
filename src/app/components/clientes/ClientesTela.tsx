@@ -52,7 +52,9 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
       ? `${baseUrl}/canal-denuncias/${clienteId}`
       : "";
 
-  const linkConsultaDenuncias = `${baseUrl}/canal-denuncias/consultar`;
+  const linkConsultaDenuncias = clienteId
+  ? `${baseUrl}/canal-denuncias/${clienteId}/consultar`
+  : "";
 
   useEffect(() => {
     if (modo === "editar" && clienteId) {
