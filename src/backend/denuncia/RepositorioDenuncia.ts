@@ -1,3 +1,4 @@
+import { GravidadeDenuncia } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
 import {
   Denuncia,
@@ -6,6 +7,7 @@ import {
   DenunciaResumo,
   TratativaDenuncia,
 } from "@/src/core/model/Denuncia";
+import RepositorioCriticidadeDenuncia from "../criticidadeDenuncia/RepositorioCriticidadeDenuncia";
 
 function gerarProtocolo() {
   const data = new Date();
@@ -62,6 +64,21 @@ function montarDetalhada(denuncia: any): DenunciaDetalhada {
   };
 }
 
+async function calcularGravidadeAutomatica(dados: {
+  titulo: string;
+  descricao: string;
+  categoria?: string | null;
+  gravidade?: GravidadeDenuncia | null;
+}) {
+  if (dados.gravidade) return dados.gravidade;
+
+  return RepositorioCriticidadeDenuncia.calcularGravidade({
+    titulo: dados.titulo,
+    descricao: dados.descricao,
+    categoria: dados.categoria,
+  });
+}
+
 export default class RepositorioDenuncia {
   static async criarPublica(dados: DenunciaPublica) {
     if (!dados.clienteId) throw new Error("Cliente é obrigatório.");
@@ -74,15 +91,25 @@ export default class RepositorioDenuncia {
 
     if (!cliente) throw new Error("Empresa não encontrada.");
 
+    const titulo = dados.titulo.trim();
+    const descricao = dados.descricao.trim();
+    const categoria = dados.categoria?.trim() || null;
+
     const protocolo = await gerarProtocoloUnico();
+
+    const gravidade = await calcularGravidadeAutomatica({
+      titulo,
+      descricao,
+      categoria,
+    });
 
     const denuncia = await prisma.denuncia.create({
       data: {
         clienteId: dados.clienteId,
         protocolo,
-        titulo: dados.titulo.trim(),
-        descricao: dados.descricao.trim(),
-        categoria: dados.categoria?.trim() || null,
+        titulo,
+        descricao,
+        categoria,
         localOcorrido: dados.localOcorrido?.trim() || null,
         dataOcorrido: dados.dataOcorrido ? new Date(dados.dataOcorrido) : null,
         anonima: dados.anonima,
@@ -95,12 +122,81 @@ export default class RepositorioDenuncia {
         telefoneDenunciante: dados.anonima
           ? null
           : dados.telefoneDenunciante?.trim() || null,
+        gravidade,
+        status: "RECEBIDA",
+        tratativas: [],
       },
     });
 
     return {
       protocolo: denuncia.protocolo,
     };
+  }
+
+  static async criarManual(dados: Denuncia): Promise<DenunciaDetalhada> {
+    if (!dados.clienteId) throw new Error("Cliente é obrigatório.");
+    if (!dados.titulo?.trim()) throw new Error("Título é obrigatório.");
+    if (!dados.descricao?.trim()) throw new Error("Descrição é obrigatória.");
+
+    const cliente = await prisma.cliente.findUnique({
+      where: { id: dados.clienteId },
+    });
+
+    if (!cliente) throw new Error("Cliente não encontrado.");
+
+    const titulo = dados.titulo.trim();
+    const descricao = dados.descricao.trim();
+    const categoria = dados.categoria?.trim() || null;
+
+    const protocolo = await gerarProtocoloUnico();
+
+    const gravidade = await calcularGravidadeAutomatica({
+      titulo,
+      descricao,
+      categoria,
+      gravidade: dados.gravidade || null,
+    });
+
+    const resultado = await prisma.denuncia.create({
+      data: {
+        clienteId: dados.clienteId,
+        protocolo,
+        titulo,
+        descricao,
+        categoria,
+        localOcorrido: dados.localOcorrido?.toString().trim() || null,
+        dataOcorrido: dados.dataOcorrido ? new Date(dados.dataOcorrido) : null,
+        anonima: dados.anonima ?? true,
+        nomeDenunciante: dados.anonima
+          ? null
+          : dados.nomeDenunciante?.trim() || null,
+        emailDenunciante: dados.anonima
+          ? null
+          : dados.emailDenunciante?.trim().toLowerCase() || null,
+        telefoneDenunciante: dados.anonima
+          ? null
+          : dados.telefoneDenunciante?.trim() || null,
+        status: dados.status || "RECEBIDA",
+        gravidade,
+        respostaPublica: dados.respostaPublica?.trim() || null,
+        tratativas: dados.tratativas || [],
+      },
+      include: {
+        cliente: true,
+      },
+    });
+
+    return montarDetalhada(resultado);
+  }
+
+  static async criarManualCliente(
+    clienteId: string,
+    dados: Denuncia
+  ): Promise<DenunciaDetalhada> {
+    return this.criarManual({
+      ...dados,
+      clienteId,
+    });
   }
 
   static async consultarPublica(dados: {
@@ -131,11 +227,51 @@ export default class RepositorioDenuncia {
   static async salvar(denuncia: Denuncia): Promise<DenunciaDetalhada> {
     if (!denuncia.id) throw new Error("Denúncia não encontrada.");
 
+    const denunciaAtual = await prisma.denuncia.findUnique({
+      where: { id: denuncia.id },
+    });
+
+    if (!denunciaAtual) throw new Error("Denúncia não encontrada.");
+
+    const titulo = denuncia.titulo?.trim() || denunciaAtual.titulo;
+    const descricao = denuncia.descricao?.trim() || denunciaAtual.descricao;
+    const categoria = denuncia.categoria?.trim() || denunciaAtual.categoria;
+
+    const gravidade = await calcularGravidadeAutomatica({
+      titulo,
+      descricao,
+      categoria,
+      gravidade: denuncia.gravidade || null,
+    });
+
     const resultado = await prisma.denuncia.update({
       where: { id: denuncia.id },
       data: {
-        status: denuncia.status || "RECEBIDA",
-        gravidade: denuncia.gravidade || "MEDIA",
+        titulo,
+        descricao,
+        categoria,
+        localOcorrido: denuncia.localOcorrido?.toString().trim() || null,
+        dataOcorrido: denuncia.dataOcorrido
+          ? new Date(denuncia.dataOcorrido)
+          : denunciaAtual.dataOcorrido,
+        anonima: denuncia.anonima ?? denunciaAtual.anonima,
+        nomeDenunciante:
+          denuncia.anonima === true
+            ? null
+            : denuncia.nomeDenunciante?.trim() ||
+              denunciaAtual.nomeDenunciante,
+        emailDenunciante:
+          denuncia.anonima === true
+            ? null
+            : denuncia.emailDenunciante?.trim().toLowerCase() ||
+              denunciaAtual.emailDenunciante,
+        telefoneDenunciante:
+          denuncia.anonima === true
+            ? null
+            : denuncia.telefoneDenunciante?.trim() ||
+              denunciaAtual.telefoneDenunciante,
+        status: denuncia.status || denunciaAtual.status,
+        gravidade,
         respostaPublica: denuncia.respostaPublica?.trim() || null,
         tratativas: denuncia.tratativas || [],
       },
@@ -157,14 +293,20 @@ export default class RepositorioDenuncia {
 
     if (!denuncia) throw new Error("Denúncia não encontrada.");
 
+    const titulo = tratativa.titulo?.trim();
+    const descricao = tratativa.descricao?.trim();
+
+    if (!titulo) throw new Error("Título da tratativa é obrigatório.");
+    if (!descricao) throw new Error("Descrição da tratativa é obrigatória.");
+
     const tratativas = Array.isArray(denuncia.tratativas)
       ? denuncia.tratativas
       : [];
 
     const novaTratativa: TratativaDenuncia = {
       id: `tratativa-${Date.now()}`,
-      titulo: tratativa.titulo.trim(),
-      descricao: tratativa.descricao.trim(),
+      titulo,
+      descricao,
       responsavel: tratativa.responsavel?.trim() || null,
       criadoEm: new Date().toISOString(),
     };
@@ -185,9 +327,14 @@ export default class RepositorioDenuncia {
 
   static async obterTodos(): Promise<DenunciaResumo[]> {
     const denuncias = await prisma.denuncia.findMany({
-      orderBy: {
-        criadoEm: "desc",
-      },
+      orderBy: [
+        {
+          gravidade: "desc",
+        },
+        {
+          criadoEm: "desc",
+        },
+      ],
       include: {
         cliente: true,
       },
@@ -196,35 +343,17 @@ export default class RepositorioDenuncia {
     return denuncias.map(montarResumo);
   }
 
-  static async obterPorIdECliente(id: string, clienteId: string) {
-    const denuncia = await prisma.denuncia.findFirst({
-      where: {
-        id,
-        clienteId,
-      },
-      include: {
-        cliente: true,
-      },
-    });
-
-    if (!denuncia) {
-      throw new Error("Denúncia não encontrada.");
-    }
-
-    return {
-      ...denuncia,
-      tratativas: Array.isArray(denuncia.tratativas)
-        ? denuncia.tratativas
-        : [],
-    } as any;
-  }
-
   static async obterPorCliente(clienteId: string): Promise<DenunciaResumo[]> {
     const denuncias = await prisma.denuncia.findMany({
       where: { clienteId },
-      orderBy: {
-        criadoEm: "desc",
-      },
+      orderBy: [
+        {
+          gravidade: "desc",
+        },
+        {
+          criadoEm: "desc",
+        },
+      ],
       include: {
         cliente: true,
       },
@@ -236,6 +365,25 @@ export default class RepositorioDenuncia {
   static async obterPorId(id: string): Promise<DenunciaDetalhada> {
     const denuncia = await prisma.denuncia.findUnique({
       where: { id },
+      include: {
+        cliente: true,
+      },
+    });
+
+    if (!denuncia) throw new Error("Denúncia não encontrada.");
+
+    return montarDetalhada(denuncia);
+  }
+
+  static async obterPorIdECliente(
+    id: string,
+    clienteId: string
+  ): Promise<DenunciaDetalhada> {
+    const denuncia = await prisma.denuncia.findFirst({
+      where: {
+        id,
+        clienteId,
+      },
       include: {
         cliente: true,
       },

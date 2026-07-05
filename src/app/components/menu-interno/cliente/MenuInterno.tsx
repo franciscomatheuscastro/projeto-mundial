@@ -29,6 +29,7 @@ export function MenuCliente() {
 
           <div className="ml-3 flex flex-col gap-1 border-l border-white/20 pl-3">
             <MenuLink href="/painel-controle">Dashboard</MenuLink>
+            <MenuLink href="/meus-agendamentos">Agendamentos</MenuLink>
           </div>
         </div>
 
@@ -40,17 +41,17 @@ export function MenuCliente() {
           <div className="ml-3 flex flex-col gap-1 border-l border-white/20 pl-3">
             <MenuLink href="/minhas-pesquisas">Pesquisas</MenuLink>
             <MenuLink href="/meus-planos-acao">Planos de ação</MenuLink>
-            <MenuLink href="/meus-agendamentos">Agendamentos</MenuLink>
+            
           </div>
         </div>
 
         <div>
           <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-[0.28em] text-blue-100/80">
-            Compliance
+            Canal de Denúncias
           </p>
 
           <div className="ml-3 flex flex-col gap-1 border-l border-white/20 pl-3">
-            <MenuLink href="/minhas-denuncias">Canal de denúncias</MenuLink>
+            <MenuLink href="/minhas-denuncias">Denúncias</MenuLink>
           </div>
         </div>
       </nav>

@@ -246,3 +246,13 @@ model Denuncia {
 }
 
 
+model RegraCriticidadeDenuncia {
+  id        String            @id @default(cuid())
+  termo     String
+  categoria String?
+  gravidade GravidadeDenuncia @default(ALTA)
+  ativo     Boolean           @default(true)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}

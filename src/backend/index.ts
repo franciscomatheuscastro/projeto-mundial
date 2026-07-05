@@ -57,6 +57,13 @@ import obterMinhasDenuncias from "./denuncia/obterMinhasDenuncias";
 import obterMinhaDenunciaPorId from "./denuncia/obterMinhaDenunciaPorId";
 import salvarMinhaDenuncia from "./denuncia/salvarMinhaDenuncia";
 import adicionarMinhaTratativa from "./denuncia/adicionarMinhaTratativa";
+import criarDenunciaManual from "./denuncia/criarDenunciaManual";
+import criarMinhaDenunciaManual from "./denuncia/criarMinhaDenunciaManual";
+
+
+import obterTodosRegrasCriticidade from "./criticidadeDenuncia/obterTodos";
+import salvarRegraCriticidade from "./criticidadeDenuncia/salvar";
+import excluirRegraCriticidade from "./criticidadeDenuncia/excluir";
 
 export default class Backend {
   static readonly usuarios = {
@@ -137,6 +144,15 @@ export default class Backend {
     obterMinhaPorId: obterMinhaDenunciaPorId,
     salvarMinha: salvarMinhaDenuncia,
     adicionarMinhaTratativa,
+
+    criarManual: criarDenunciaManual,
+    criarMinhaManual: criarMinhaDenunciaManual,
+  };
+
+  static readonly criticidadeDenuncia = {
+    obterTodos: obterTodosRegrasCriticidade,
+    salvar: salvarRegraCriticidade,
+    excluir: excluirRegraCriticidade,
   };
     
 

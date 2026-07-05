@@ -22,15 +22,20 @@ export default function DenunciasTela({ contexto = "mundial" }: Props) {
     <main className="min-h-screen bg-slate-100">
       <header className="flex items-center justify-between border-b bg-white px-8 py-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">
-            Canal de denúncias
-          </h1>
+          <h1 className="text-xl font-bold text-slate-900">Denúncias</h1>
           <p className="text-sm text-slate-500">
             {contexto === "cliente"
               ? "Acompanhe as denúncias recebidas pela sua empresa."
               : "Gestão das denúncias recebidas pelos canais das empresas."}
           </p>
         </div>
+
+        <Link
+          href={contexto === "cliente" ? "/minhas-denuncias/nova" : "/denuncias/nova"}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          Nova denúncia
+        </Link>
       </header>
 
       <section className="px-8 py-6">

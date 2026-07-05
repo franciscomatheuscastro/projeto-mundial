@@ -87,6 +87,57 @@ export function useDenuncias(
     });
   }
 
+
+  async function criarDenunciaManual(denuncia: Denuncia) {
+    return new Promise<DenunciaDetalhada>((resolve, reject) => {
+      startTransition(async () => {
+        try {
+          setErro(null);
+
+          const resultado =
+            await Backend.denuncias.criarManual(denuncia);
+
+          resolve(resultado);
+        } catch (error) {
+          setErro(
+            error instanceof Error
+              ? error.message
+              : "Erro ao criar denúncia."
+          );
+
+          reject(error);
+        }
+      });
+    });
+  }
+
+  async function criarMinhaDenunciaManual(
+    denuncia: Denuncia
+  ) {
+    return new Promise<DenunciaDetalhada>((resolve, reject) => {
+      startTransition(async () => {
+        try {
+          setErro(null);
+
+          const resultado =
+            await Backend.denuncias.criarMinhaManual(
+              denuncia
+            );
+
+          resolve(resultado);
+        } catch (error) {
+          setErro(
+            error instanceof Error
+              ? error.message
+              : "Erro ao criar denúncia."
+          );
+
+          reject(error);
+        }
+      });
+    });
+  }
+
   async function consultarDenunciaPublica(
     clienteId: string,
     protocolo: string
@@ -192,5 +243,8 @@ export function useDenuncias(
     consultarDenunciaPublica,
     salvarDenuncia,
     adicionarTratativa,
+
+    criarDenunciaManual,
+    criarMinhaDenunciaManual,
   };
 }
