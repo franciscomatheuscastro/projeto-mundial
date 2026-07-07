@@ -11,8 +11,10 @@ type PageProps = {
 export default async function EditarClientePage({ params }: PageProps) {
   const session = await auth();
 
-  if (!session?.user) {
-    redirect("/login");
+  if (!session?.user) redirect("/login");
+
+  if ((session.user as any).perfil === "CLIENTE") {
+    redirect("/painel-controle");
   }
 
   const { id } = await params;

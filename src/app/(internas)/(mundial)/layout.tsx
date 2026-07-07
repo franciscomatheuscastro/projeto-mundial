@@ -17,9 +17,7 @@ export default async function InternasLayout({
     <div className="min-h-screen bg-slate-100">
       <MenuInterno />
 
-      <div className="ml-72 min-h-screen">
-        {children}
-      </div>
+      <div className="min-h-screen lg:pl-72">{children}</div>
     </div>
   );
 }

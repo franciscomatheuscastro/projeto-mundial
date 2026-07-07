@@ -25,7 +25,7 @@ export default async function ClienteLayout({
     <div className="min-h-screen bg-slate-100">
       <MenuCliente />
 
-      <div className="pl-72">{children}</div>
+      <div className="min-h-screen lg:pl-72">{children}</div>
     </div>
   );
 }

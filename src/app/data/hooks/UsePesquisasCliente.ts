@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { StatusPesquisaCliente } from "@prisma/client";
 import Backend from "@/src/backend";
 import {
@@ -20,6 +20,7 @@ export function usePesquisasCliente(
   const [pesquisas, setPesquisas] = useState<PesquisaClienteResumo[]>([]);
   const [pesquisaSelecionada, setPesquisaSelecionada] =
     useState<PesquisaClienteDetalhada | null>(null);
+
   const [relatorio, setRelatorio] =
     useState<PesquisaClienteRelatorio | null>(null);
 
@@ -33,7 +34,7 @@ export function usePesquisasCliente(
   const [carregando, setCarregando] = useState(carregarAoIniciar);
   const [processando, startTransition] = useTransition();
 
-  async function carregarPesquisas() {
+  const carregarPesquisas = useCallback(async () => {
     try {
       setCarregando(true);
       setErro(null);
@@ -51,82 +52,63 @@ export function usePesquisasCliente(
     } finally {
       setCarregando(false);
     }
-  }
+  }, [contexto]);
 
-  async function carregarPesquisaPorId(id: string) {
-    try {
-      setCarregando(true);
-      setErro(null);
+  const carregarPesquisaPorId = useCallback(
+    async (id: string) => {
+      try {
+        setCarregando(true);
+        setErro(null);
 
-      const dados =
-        contexto === "cliente"
-          ? await Backend.pesquisasCliente.obterMinhaPorId(id)
-          : await Backend.pesquisasCliente.obterPorId(id);
+        const dados =
+          contexto === "cliente"
+            ? await Backend.pesquisasCliente.obterMinhaPorId(id)
+            : await Backend.pesquisasCliente.obterPorId(id);
 
-      setPesquisaSelecionada(dados);
-      return dados;
-    } catch (error) {
-      const mensagem =
-        error instanceof Error ? error.message : "Erro ao carregar pesquisa.";
+        setPesquisaSelecionada(dados);
+        return dados;
+      } catch (error) {
+        const mensagem =
+          error instanceof Error ? error.message : "Erro ao carregar pesquisa.";
 
-      setErro(mensagem);
-      setPesquisaSelecionada(null);
-      throw error;
-    } finally {
-      setCarregando(false);
-    }
-  }
+        setErro(mensagem);
+        setPesquisaSelecionada(null);
+        throw error;
+      } finally {
+        setCarregando(false);
+      }
+    },
+    [contexto]
+  );
 
-  async function excluirPesquisa(id: string) {
-    return new Promise<void>((resolve, reject) => {
-      startTransition(async () => {
-        try {
-          setErro(null);
+  const carregarRelatorio = useCallback(
+    async (id: string) => {
+      try {
+        setCarregando(true);
+        setErro(null);
 
-          await Backend.pesquisasCliente.excluir(id);
-          await carregarPesquisas();
+        const dados =
+          contexto === "cliente"
+            ? await Backend.pesquisasCliente.obterMeuRelatorio(id)
+            : await Backend.pesquisasCliente.obterRelatorio(id);
 
-          if (pesquisaSelecionada?.id === id) {
-            setPesquisaSelecionada(null);
-          }
+        setRelatorio(dados);
+        return dados;
+      } catch (error) {
+        const mensagem =
+          error instanceof Error ? error.message : "Erro ao carregar relatório.";
 
-          resolve();
-        } catch (error) {
-          const mensagem =
-            error instanceof Error ? error.message : "Erro ao excluir pesquisa.";
+        setErro(mensagem);
+        setRelatorio(null);
+        throw error;
+      } finally {
+        setCarregando(false);
+      }
+    },
+    [contexto]
+  );
 
-          setErro(mensagem);
-          reject(error);
-        }
-      });
-    });
-  }
-
-  async function carregarRelatorio(id: string) {
-    try {
-      setCarregando(true);
-      setErro(null);
-
-      const dados =
-        contexto === "cliente"
-          ? await Backend.pesquisasCliente.obterMeuRelatorio(id)
-          : await Backend.pesquisasCliente.obterRelatorio(id);
-
-      setRelatorio(dados);
-      return dados;
-    } catch (error) {
-      const mensagem =
-        error instanceof Error ? error.message : "Erro ao carregar relatório.";
-
-      setErro(mensagem);
-      setRelatorio(null);
-      throw error;
-    } finally {
-      setCarregando(false);
-    }
-  }
-
-  async function carregarDadosFormulario() {
+  const carregarDadosFormulario = useCallback(async () => {
     try {
       setCarregando(true);
       setErro(null);
@@ -146,63 +128,107 @@ export function usePesquisasCliente(
     } finally {
       setCarregando(false);
     }
-  }
+  }, []);
 
-  async function salvarPesquisa(pesquisa: PesquisaCliente) {
-    return new Promise<PesquisaClienteDetalhada>((resolve, reject) => {
-      startTransition(async () => {
-        try {
-          setErro(null);
+  const excluirPesquisa = useCallback(
+    async (id: string) => {
+      return new Promise<void>((resolve, reject) => {
+        startTransition(async () => {
+          try {
+            setErro(null);
 
-          const resultado = await Backend.pesquisasCliente.salvar(pesquisa);
-          await carregarPesquisas();
+            await Backend.pesquisasCliente.excluir(id);
+            await carregarPesquisas();
 
-          setPesquisaSelecionada(resultado);
-          resolve(resultado);
-        } catch (error) {
-          const mensagem =
-            error instanceof Error ? error.message : "Erro ao salvar pesquisa.";
+            setPesquisaSelecionada((atual) =>
+              atual?.id === id ? null : atual
+            );
 
-          setErro(mensagem);
-          reject(error);
-        }
+            resolve();
+          } catch (error) {
+            const mensagem =
+              error instanceof Error
+                ? error.message
+                : "Erro ao excluir pesquisa.";
+
+            setErro(mensagem);
+            reject(error);
+          }
+        });
       });
-    });
-  }
+    },
+    [carregarPesquisas]
+  );
 
-  async function alterarStatus(id: string, status: StatusPesquisaCliente) {
-    return new Promise<PesquisaClienteDetalhada>((resolve, reject) => {
-      startTransition(async () => {
-        try {
-          setErro(null);
+  const salvarPesquisa = useCallback(
+    async (pesquisa: PesquisaCliente) => {
+      return new Promise<PesquisaClienteDetalhada>((resolve, reject) => {
+        startTransition(async () => {
+          try {
+            setErro(null);
 
-          const resultado = await Backend.pesquisasCliente.alterarStatus(
-            id,
-            status
-          );
+            const resultado = await Backend.pesquisasCliente.salvar(pesquisa);
 
-          setPesquisaSelecionada(resultado);
-          await carregarPesquisas();
+            if (carregarAoIniciar) {
+              await carregarPesquisas();
+            }
 
-          resolve(resultado);
-        } catch (error) {
-          const mensagem =
-            error instanceof Error
-              ? error.message
-              : "Erro ao alterar status da pesquisa.";
+            setPesquisaSelecionada(resultado);
+            resolve(resultado);
+          } catch (error) {
+            const mensagem =
+              error instanceof Error
+                ? error.message
+                : "Erro ao salvar pesquisa.";
 
-          setErro(mensagem);
-          reject(error);
-        }
+            setErro(mensagem);
+            reject(error);
+          }
+        });
       });
-    });
-  }
+    },
+    [carregarPesquisas, carregarAoIniciar]
+  );
+
+  const alterarStatus = useCallback(
+    async (id: string, status: StatusPesquisaCliente) => {
+      return new Promise<PesquisaClienteDetalhada>((resolve, reject) => {
+        startTransition(async () => {
+          try {
+            setErro(null);
+
+            const resultado = await Backend.pesquisasCliente.alterarStatus(
+              id,
+              status
+            );
+
+            setPesquisaSelecionada(resultado);
+
+            if (carregarAoIniciar) {
+              await carregarPesquisas();
+            }
+
+            resolve(resultado);
+          } catch (error) {
+            const mensagem =
+              error instanceof Error
+                ? error.message
+                : "Erro ao alterar status da pesquisa.";
+
+            setErro(mensagem);
+            reject(error);
+          }
+        });
+      });
+    },
+    [carregarPesquisas, carregarAoIniciar]
+  );
 
   useEffect(() => {
     if (carregarAoIniciar) {
       carregarPesquisas();
     }
-  }, [carregarAoIniciar, contexto]);
+  }, [carregarAoIniciar, carregarPesquisas]);
 
   return {
     pesquisas,

@@ -5,8 +5,10 @@ import ModelosPesquisaTela from "@/src/app/components/modelos-pesquisa/ModelosPe
 export default async function NovoModeloPesquisaPage() {
   const session = await auth();
 
-  if (!session?.user) {
-    redirect("/login");
+  if (!session?.user) redirect("/login");
+
+  if ((session.user as any).perfil === "CLIENTE") {
+    redirect("/painel-controle");
   }
 
   return <ModelosPesquisaTela modo="novo" />;

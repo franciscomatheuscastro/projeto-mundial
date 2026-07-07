@@ -63,26 +63,42 @@ export default async function ClienteDashboardPage() {
 
   return (
     <main className="min-h-screen bg-slate-100">
-      <header className="border-b bg-white px-8 py-6">
-        <p className="text-sm font-bold uppercase tracking-[0.25em] text-blue-600">
-          Painel do Cliente
-        </p>
+      <header className="bg-white px-4 py-6 shadow-sm sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
+            Painel do Cliente
+          </p>
 
-        <h1 className="mt-2 text-3xl font-black text-slate-900">
-          {cliente?.empresa || cliente?.nome || "Minha empresa"}
-        </h1>
+          <h1 className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">
+            {cliente?.empresa || cliente?.nome || "Minha empresa"}
+          </h1>
 
-        <p className="mt-1 text-slate-500">
-          Visão executiva das pesquisas, planos de ação, agendamentos e
-          denúncias da empresa.
-        </p>
+          <p className="mt-1 max-w-3xl text-sm text-slate-500 sm:text-base">
+            Visão executiva das pesquisas, planos de ação, agendamentos e
+            denúncias da empresa.
+          </p>
+        </div>
       </header>
 
-      <section className="space-y-8 px-8 py-8">
-      
-        <Bloco titulo="Pesquisa de Clima">
+      <section className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="rounded-3xl bg-gradient-to-br from-blue-800 via-blue-700 to-cyan-600 p-6 text-white shadow-sm sm:p-8">
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-100">
+            Visão consolidada
+          </p>
+
+          <h2 className="mt-3 text-2xl font-black sm:text-3xl">
+            Gestão de clima e segurança organizacional
+          </h2>
+
+          <p className="mt-2 max-w-3xl text-sm text-blue-50 sm:text-base">
+            Acompanhe os indicadores estratégicos da sua empresa em tempo real,
+            com foco em ação, governança e melhoria contínua.
+          </p>
+        </div>
+
+        <Bloco titulo="Pesquisa de clima">
           <Card titulo="Pesquisas" valor={pesquisas} />
-          <Card titulo="Pesquisas abertas" valor={pesquisasAbertas} />
+          <Card titulo="Abertas" valor={pesquisasAbertas} />
           <Card titulo="Respostas recebidas" valor={respostas} />
           <Card titulo="Planos de ação" valor={planosAcao} />
           <Card titulo="Planos em andamento" valor={planosEmAndamento} />
@@ -90,7 +106,7 @@ export default async function ClienteDashboardPage() {
           <Card titulo="Próximos agendamentos" valor={proximosAgendamentos} />
         </Bloco>
 
-        <Bloco titulo="Canal de Denúncias">
+        <Bloco titulo="Canal de denúncias">
           <Card titulo="Denúncias recebidas" valor={denuncias} />
           <Card titulo="Em análise" valor={denunciasAnalise} />
           <Card titulo="Em tratativa" valor={denunciasTratativa} />
@@ -110,10 +126,15 @@ function Bloco({
   children: React.ReactNode;
 }) {
   return (
-    <div>
-      <h2 className="mb-4 text-lg font-bold text-slate-900">{titulo}</h2>
-      <div className="grid gap-5 md:grid-cols-4">{children}</div>
-    </div>
+    <section>
+      <h2 className="mb-3 text-base font-black text-slate-900 sm:text-lg">
+        {titulo}
+      </h2>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {children}
+      </div>
+    </section>
   );
 }
 
@@ -128,13 +149,14 @@ function Card({
 }) {
   return (
     <div
-      className={`rounded-2xl bg-white p-6 shadow-sm ${
-        destaque ? "border border-red-200" : ""
+      className={`rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md ${
+        destaque ? "bg-red-50 ring-red-200" : ""
       }`}
     >
-      <p className="text-sm text-slate-500">{titulo}</p>
+      <p className="text-sm font-semibold text-slate-500">{titulo}</p>
+
       <strong
-        className={`mt-2 block text-4xl ${
+        className={`mt-2 block text-3xl font-black sm:text-4xl ${
           destaque ? "text-red-600" : "text-slate-900"
         }`}
       >

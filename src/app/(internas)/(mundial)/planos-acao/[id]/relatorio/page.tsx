@@ -1,13 +1,12 @@
-// pesquisas/[id]/relatorio/page.tsx
 import { auth } from "@/src/auth";
 import { redirect } from "next/navigation";
-import PesquisasTela from "@/src/app/components/pesquisas/PesquisasTela";
+import PlanoAcaoRelatorioTela from "@/src/app/components/planos-acao/PlanoAcaoRelatorioTela";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export default async function PesquisaRelatorioPage({ params }: PageProps) {
+export default async function PlanoAcaoRelatorioPage({ params }: PageProps) {
   const session = await auth();
 
   if (!session?.user) redirect("/login");
@@ -15,5 +14,5 @@ export default async function PesquisaRelatorioPage({ params }: PageProps) {
 
   const { id } = await params;
 
-  return <PesquisasTela modo="relatorio" pesquisaId={id} contexto="mundial" />;
+  return <PlanoAcaoRelatorioTela id={id} contexto="mundial" />;
 }

@@ -1,12 +1,19 @@
+import { auth } from "@/src/auth";
+import { redirect } from "next/navigation";
 import DenunciaDetalheTela from "@/src/app/components/denuncias/DenunciaDetalheTela";
 
 type PageProps = {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
 };
 
-export default async function ClienteDenunciaDetalhePage({ params }: PageProps) {
+export default async function ClienteDenunciaDetalhePage({
+  params,
+}: PageProps) {
+  const session = await auth();
+
+  if (!session?.user) redirect("/login");
+  if ((session.user as any).perfil !== "CLIENTE") redirect("/denuncias");
+
   const { id } = await params;
 
   return <DenunciaDetalheTela id={id} contexto="cliente" />;

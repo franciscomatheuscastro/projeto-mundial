@@ -1,5 +1,12 @@
+import { auth } from "@/src/auth";
+import { redirect } from "next/navigation";
 import PlanosAcaoTela from "@/src/app/components/planos-acao/PlanosAcaoTela";
 
-export default function MeusPlanosAcaoPage() {
+export default async function MeusPlanosAcaoPage() {
+  const session = await auth();
+
+  if (!session?.user) redirect("/login");
+  if ((session.user as any).perfil !== "CLIENTE") redirect("/planos-acao");
+
   return <PlanosAcaoTela contexto="cliente" />;
 }

@@ -5,8 +5,10 @@ import ClientesTela from "@/src/app/components/clientes/ClientesTela";
 export default async function NovoClientePage() {
   const session = await auth();
 
-  if (!session?.user) {
-    redirect("/login");
+  if (!session?.user) redirect("/login");
+
+  if ((session.user as any).perfil === "CLIENTE") {
+    redirect("/painel-controle");
   }
 
   return <ClientesTela modo="novo" />;

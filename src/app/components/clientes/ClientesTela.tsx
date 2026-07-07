@@ -52,9 +52,10 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
       ? `${baseUrl}/canal-denuncias/${clienteId}`
       : "";
 
-  const linkConsultaDenuncias = clienteId
-  ? `${baseUrl}/canal-denuncias/${clienteId}/consultar`
-  : "";
+  const linkConsultaDenuncias =
+    modo === "editar" && clienteId
+      ? `${baseUrl}/canal-denuncias/${clienteId}/consultar`
+      : "";
 
   useEffect(() => {
     if (modo === "editar" && clienteId) {
@@ -79,9 +80,11 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
       setNomeUsuarioMaster(nome || empresa || "");
       setEmailUsuarioMaster(email || "");
     }
-  }, [criarUsuarioMaster]);
+  }, [criarUsuarioMaster, nome, empresa, email]);
 
   async function copiarTexto(texto: string, tipo: string) {
+    if (!texto) return;
+
     await navigator.clipboard.writeText(texto);
     setCopiado(tipo);
 
@@ -143,7 +146,6 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
 
   async function excluirClienteAtual(id: string) {
     const confirmado = confirm("Tem certeza que deseja excluir este cliente?");
-
     if (!confirmado) return;
 
     await excluirCliente(id);
@@ -162,37 +164,42 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
 
     return (
       <main className="min-h-screen bg-slate-100">
-        <header className="flex items-center justify-between border-b bg-white px-8 py-4">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Clientes</h1>
-            <p className="text-sm text-slate-500">
-              Gerencie clientes, pesquisas e acessos ao painel da empresa.
-            </p>
-          </div>
+        <header className="bg-white px-4 py-5 shadow-sm sm:px-6 lg:px-8">
+          <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
+                Gestão
+              </p>
 
-          <Link
-            href="/clientes/novo"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            + Novo cliente
-          </Link>
+              <h1 className="mt-1 text-2xl font-black text-slate-900">
+                Clientes
+              </h1>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Gerencie empresas, pesquisas e acessos ao painel do cliente.
+              </p>
+            </div>
+
+            <Link
+              href="/clientes/novo"
+              className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
+            >
+              + Novo cliente
+            </Link>
+          </div>
         </header>
 
-        <section className="px-8 py-6">
-          {(erro || erroLocal) && (
-            <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-              {erro || erroLocal}
-            </div>
-          )}
+        <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          {(erro || erroLocal) && <AlertaErro mensagem={erro || erroLocal} />}
 
-          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <CardResumo titulo="Clientes" valor={totalClientes} />
             <CardResumo titulo="Ativos" valor={totalAtivos} />
             <CardResumo titulo="Pesquisas vinculadas" valor={totalPesquisas} />
           </div>
 
-          <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-            <table className="w-full border-collapse">
+          <div className="overflow-x-auto rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+            <table className="w-full min-w-[760px] border-collapse">
               <thead className="bg-slate-50">
                 <tr>
                   <Th>Cliente</Th>
@@ -210,11 +217,12 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
                   <LinhaVazia colunas={5} texto="Nenhum cliente cadastrado." />
                 ) : (
                   clientes.map((cliente) => (
-                    <tr key={cliente.id} className="border-t">
+                    <tr key={cliente.id} className="border-t border-slate-100">
                       <td className="px-4 py-4">
-                        <div className="font-medium text-slate-900">
+                        <div className="font-bold text-slate-900">
                           {cliente.nome}
                         </div>
+
                         <div className="text-sm text-slate-500">
                           {cliente.empresa || "Sem empresa informada"}
                         </div>
@@ -222,31 +230,24 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
 
                       <td className="px-4 py-4 text-sm text-slate-700">
                         <div>{cliente.email || "Sem e-mail"}</div>
+
                         <div className="text-slate-500">
                           {cliente.telefone || "Sem telefone"}
                         </div>
                       </td>
 
-                      <td className="px-4 py-4 text-sm text-slate-700">
+                      <td className="px-4 py-4 text-sm font-semibold text-slate-700">
                         {cliente.totalPesquisas}
                       </td>
 
                       <td className="px-4 py-4">
-                        {cliente.ativo ? (
-                          <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
-                            Ativo
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
-                            Inativo
-                          </span>
-                        )}
+                        <StatusBadge ativo={cliente.ativo} />
                       </td>
 
                       <td className="px-4 py-4 text-right">
                         <Link
                           href={`/clientes/${cliente.id}`}
-                          className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                          className="text-sm font-bold text-blue-600 hover:text-blue-800"
                         >
                           Editar
                         </Link>
@@ -255,7 +256,7 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
                           type="button"
                           onClick={() => excluirClienteAtual(cliente.id)}
                           disabled={processando}
-                          className="ml-4 text-sm font-medium text-red-600 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="ml-4 text-sm font-bold text-red-600 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           Excluir
                         </button>
@@ -273,40 +274,43 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
 
   return (
     <main className="min-h-screen bg-slate-100">
-      <header className="flex items-center justify-between border-b bg-white px-8 py-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">
-            {modo === "novo" ? "Novo Cliente" : "Editar Cliente"}
-          </h1>
-          <p className="text-sm text-slate-500">
-            Cadastre a empresa e libere o acesso ao painel do cliente.
-          </p>
-        </div>
+      <header className="bg-white px-4 py-5 shadow-sm sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
+              Cliente
+            </p>
 
-        <Link
-          href="/clientes"
-          className="rounded-lg border px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          Voltar
-        </Link>
+            <h1 className="mt-1 text-2xl font-black text-slate-900">
+              {modo === "novo" ? "Novo Cliente" : "Editar Cliente"}
+            </h1>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Cadastre a empresa e libere o acesso ao painel do cliente.
+            </p>
+          </div>
+
+          <Link
+            href="/clientes"
+            className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+          >
+            Voltar
+          </Link>
+        </div>
       </header>
 
       <section
         className={
           modo === "novo"
-            ? "mx-auto max-w-3xl px-8 py-8"
-            : "grid gap-6 px-8 py-8 lg:grid-cols-[520px_1fr]"
+            ? "mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8"
+            : "mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[520px_1fr] lg:px-8"
         }
       >
         <form
           onSubmit={enviarFormulario}
-          className="h-fit rounded-xl bg-white p-6 shadow-sm"
+          className="h-fit rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6"
         >
-          {(erro || erroLocal) && (
-            <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-              {erro || erroLocal}
-            </div>
-          )}
+          {(erro || erroLocal) && <AlertaErro mensagem={erro || erroLocal} />}
 
           <Campo
             label="Nome do cliente"
@@ -323,7 +327,7 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
             placeholder="Ex: Transordi Transportes"
           />
 
-          <div className="mb-5 grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
             <Campo
               label="E-mail"
               type="email"
@@ -348,40 +352,50 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
           />
 
           <div className="mb-5">
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-semibold text-slate-700">
               Observações
             </label>
+
             <textarea
               rows={4}
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-500"
+              placeholder="Informações complementares sobre o cliente"
+              className={inputClassName}
             />
           </div>
 
           {modo === "editar" && (
-            <label className="mb-6 flex items-center gap-2 text-sm text-slate-700">
+            <label className="mb-6 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
               <input
                 type="checkbox"
                 checked={ativo}
                 onChange={(e) => setAtivo(e.target.checked)}
+                className="h-4 w-4"
               />
               Cliente ativo
             </label>
           )}
 
-          <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 p-4">
-            <label className="mb-4 flex items-center gap-2 text-sm font-medium text-blue-900">
+          <div className="mb-6 rounded-3xl border border-blue-100 bg-blue-50 p-4">
+            <label className="flex items-start gap-3 text-sm font-bold text-blue-950">
               <input
                 type="checkbox"
                 checked={criarUsuarioMaster}
                 onChange={(e) => setCriarUsuarioMaster(e.target.checked)}
+                className="mt-1 h-4 w-4"
               />
-              Criar usuário master para o painel do cliente
+
+              <span>
+                Criar usuário master para o painel do cliente
+                <small className="mt-1 block font-normal text-blue-800">
+                  Use para liberar o acesso do gestor da empresa.
+                </small>
+              </span>
             </label>
 
             {criarUsuarioMaster && (
-              <div className="space-y-4">
+              <div className="mt-5 space-y-1">
                 <Campo
                   label="Nome do usuário"
                   value={nomeUsuarioMaster}
@@ -413,7 +427,7 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
 
           <button
             disabled={processando}
-            className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-12 w-full rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {processando ? "Salvando..." : "Salvar cliente"}
           </button>
@@ -423,7 +437,7 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
               type="button"
               onClick={() => excluirClienteAtual(clienteId)}
               disabled={processando}
-              className="mt-3 w-full rounded-lg border border-red-200 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-3 min-h-12 w-full rounded-2xl border border-red-200 bg-white px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Excluir cliente
             </button>
@@ -432,19 +446,9 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
 
         {modo === "editar" && (
           <div className="space-y-6">
-            <div className="rounded-xl bg-white p-6 shadow-sm">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Canal de denúncias
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    Link público exclusivo para colaboradores registrarem
-                    denúncias.
-                  </p>
-                </div>
-
-                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+            <Painel titulo="Canal de denúncias" subtitulo="Links públicos exclusivos para colaboradores.">
+              <div className="mb-5 flex justify-start">
+                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
                   Ativo
                 </span>
               </div>
@@ -466,29 +470,22 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
                   }
                 />
               </div>
-            </div>
+            </Painel>
 
-            <div className="rounded-xl bg-white p-6 shadow-sm">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Pesquisas do cliente
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    Histórico de pesquisas geradas para este cliente.
-                  </p>
-                </div>
-
+            <Painel
+              titulo="Pesquisas do cliente"
+              subtitulo="Histórico de pesquisas geradas para este cliente."
+              acao={
                 <Link
                   href="/pesquisas/nova"
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+                  className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-700"
                 >
                   + Nova pesquisa
                 </Link>
-              </div>
-
-              <div className="overflow-hidden rounded-lg border">
-                <table className="w-full border-collapse">
+              }
+            >
+              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                <table className="w-full min-w-[600px] border-collapse">
                   <thead className="bg-slate-50">
                     <tr>
                       <Th>Pesquisa</Th>
@@ -507,13 +504,15 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
                       />
                     ) : (
                       clienteSelecionado.pesquisas.map((pesquisa) => (
-                        <tr key={pesquisa.id} className="border-t">
-                          <td className="px-4 py-4 text-sm text-slate-900">
+                        <tr key={pesquisa.id} className="border-t border-slate-100">
+                          <td className="px-4 py-4 text-sm font-semibold text-slate-900">
                             {pesquisa.titulo}
                           </td>
+
                           <td className="px-4 py-4 text-sm text-slate-700">
                             {pesquisa.modelo.titulo}
                           </td>
+
                           <td className="px-4 py-4 text-sm text-slate-700">
                             {pesquisa.status}
                           </td>
@@ -523,13 +522,16 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
                   </tbody>
                 </table>
               </div>
-            </div>
+            </Painel>
           </div>
         )}
       </section>
     </main>
   );
 }
+
+const inputClassName =
+  "min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
 
 function Campo({
   label,
@@ -548,16 +550,17 @@ function Campo({
 }) {
   return (
     <div className="mb-5">
-      <label className="mb-2 block text-sm font-medium text-slate-700">
+      <label className="mb-2 block text-sm font-semibold text-slate-700">
         {label}
       </label>
+
       <input
         type={type}
         value={value}
         required={required}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-500"
+        className={inputClassName}
       />
     </div>
   );
@@ -565,9 +568,41 @@ function Campo({
 
 function CardResumo({ titulo, valor }: { titulo: string; valor: number }) {
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm">
-      <p className="text-sm text-slate-500">{titulo}</p>
-      <strong className="text-3xl text-slate-900">{valor}</strong>
+    <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <p className="text-sm font-semibold text-slate-500">{titulo}</p>
+      <strong className="mt-2 block text-3xl font-black text-slate-900">
+        {valor}
+      </strong>
+    </div>
+  );
+}
+
+function Painel({
+  titulo,
+  subtitulo,
+  children,
+  acao,
+}: {
+  titulo: string;
+  subtitulo?: string;
+  children: React.ReactNode;
+  acao?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-lg font-black text-slate-900">{titulo}</h2>
+
+          {subtitulo && (
+            <p className="mt-1 text-sm text-slate-500">{subtitulo}</p>
+          )}
+        </div>
+
+        {acao}
+      </div>
+
+      {children}
     </div>
   );
 }
@@ -585,23 +620,49 @@ function BlocoLink({
 }) {
   return (
     <div>
-      <p className="mb-2 text-sm font-medium text-slate-700">{titulo}</p>
+      <p className="mb-2 text-sm font-semibold text-slate-700">{titulo}</p>
 
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <input
           readOnly
           value={valor}
-          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none"
+          className="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none"
         />
 
         <button
           type="button"
           onClick={onCopiar}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="min-h-12 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
         >
           {copiado ? "Copiado" : "Copiar"}
         </button>
       </div>
+    </div>
+  );
+}
+
+function StatusBadge({ ativo }: { ativo: boolean }) {
+  return ativo ? (
+    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
+      Ativo
+    </span>
+  ) : (
+    <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
+      Inativo
+    </span>
+  );
+}
+
+function AlertaErro({
+  mensagem,
+}: {
+  mensagem: string | null;
+}) {
+  if (!mensagem) return null;
+
+  return (
+    <div className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100">
+      {mensagem}
     </div>
   );
 }
@@ -615,7 +676,7 @@ function Th({
 }) {
   return (
     <th
-      className={`px-4 py-3 text-sm font-semibold text-slate-600 ${
+      className={`px-4 py-3 text-sm font-bold text-slate-600 ${
         direita ? "text-right" : "text-left"
       }`}
     >

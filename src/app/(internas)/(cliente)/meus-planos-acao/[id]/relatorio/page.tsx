@@ -1,12 +1,12 @@
 import { auth } from "@/src/auth";
 import { redirect } from "next/navigation";
-import PlanoAcaoDetalheTela from "@/src/app/components/planos-acao/PlanoAcaoDetalheTela";
+import PlanoAcaoRelatorioTela from "@/src/app/components/planos-acao/PlanoAcaoRelatorioTela";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export default async function MeuPlanoAcaoDetalhePage({ params }: PageProps) {
+export default async function MeuPlanoAcaoRelatorioPage({ params }: PageProps) {
   const session = await auth();
 
   if (!session?.user) redirect("/login");
@@ -14,5 +14,5 @@ export default async function MeuPlanoAcaoDetalhePage({ params }: PageProps) {
 
   const { id } = await params;
 
-  return <PlanoAcaoDetalheTela id={id} contexto="cliente" />;
+  return <PlanoAcaoRelatorioTela id={id} contexto="cliente" />;
 }

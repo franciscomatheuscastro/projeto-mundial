@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import Backend from "@/src/backend";
 import {
   PlanoAcao,
@@ -22,7 +22,7 @@ export function usePlanosAcao(
   const [carregando, setCarregando] = useState(carregarAoIniciar);
   const [processando, startTransition] = useTransition();
 
-  async function carregarPlanos() {
+  const carregarPlanos = useCallback(async () => {
     try {
       setCarregando(true);
       setErro(null);
@@ -42,35 +42,38 @@ export function usePlanosAcao(
     } finally {
       setCarregando(false);
     }
-  }
+  }, [contexto]);
 
-  async function carregarPlanoPorId(id: string) {
-    try {
-      setCarregando(true);
-      setErro(null);
+  const carregarPlanoPorId = useCallback(
+    async (id: string) => {
+      try {
+        setCarregando(true);
+        setErro(null);
 
-      const dados =
-        contexto === "cliente"
-          ? await Backend.planosAcao.obterMeuPorId(id)
-          : await Backend.planosAcao.obterPorId(id);
+        const dados =
+          contexto === "cliente"
+            ? await Backend.planosAcao.obterMeuPorId(id)
+            : await Backend.planosAcao.obterPorId(id);
 
-      setPlanoSelecionado(dados);
-      return dados;
-    } catch (error) {
-      const mensagem =
-        error instanceof Error
-          ? error.message
-          : "Erro ao carregar plano de ação.";
+        setPlanoSelecionado(dados);
+        return dados;
+      } catch (error) {
+        const mensagem =
+          error instanceof Error
+            ? error.message
+            : "Erro ao carregar plano de ação.";
 
-      setErro(mensagem);
-      setPlanoSelecionado(null);
-      throw error;
-    } finally {
-      setCarregando(false);
-    }
-  }
+        setErro(mensagem);
+        setPlanoSelecionado(null);
+        throw error;
+      } finally {
+        setCarregando(false);
+      }
+    },
+    [contexto]
+  );
 
-  async function carregarPlanosPorPesquisa(pesquisaId: string) {
+  const carregarPlanosPorPesquisa = useCallback(async (pesquisaId: string) => {
     try {
       setCarregando(true);
       setErro(null);
@@ -90,64 +93,73 @@ export function usePlanosAcao(
     } finally {
       setCarregando(false);
     }
-  }
+  }, []);
 
-  async function salvarPlano(plano: PlanoAcao) {
-    return new Promise<PlanoAcaoDetalhado>((resolve, reject) => {
-      startTransition(async () => {
-        try {
-          setErro(null);
+  const salvarPlano = useCallback(
+    async (plano: PlanoAcao) => {
+      return new Promise<PlanoAcaoDetalhado>((resolve, reject) => {
+        startTransition(async () => {
+          try {
+            setErro(null);
 
-          const resultado = await Backend.planosAcao.salvar(plano);
-          setPlanoSelecionado(resultado);
-          await carregarPlanos();
+            const resultado = await Backend.planosAcao.salvar(plano);
+            setPlanoSelecionado(resultado);
 
-          resolve(resultado);
-        } catch (error) {
-          const mensagem =
-            error instanceof Error
-              ? error.message
-              : "Erro ao salvar plano de ação.";
+            if (carregarAoIniciar) {
+              await carregarPlanos();
+            }
 
-          setErro(mensagem);
-          reject(error);
-        }
-      });
-    });
-  }
+            resolve(resultado);
+          } catch (error) {
+            const mensagem =
+              error instanceof Error
+                ? error.message
+                : "Erro ao salvar plano de ação.";
 
-  async function excluirPlano(id: string) {
-    return new Promise<void>((resolve, reject) => {
-      startTransition(async () => {
-        try {
-          setErro(null);
-
-          await Backend.planosAcao.excluir(id);
-          await carregarPlanos();
-
-          if (planoSelecionado?.id === id) {
-            setPlanoSelecionado(null);
+            setErro(mensagem);
+            reject(error);
           }
-
-          resolve();
-        } catch (error) {
-          const mensagem =
-            error instanceof Error
-              ? error.message
-              : "Erro ao excluir plano de ação.";
-
-          setErro(mensagem);
-          reject(error);
-        }
+        });
       });
-    });
-  }
+    },
+    [carregarPlanos, carregarAoIniciar]
+  );
+
+  const excluirPlano = useCallback(
+    async (id: string) => {
+      return new Promise<void>((resolve, reject) => {
+        startTransition(async () => {
+          try {
+            setErro(null);
+
+            await Backend.planosAcao.excluir(id);
+            await carregarPlanos();
+
+            setPlanoSelecionado((atual) =>
+              atual?.id === id ? null : atual
+            );
+
+            resolve();
+          } catch (error) {
+            const mensagem =
+              error instanceof Error
+                ? error.message
+                : "Erro ao excluir plano de ação.";
+
+            setErro(mensagem);
+            reject(error);
+          }
+        });
+      });
+    },
+    [carregarPlanos]
+  );
 
   useEffect(() => {
     if (carregarAoIniciar) {
       carregarPlanos();
     }
-  }, [carregarAoIniciar, contexto]);
+  }, [carregarAoIniciar, carregarPlanos]);
 
   return {
     planos,

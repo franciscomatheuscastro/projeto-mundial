@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { GravidadeDenuncia } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useDenuncias } from "@/src/app/data/hooks/useDenuncias";
@@ -25,76 +26,101 @@ export default function DenunciaFormularioTela({
   const [clienteId, setClienteId] = useState("");
   const [gravidade, setGravidade] = useState<GravidadeDenuncia>("MEDIA");
 
+  const usuarioMundial = contexto === "mundial";
+  const baseHref = usuarioMundial ? "/denuncias" : "/minhas-denuncias";
+
   useEffect(() => {
-    if (contexto === "mundial") {
+    if (usuarioMundial) {
       carregarClientes();
     }
-  }, [contexto]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuarioMundial]);
 
-  async function salvar(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function salvar(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-    const form = new FormData(e.currentTarget);
+    const form = new FormData(event.currentTarget);
 
     const denuncia: Denuncia = {
-        clienteId: contexto === "mundial" ? clienteId : "",
+      clienteId: usuarioMundial ? clienteId : "",
 
-        titulo: String(form.get("titulo") || ""),
-        descricao: String(form.get("descricao") || ""),
-        categoria: String(form.get("categoria") || "") || null,
-        localOcorrido: String(form.get("local") || "") || null,
-        dataOcorrido: String(form.get("data") || "") || null,
+      titulo: String(form.get("titulo") || ""),
+      descricao: String(form.get("descricao") || ""),
+      categoria: String(form.get("categoria") || "") || null,
+      localOcorrido: String(form.get("local") || "") || null,
+      dataOcorrido: String(form.get("data") || "") || null,
 
-        anonima,
+      anonima,
 
-        nomeDenunciante: anonima
-            ? null
-            : String(form.get("nome") || "") || null,
+      nomeDenunciante: anonima
+        ? null
+        : String(form.get("nome") || "") || null,
 
-        emailDenunciante: anonima
-            ? null
-            : String(form.get("email") || "") || null,
+      emailDenunciante: anonima
+        ? null
+        : String(form.get("email") || "") || null,
 
-        telefoneDenunciante: anonima
-            ? null
-            : String(form.get("telefone") || "") || null,
+      telefoneDenunciante: anonima
+        ? null
+        : String(form.get("telefone") || "") || null,
 
-        gravidade,
-        status: "RECEBIDA",
-        tratativas: [],
-        cliente: {
-            id: "",
-            nome: "",
-            empresa: null,
-        },
-        };
+      gravidade,
+      status: "RECEBIDA",
+      respostaPublica: null,
+      tratativas: [],
+      cliente: {
+        id: "",
+        nome: "",
+        empresa: null,
+      },
+    };
 
-    if (contexto === "cliente") {
-      await criarMinhaDenunciaManual(denuncia);
-      router.push("/minhas-denuncias");
-    } else {
+    if (usuarioMundial) {
       await criarDenunciaManual(denuncia);
-      router.push("/denuncias");
+    } else {
+      await criarMinhaDenunciaManual(denuncia);
     }
+
+    router.push(baseHref);
   }
 
   return (
     <main className="min-h-screen bg-slate-100">
-      <header className="border-b bg-white px-8 py-5">
-        <h1 className="text-2xl font-bold text-slate-900">Nova denúncia</h1>
-        <p className="text-slate-500">Cadastro manual de denúncia.</p>
+      <header className="border-b bg-white px-4 py-5 sm:px-6 lg:px-8">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+            MundialSafe
+          </p>
+
+          <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
+            Nova denúncia
+          </h1>
+
+          <p className="mt-1 max-w-3xl text-sm text-slate-500">
+            Cadastro manual de denúncia para registro, análise e tratativa.
+          </p>
+        </div>
       </header>
 
-      <form onSubmit={salvar} className="mx-auto max-w-5xl space-y-6 px-8 py-8">
+      <form
+        onSubmit={salvar}
+        className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8"
+      >
         {erro && (
-          <div className="rounded-lg bg-red-50 p-4 text-red-700">{erro}</div>
+          <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {erro}
+          </div>
         )}
 
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <div className="grid gap-5 md:grid-cols-2">
-            {contexto === "mundial" && (
-              <div className="md:col-span-2">
-                <label className="mb-2 block font-medium text-slate-700">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="text-lg font-bold text-slate-900">
+            Dados da denúncia
+          </h2>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            {usuarioMundial && (
+              <div className="lg:col-span-2">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Cliente
                 </label>
 
@@ -102,7 +128,7 @@ export default function DenunciaFormularioTela({
                   value={clienteId}
                   required
                   onChange={(e) => setClienteId(e.target.value)}
-                  className="w-full rounded-lg border px-4 py-3"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                 >
                   <option value="">Selecione o cliente</option>
 
@@ -121,7 +147,7 @@ export default function DenunciaFormularioTela({
             <Campo label="Data do ocorrido" name="data" type="date" />
 
             <div>
-              <label className="mb-2 block font-medium text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Gravidade
               </label>
 
@@ -130,7 +156,7 @@ export default function DenunciaFormularioTela({
                 onChange={(e) =>
                   setGravidade(e.target.value as GravidadeDenuncia)
                 }
-                className="w-full rounded-lg border px-4 py-3"
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               >
                 <option value="BAIXA">Baixa</option>
                 <option value="MEDIA">Média</option>
@@ -138,45 +164,65 @@ export default function DenunciaFormularioTela({
                 <option value="CRITICA">Crítica</option>
               </select>
             </div>
+
+            <div className="lg:col-span-2">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Descrição
+              </label>
+
+              <textarea
+                name="descricao"
+                required
+                rows={8}
+                placeholder="Descreva o ocorrido com o máximo de informações relevantes."
+                className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
+            </div>
           </div>
+        </section>
 
-          <div className="mt-6">
-            <label className="mb-2 block font-medium text-slate-700">
-              Descrição
-            </label>
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="text-lg font-bold text-slate-900">
+            Identificação do denunciante
+          </h2>
 
-            <textarea
-              name="descricao"
-              required
-              rows={8}
-              className="w-full rounded-lg border px-4 py-3"
-            />
-          </div>
-        </div>
-
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <label className="flex items-center gap-3 text-slate-700">
+          <label className="mt-5 flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
             <input
               type="checkbox"
               checked={anonima}
               onChange={(e) => setAnonima(e.target.checked)}
+              className="mt-1"
             />
-            Denúncia anônima
+
+            <span>
+              <strong className="block text-slate-900">
+                Denúncia anônima
+              </strong>
+              Os dados do denunciante não serão registrados neste atendimento.
+            </span>
           </label>
 
           {!anonima && (
-            <div className="mt-5 grid gap-5 md:grid-cols-3">
+            <div className="mt-5 grid gap-4 lg:grid-cols-3">
               <Campo label="Nome" name="nome" />
-              <Campo label="E-mail" name="email" />
+              <Campo label="E-mail" name="email" type="email" />
               <Campo label="Telefone" name="telefone" />
             </div>
           )}
-        </div>
+        </section>
 
-        <div className="flex justify-end">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={() => router.push(baseHref)}
+            className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:w-auto"
+          >
+            Cancelar
+          </button>
+
           <button
             disabled={processando}
-            className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {processando ? "Salvando..." : "Salvar denúncia"}
           </button>
@@ -199,13 +245,15 @@ function Campo({
 }) {
   return (
     <div>
-      <label className="mb-2 block font-medium text-slate-700">{label}</label>
+      <label className="mb-2 block text-sm font-semibold text-slate-700">
+        {label}
+      </label>
 
       <input
         name={name}
         type={type}
         required={required}
-        className="w-full rounded-lg border px-4 py-3"
+        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
       />
     </div>
   );

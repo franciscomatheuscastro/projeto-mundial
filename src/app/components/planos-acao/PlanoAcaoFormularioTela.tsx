@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { StatusPlanoAcao } from "@prisma/client";
 import { usePlanosAcao } from "@/src/app/data/hooks/usePlanosAcao";
@@ -9,12 +10,19 @@ import { AcaoPlanoAcao, PlanoAcaoDetalhado } from "@/src/core/model/PlanoAcao";
 
 type Props = {
   planoInicial?: PlanoAcaoDetalhado | null;
+  contexto?: "mundial" | "cliente";
 };
 
-export default function PlanoAcaoFormularioTela({ planoInicial }: Props) {
+export default function PlanoAcaoFormularioTela({
+  planoInicial,
+  contexto = "mundial",
+}: Props) {
   const router = useRouter();
-  const { salvarPlano, processando, erro } = usePlanosAcao(false);
+
+  const { salvarPlano, processando, erro } = usePlanosAcao(false, contexto);
   const { pesquisas, carregarPesquisas } = usePesquisasCliente();
+
+  const baseHref = contexto === "cliente" ? "/meus-planos-acao" : "/planos-acao";
 
   const [pesquisaId, setPesquisaId] = useState(planoInicial?.pesquisaId || "");
   const [titulo, setTitulo] = useState(planoInicial?.titulo || "");
@@ -26,6 +34,7 @@ export default function PlanoAcaoFormularioTela({ planoInicial }: Props) {
   const [status, setStatus] = useState<StatusPlanoAcao>(
     planoInicial?.status || "RASCUNHO"
   );
+
   const [acoes, setAcoes] = useState<AcaoPlanoAcao[]>(
     planoInicial?.acoes?.length
       ? planoInicial.acoes
@@ -44,7 +53,7 @@ export default function PlanoAcaoFormularioTela({ planoInicial }: Props) {
 
   useEffect(() => {
     carregarPesquisas();
-  }, []);
+  }, [carregarPesquisas]);
 
   async function salvar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,7 +69,7 @@ export default function PlanoAcaoFormularioTela({ planoInicial }: Props) {
       acoes: acoes.filter((acao) => acao.titulo.trim()),
     });
 
-    router.push(`/planos-acao/${resultado.id}`);
+    router.push(`${baseHref}/${resultado.id}`);
   }
 
   function adicionarAcao() {
@@ -78,7 +87,11 @@ export default function PlanoAcaoFormularioTela({ planoInicial }: Props) {
     ]);
   }
 
-  function atualizarAcao(index: number, campo: keyof AcaoPlanoAcao, valor: any) {
+  function atualizarAcao(
+    index: number,
+    campo: keyof AcaoPlanoAcao,
+    valor: string
+  ) {
     setAcoes((atual) =>
       atual.map((acao, i) => (i === index ? { ...acao, [campo]: valor } : acao))
     );
@@ -90,218 +103,235 @@ export default function PlanoAcaoFormularioTela({ planoInicial }: Props) {
 
   return (
     <main className="min-h-screen bg-slate-100">
-      <header className="border-b bg-white px-8 py-4">
-        <h1 className="text-xl font-bold text-slate-900">
-          {planoInicial ? "Editar plano de ação" : "Novo plano de ação"}
-        </h1>
-        <p className="text-sm text-slate-500">
-          Estruture diagnóstico, objetivos e ações práticas para apresentação ao cliente.
-        </p>
+      <header className="border-b bg-white px-4 py-5 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+              MundialSafe
+            </p>
+
+            <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
+              {planoInicial ? "Editar plano de ação" : "Novo plano de ação"}
+            </h1>
+
+            <p className="mt-1 max-w-3xl text-sm text-slate-500">
+              Estruture diagnóstico, objetivos e ações práticas para apresentação
+              ao cliente.
+            </p>
+          </div>
+        </div>
       </header>
 
-      <section className="space-y-6 px-8 py-6">
+      <section className="px-4 py-6 sm:px-6 lg:px-8">
+        {erro && (
+          <div className="mb-6 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {erro}
+          </div>
+        )}
 
-      {erro && (
-        <div className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          {erro}
-        </div>
-      )}
+        <form onSubmit={salvar} className="space-y-6">
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <h2 className="text-lg font-bold text-slate-900">
+              Dados principais
+            </h2>
 
-      <form onSubmit={salvar} className="space-y-6">
-        <section className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">
-            Dados principais
-          </h2>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <CampoSelect
-              label="Pesquisa"
-              value={pesquisaId}
-              onChange={setPesquisaId}
-              required
-              disabled={!!planoInicial}
-            >
-              <option value="">Selecione uma pesquisa</option>
-              {pesquisas.map((pesquisa) => (
-                <option key={pesquisa.id} value={pesquisa.id}>
-                  {pesquisa.cliente.nome} - {pesquisa.titulo}
-                </option>
-              ))}
-            </CampoSelect>
-
-            <CampoSelect
-              label="Status"
-              value={status}
-              onChange={(valor) => setStatus(valor as StatusPlanoAcao)}
-            >
-              <option value="RASCUNHO">Rascunho</option>
-              <option value="EM_ANDAMENTO">Em andamento</option>
-              <option value="CONCLUIDO">Concluído</option>
-              <option value="ARQUIVADO">Arquivado</option>
-            </CampoSelect>
-
-            <div className="md:col-span-2">
-              <Campo
-                label="Título"
-                value={titulo}
-                onChange={setTitulo}
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <CampoSelect
+                label="Pesquisa"
+                value={pesquisaId}
+                onChange={setPesquisaId}
                 required
-                placeholder="Ex: Plano de ação - Pesquisa de clima operacional"
+                disabled={!!planoInicial}
+              >
+                <option value="">Selecione uma pesquisa</option>
+
+                {pesquisas.map((pesquisa) => (
+                  <option key={pesquisa.id} value={pesquisa.id}>
+                    {pesquisa.cliente.nome} - {pesquisa.titulo}
+                  </option>
+                ))}
+              </CampoSelect>
+
+              <CampoSelect
+                label="Status"
+                value={status}
+                onChange={(valor) => setStatus(valor as StatusPlanoAcao)}
+              >
+                <option value="RASCUNHO">Rascunho</option>
+                <option value="EM_ANDAMENTO">Em andamento</option>
+                <option value="CONCLUIDO">Concluído</option>
+                <option value="ARQUIVADO">Arquivado</option>
+              </CampoSelect>
+
+              <div className="lg:col-span-2">
+                <Campo
+                  label="Título"
+                  value={titulo}
+                  onChange={setTitulo}
+                  required
+                  placeholder="Ex: Plano de ação - Pesquisa de clima operacional"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <h2 className="text-lg font-bold text-slate-900">
+              Diagnóstico estratégico
+            </h2>
+
+            <div className="mt-5 space-y-4">
+              <CampoTexto
+                label="Diagnóstico"
+                value={diagnostico}
+                onChange={setDiagnostico}
+                placeholder="Resumo dos principais pontos identificados na pesquisa."
+              />
+
+              <CampoTexto
+                label="Objetivo"
+                value={objetivo}
+                onChange={setObjetivo}
+                placeholder="O que este plano busca melhorar."
+              />
+
+              <CampoTexto
+                label="Conclusão"
+                value={conclusao}
+                onChange={setConclusao}
+                placeholder="Mensagem final para fechamento do relatório/apresentação."
               />
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">
-            Diagnóstico estratégico
-          </h2>
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  Ações recomendadas
+                </h2>
 
-          <div className="space-y-4">
-            <CampoTexto
-              label="Diagnóstico"
-              value={diagnostico}
-              onChange={setDiagnostico}
-              placeholder="Resumo dos principais pontos identificados na pesquisa."
-            />
+                <p className="mt-1 text-sm text-slate-500">
+                  Liste as iniciativas sugeridas para melhoria do clima.
+                </p>
+              </div>
 
-            <CampoTexto
-              label="Objetivo"
-              value={objetivo}
-              onChange={setObjetivo}
-              placeholder="O que este plano busca melhorar."
-            />
-
-            <CampoTexto
-              label="Conclusão"
-              value={conclusao}
-              onChange={setConclusao}
-              placeholder="Mensagem final para fechamento do relatório/apresentação."
-            />
-          </div>
-        </section>
-
-        <section className="rounded-xl bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Ações recomendadas
-              </h2>
-              <p className="text-sm text-slate-500">
-                Liste as iniciativas sugeridas para melhoria do clima.
-              </p>
+              <button
+                type="button"
+                onClick={adicionarAcao}
+                className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:w-auto"
+              >
+                Adicionar ação
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={adicionarAcao}
-              className="rounded-lg border px-3 py-2 text-sm font-medium hover:bg-slate-50"
-            >
-              Adicionar ação
-            </button>
-          </div>
+            <div className="mt-5 space-y-4">
+              {acoes.map((acao, index) => (
+                <div
+                  key={acao.id}
+                  className="rounded-3xl border border-slate-200 bg-slate-50/50 p-4"
+                >
+                  <div className="mb-4 flex items-center justify-between gap-4">
+                    <strong className="text-sm font-bold text-slate-700">
+                      Ação {index + 1}
+                    </strong>
 
-          <div className="space-y-4">
-            {acoes.map((acao, index) => (
-              <div key={acao.id} className="rounded-xl border p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <strong className="text-sm text-slate-700">
-                    Ação {index + 1}
-                  </strong>
+                    {acoes.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removerAcao(index)}
+                        className="text-xs font-bold text-red-600 hover:text-red-800"
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
 
-                  {acoes.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removerAcao(index)}
-                      className="text-xs font-medium text-red-600"
-                    >
-                      Remover
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Campo
-                    label="Título da ação"
-                    value={acao.titulo}
-                    onChange={(valor) => atualizarAcao(index, "titulo", valor)}
-                    placeholder="Ex: Implantar reunião mensal de alinhamento"
-                  />
-
-                  <Campo
-                    label="Responsável"
-                    value={acao.responsavel || ""}
-                    onChange={(valor) =>
-                      atualizarAcao(index, "responsavel", valor)
-                    }
-                    placeholder="Ex: Gestão / RH / Liderança"
-                  />
-
-                  <CampoSelect
-                    label="Prioridade"
-                    value={acao.prioridade}
-                    onChange={(valor) =>
-                      atualizarAcao(index, "prioridade", valor)
-                    }
-                  >
-                    <option value="BAIXA">Baixa</option>
-                    <option value="MEDIA">Média</option>
-                    <option value="ALTA">Alta</option>
-                  </CampoSelect>
-
-                  <Campo
-                    label="Prazo"
-                    value={acao.prazo || ""}
-                    onChange={(valor) => atualizarAcao(index, "prazo", valor)}
-                    placeholder="Ex: 30 dias"
-                  />
-
-                  <CampoSelect
-                    label="Status"
-                    value={acao.status}
-                    onChange={(valor) => atualizarAcao(index, "status", valor)}
-                  >
-                    <option value="PENDENTE">Pendente</option>
-                    <option value="EM_ANDAMENTO">Em andamento</option>
-                    <option value="CONCLUIDA">Concluída</option>
-                  </CampoSelect>
-
-                  <div className="md:col-span-2">
-                    <CampoTexto
-                      label="Descrição"
-                      value={acao.descricao || ""}
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <Campo
+                      label="Título da ação"
+                      value={acao.titulo}
                       onChange={(valor) =>
-                        atualizarAcao(index, "descricao", valor)
+                        atualizarAcao(index, "titulo", valor)
                       }
-                      placeholder="Detalhe como essa ação deve ser aplicada."
+                      placeholder="Ex: Implantar reunião mensal de alinhamento"
                     />
+
+                    <Campo
+                      label="Responsável"
+                      value={acao.responsavel || ""}
+                      onChange={(valor) =>
+                        atualizarAcao(index, "responsavel", valor)
+                      }
+                      placeholder="Ex: Gestão / RH / Liderança"
+                    />
+
+                    <CampoSelect
+                      label="Prioridade"
+                      value={acao.prioridade}
+                      onChange={(valor) =>
+                        atualizarAcao(index, "prioridade", valor)
+                      }
+                    >
+                      <option value="BAIXA">Baixa</option>
+                      <option value="MEDIA">Média</option>
+                      <option value="ALTA">Alta</option>
+                    </CampoSelect>
+
+                    <Campo
+                      label="Prazo"
+                      value={acao.prazo || ""}
+                      onChange={(valor) => atualizarAcao(index, "prazo", valor)}
+                      placeholder="Ex: 30 dias"
+                    />
+
+                    <CampoSelect
+                      label="Status"
+                      value={acao.status}
+                      onChange={(valor) =>
+                        atualizarAcao(index, "status", valor)
+                      }
+                    >
+                      <option value="PENDENTE">Pendente</option>
+                      <option value="EM_ANDAMENTO">Em andamento</option>
+                      <option value="CONCLUIDA">Concluída</option>
+                    </CampoSelect>
+
+                    <div className="lg:col-span-2">
+                      <CampoTexto
+                        label="Descrição"
+                        value={acao.descricao || ""}
+                        onChange={(valor) =>
+                          atualizarAcao(index, "descricao", valor)
+                        }
+                        placeholder="Detalhe como essa ação deve ser aplicada."
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </section>
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => router.push(baseHref)}
+              className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:w-auto"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="submit"
+              disabled={processando}
+              className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            >
+              {processando ? "Salvando..." : "Salvar plano"}
+            </button>
           </div>
-        </section>
-
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => router.push("/planos-acao")}
-            className="rounded-lg border px-5 py-2 text-sm font-medium hover:bg-slate-50"
-          >
-            Cancelar
-          </button>
-
-          <button
-            disabled={processando}
-            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-          >
-            {processando ? "Salvando..." : "Salvar plano"}
-          </button>
-        </div>
-      </form>
-
+        </form>
       </section>
-  
     </main>
   );
 }
@@ -321,15 +351,16 @@ function Campo({
 }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
+      <label className="mb-2 block text-sm font-semibold text-slate-700">
         {label}
       </label>
+
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
-        className="w-full rounded-lg border px-4 py-3 outline-none focus:border-blue-500"
+        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
       />
     </div>
   );
@@ -348,15 +379,16 @@ function CampoTexto({
 }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
+      <label className="mb-2 block text-sm font-semibold text-slate-700">
         {label}
       </label>
+
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={4}
-        className="w-full rounded-lg border px-4 py-3 outline-none focus:border-blue-500"
+        className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
       />
     </div>
   );
@@ -373,21 +405,22 @@ function CampoSelect({
   label: string;
   value: string;
   onChange: (valor: string) => void;
-  children: React.ReactNode;
+  children: ReactNode;
   required?: boolean;
   disabled?: boolean;
 }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
+      <label className="mb-2 block text-sm font-semibold text-slate-700">
         {label}
       </label>
+
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
         disabled={disabled}
-        className="w-full rounded-lg border px-4 py-3 outline-none focus:border-blue-500 disabled:bg-slate-100"
+        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
       >
         {children}
       </select>

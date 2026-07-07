@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import Backend from "@/src/backend";
 import {
   Agendamento,
@@ -22,7 +22,7 @@ export function useAgendamentos(
   const [carregando, setCarregando] = useState(carregarAoIniciar);
   const [processando, startTransition] = useTransition();
 
-  async function carregarAgendamentos() {
+  const carregarAgendamentos = useCallback(async () => {
     try {
       setCarregando(true);
       setErro(null);
@@ -42,90 +42,102 @@ export function useAgendamentos(
     } finally {
       setCarregando(false);
     }
-  }
+  }, [contexto]);
 
-  async function carregarAgendamentoPorId(id: string) {
-    try {
-      setCarregando(true);
-      setErro(null);
+  const carregarAgendamentoPorId = useCallback(
+    async (id: string) => {
+      try {
+        setCarregando(true);
+        setErro(null);
 
-      const dados =
-        contexto === "cliente"
-          ? await Backend.agendamentos.obterMeuPorId(id)
-          : await Backend.agendamentos.obterPorId(id);
+        const dados =
+          contexto === "cliente"
+            ? await Backend.agendamentos.obterMeuPorId(id)
+            : await Backend.agendamentos.obterPorId(id);
 
-      setAgendamentoSelecionado(dados);
-      return dados;
-    } catch (error) {
-      const mensagem =
-        error instanceof Error
-          ? error.message
-          : "Erro ao carregar agendamento.";
+        setAgendamentoSelecionado(dados);
+        return dados;
+      } catch (error) {
+        const mensagem =
+          error instanceof Error
+            ? error.message
+            : "Erro ao carregar agendamento.";
 
-      setErro(mensagem);
-      setAgendamentoSelecionado(null);
-      throw error;
-    } finally {
-      setCarregando(false);
-    }
-  }
+        setErro(mensagem);
+        setAgendamentoSelecionado(null);
+        throw error;
+      } finally {
+        setCarregando(false);
+      }
+    },
+    [contexto]
+  );
 
-  async function salvarAgendamento(agendamento: Agendamento) {
-    return new Promise<AgendamentoDetalhado>((resolve, reject) => {
-      startTransition(async () => {
-        try {
-          setErro(null);
+  const salvarAgendamento = useCallback(
+    async (agendamento: Agendamento) => {
+      return new Promise<AgendamentoDetalhado>((resolve, reject) => {
+        startTransition(async () => {
+          try {
+            setErro(null);
 
-          const resultado = await Backend.agendamentos.salvar(agendamento);
-          setAgendamentoSelecionado(resultado);
-          await carregarAgendamentos();
+            const resultado = await Backend.agendamentos.salvar(agendamento);
+            setAgendamentoSelecionado(resultado);
 
-          resolve(resultado);
-        } catch (error) {
-          const mensagem =
-            error instanceof Error
-              ? error.message
-              : "Erro ao salvar agendamento.";
+            if (carregarAoIniciar) {
+              await carregarAgendamentos();
+            }
 
-          setErro(mensagem);
-          reject(error);
-        }
-      });
-    });
-  }
+            resolve(resultado);
+          } catch (error) {
+            const mensagem =
+              error instanceof Error
+                ? error.message
+                : "Erro ao salvar agendamento.";
 
-  async function excluirAgendamento(id: string) {
-    return new Promise<void>((resolve, reject) => {
-      startTransition(async () => {
-        try {
-          setErro(null);
-
-          await Backend.agendamentos.excluir(id);
-          await carregarAgendamentos();
-
-          if (agendamentoSelecionado?.id === id) {
-            setAgendamentoSelecionado(null);
+            setErro(mensagem);
+            reject(error);
           }
-
-          resolve();
-        } catch (error) {
-          const mensagem =
-            error instanceof Error
-              ? error.message
-              : "Erro ao excluir agendamento.";
-
-          setErro(mensagem);
-          reject(error);
-        }
+        });
       });
-    });
-  }
+    },
+    [carregarAgendamentos, carregarAoIniciar]
+  );
+
+  const excluirAgendamento = useCallback(
+    async (id: string) => {
+      return new Promise<void>((resolve, reject) => {
+        startTransition(async () => {
+          try {
+            setErro(null);
+
+            await Backend.agendamentos.excluir(id);
+            await carregarAgendamentos();
+
+            setAgendamentoSelecionado((atual) =>
+              atual?.id === id ? null : atual
+            );
+
+            resolve();
+          } catch (error) {
+            const mensagem =
+              error instanceof Error
+                ? error.message
+                : "Erro ao excluir agendamento.";
+
+            setErro(mensagem);
+            reject(error);
+          }
+        });
+      });
+    },
+    [carregarAgendamentos]
+  );
 
   useEffect(() => {
     if (carregarAoIniciar) {
       carregarAgendamentos();
     }
-  }, [carregarAoIniciar, contexto]);
+  }, [carregarAoIniciar, carregarAgendamentos]);
 
   return {
     agendamentos,
