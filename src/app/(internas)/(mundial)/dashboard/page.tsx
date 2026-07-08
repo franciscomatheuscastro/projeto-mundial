@@ -109,7 +109,7 @@ export default async function DashboardPage({
       <header className="bg-white px-4 py-6 shadow-sm sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
-            MundialSafe
+            Dashboard
           </p>
 
           <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">

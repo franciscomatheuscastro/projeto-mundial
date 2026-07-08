@@ -13,7 +13,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   if (session?.user) {
     if ((session.user as any).perfil === "CLIENTE") {
-      redirect("/cliente");
+      redirect("/painel-controle");
     }
 
     redirect("/dashboard");
@@ -44,12 +44,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-800 via-blue-600 to-cyan-400 px-4 py-10">
-      <section className="grid w-full max-w-5xl overflow-hidden rounded-[36px] bg-white/10 shadow-2xl backdrop-blur md:grid-cols-2">
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-800 via-blue-600 to-cyan-400 px-4 py-8">
+      <section className="grid w-full max-w-5xl overflow-hidden rounded-[28px] bg-white/10 shadow-2xl backdrop-blur md:grid-cols-2 md:rounded-[36px]">
         <div className="relative hidden min-h-[620px] flex-col items-center justify-center bg-gradient-to-b from-blue-800 to-cyan-500 p-10 text-white md:flex">
           <div className="absolute top-28 text-center">
             <p className="text-sm tracking-[0.3em]">MUNDIAL</p>
-            <h2 className="text-3xl font-bold">Psicossocial</h2>
+            <h2 className="text-3xl font-bold">Connect</h2>
           </div>
 
           <div className="text-center">
@@ -65,24 +65,22 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <div className="absolute bottom-24 right-28 h-28 w-28 rounded-full bg-cyan-400/70 blur-sm" />
         </div>
 
-        <div className="rounded-[32px] bg-white p-8 md:p-14">
-          <div className="mb-8">
+        <div className="rounded-[28px] bg-white p-6 sm:p-8 md:rounded-[32px] md:p-14">
+          <div className="mb-8 text-center md:text-left">
             <p className="text-sm font-bold uppercase tracking-[0.25em] text-blue-600">
               Acesso restrito
             </p>
 
-            <h1 className="mt-4 text-3xl font-black text-slate-900">
+            <h1 className="mt-4 text-3xl font-black text-slate-900 sm:text-4xl md:text-3xl">
               Entrar no sistema
             </h1>
 
-            <p className="mt-2 text-slate-500">
-              Acesse a plataforma Mundial Psicossocial com suas credenciais.
+            <p className="mt-2 text-sm leading-6 text-slate-500 sm:text-base">
+              Acesse a plataforma Mundial Connect com suas credenciais.
             </p>
           </div>
 
-          <div className="mb-6 inline-flex rounded-xl bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-700">
-            🛡️ Ambiente seguro · acesso autorizado
-          </div>
+         
 
           {temErro && (
             <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-700">
@@ -100,6 +98,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 type="email"
                 required
                 placeholder="seu@email.com"
+                autoComplete="email"
                 className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white"
               />
             </div>
@@ -113,6 +112,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 type="password"
                 required
                 placeholder="********"
+                autoComplete="current-password"
                 className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white"
               />
             </div>
@@ -122,11 +122,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </button>
           </form>
 
-          <div className="mt-6 flex justify-center gap-4 text-sm font-semibold text-slate-400">
-            <span>LGPD</span>
-            <span>Seguro</span>
-            <span>Privado</span>
-          </div>
+    
 
           <p className="mt-10 text-center text-sm text-slate-400">
             Acesso exclusivo para usuários autorizados pela Mundial.

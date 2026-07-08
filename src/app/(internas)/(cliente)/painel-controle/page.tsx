@@ -66,7 +66,7 @@ export default async function ClienteDashboardPage() {
       <header className="bg-white px-4 py-6 shadow-sm sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
-            Painel do Cliente
+            Dashboard
           </p>
 
           <h1 className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">
@@ -81,20 +81,7 @@ export default async function ClienteDashboardPage() {
       </header>
 
       <section className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="rounded-3xl bg-gradient-to-br from-blue-800 via-blue-700 to-cyan-600 p-6 text-white shadow-sm sm:p-8">
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-100">
-            Visão consolidada
-          </p>
-
-          <h2 className="mt-3 text-2xl font-black sm:text-3xl">
-            Gestão de clima e segurança organizacional
-          </h2>
-
-          <p className="mt-2 max-w-3xl text-sm text-blue-50 sm:text-base">
-            Acompanhe os indicadores estratégicos da sua empresa em tempo real,
-            com foco em ação, governança e melhoria contínua.
-          </p>
-        </div>
+        
 
         <Bloco titulo="Pesquisa de clima">
           <Card titulo="Pesquisas" valor={pesquisas} />

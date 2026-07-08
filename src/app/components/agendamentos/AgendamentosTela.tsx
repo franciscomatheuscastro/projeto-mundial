@@ -37,11 +37,11 @@ export default function AgendamentosTela({ contexto = "mundial" }: Props) {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-              MundialSafe
+              Agendamentos
             </p>
 
             <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
-              Agendamentos
+              Gestão de Agendamentos
             </h1>
 
             <p className="mt-1 max-w-3xl text-sm text-slate-500">

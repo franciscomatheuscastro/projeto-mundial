@@ -32,7 +32,7 @@ export default function DenunciasTela({ contexto = "mundial" }: Props) {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-              MundialSafe
+              Canal de Denúncias
             </p>
 
             <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">

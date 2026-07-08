@@ -168,11 +168,11 @@ export default function ClientesTela({ modo, clienteId }: ClientesTelaProps) {
           <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
-                Gestão
+                Clientes
               </p>
 
               <h1 className="mt-1 text-2xl font-black text-slate-900">
-                Clientes
+                Gestão de Clientes
               </h1>
 
               <p className="mt-1 text-sm text-slate-500">
