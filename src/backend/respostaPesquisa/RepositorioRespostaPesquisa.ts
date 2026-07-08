@@ -28,6 +28,54 @@ function normalizarPerguntas(perguntas: unknown): PerguntaRespostaPesquisa[] {
 
 export default class RepositorioRespostaPesquisa {
   static async obterPorToken(token: string) {
+    const convite = await prisma.convitePesquisa.findUnique({
+      where: { token },
+      include: {
+        pesquisa: {
+          include: {
+            cliente: {
+              select: {
+                id: true,
+                nome: true,
+                empresa: true,
+              },
+            },
+            modelo: {
+              select: {
+                id: true,
+                titulo: true,
+                descricao: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (convite) {
+      const pesquisa = convite.pesquisa;
+
+      return {
+        id: pesquisa.id,
+        titulo: pesquisa.titulo,
+        descricao: pesquisa.descricao,
+        token: pesquisa.token,
+        status: pesquisa.status,
+        perguntas: normalizarPerguntas(pesquisa.perguntas),
+        cliente: pesquisa.cliente,
+        modelo: pesquisa.modelo,
+        convite: {
+          id: convite.id,
+          token: convite.token,
+          respondido: convite.respondido,
+          nome: convite.nome,
+          email: convite.email,
+          setor: convite.setor,
+          cargo: convite.cargo,
+        },
+      };
+    }
+
     const pesquisa = await prisma.pesquisaCliente.findUnique({
       where: { token },
       include: {
@@ -59,10 +107,92 @@ export default class RepositorioRespostaPesquisa {
       perguntas: normalizarPerguntas(pesquisa.perguntas),
       cliente: pesquisa.cliente,
       modelo: pesquisa.modelo,
+      convite: null,
     };
   }
 
   static async salvar(resposta: NovaRespostaPesquisa) {
+    const conviteToken = resposta.conviteToken || resposta.token;
+
+    const convite = await prisma.convitePesquisa.findUnique({
+      where: { token: conviteToken },
+      include: {
+        pesquisa: true,
+      },
+    });
+
+    if (convite) {
+      return this.salvarPorConvite(resposta, convite);
+    }
+
+    return this.salvarPorTokenPublico(resposta);
+  }
+
+  private static async salvarPorConvite(
+    resposta: NovaRespostaPesquisa,
+    convite: any
+  ) {
+    const pesquisa = convite.pesquisa;
+
+    if (!pesquisa) {
+      throw new Error("Pesquisa não encontrada.");
+    }
+
+    if (pesquisa.id !== resposta.pesquisaId) {
+      throw new Error("Token inválido para esta pesquisa.");
+    }
+
+    if (pesquisa.status !== "ABERTA") {
+      throw new Error("Esta pesquisa não está mais recebendo respostas.");
+    }
+
+    if (convite.respondido) {
+      throw new Error("Esta pesquisa já foi respondida por este link.");
+    }
+
+    const perguntas = normalizarPerguntas(pesquisa.perguntas);
+    const respostasTratadas = this.validarRespostas(perguntas, resposta);
+
+    return prisma.$transaction(async (tx) => {
+      const conviteAtual = await tx.convitePesquisa.findUnique({
+        where: { id: convite.id },
+      });
+
+      if (!conviteAtual) {
+        throw new Error("Convite não encontrado.");
+      }
+
+      if (conviteAtual.respondido) {
+        throw new Error("Esta pesquisa já foi respondida por este link.");
+      }
+
+      const respostaCriada = await tx.respostaPesquisa.create({
+        data: {
+          pesquisaId: pesquisa.id,
+          conviteId: convite.id,
+
+          nome: resposta.nome?.trim() || null,
+          email: resposta.email?.trim() || null,
+          setor: resposta.setor?.trim() || null,
+          cargo: resposta.cargo?.trim() || null,
+
+          respostas: respostasTratadas as unknown as Prisma.InputJsonValue,
+        },
+      });
+
+      await tx.convitePesquisa.update({
+        where: { id: convite.id },
+        data: {
+          respondido: true,
+          respondidoEm: new Date(),
+        },
+      });
+
+      return respostaCriada;
+    });
+  }
+
+  private static async salvarPorTokenPublico(resposta: NovaRespostaPesquisa) {
     const pesquisa = await prisma.pesquisaCliente.findUnique({
       where: { id: resposta.pesquisaId },
     });
@@ -80,7 +210,24 @@ export default class RepositorioRespostaPesquisa {
     }
 
     const perguntas = normalizarPerguntas(pesquisa.perguntas);
+    const respostasTratadas = this.validarRespostas(perguntas, resposta);
 
+    return prisma.respostaPesquisa.create({
+      data: {
+        pesquisaId: resposta.pesquisaId,
+        nome: resposta.nome?.trim() || null,
+        email: resposta.email?.trim() || null,
+        setor: resposta.setor?.trim() || null,
+        cargo: resposta.cargo?.trim() || null,
+        respostas: respostasTratadas as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  private static validarRespostas(
+    perguntas: PerguntaRespostaPesquisa[],
+    resposta: NovaRespostaPesquisa
+  ) {
     const respostasTratadas = resposta.respostas
       .map((item) => ({
         id: item.id || randomUUID(),
@@ -99,15 +246,6 @@ export default class RepositorioRespostaPesquisa {
       }
     }
 
-    return prisma.respostaPesquisa.create({
-      data: {
-        pesquisaId: resposta.pesquisaId,
-        nome: resposta.nome?.trim() || null,
-        email: resposta.email?.trim() || null,
-        setor: resposta.setor?.trim() || null,
-        cargo: resposta.cargo?.trim() || null,
-        respostas: respostasTratadas as unknown as Prisma.InputJsonValue,
-      },
-    });
+    return respostasTratadas;
   }
 }

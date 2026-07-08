@@ -14,7 +14,8 @@ export default function CriticidadeDenunciaTela() {
   async function salvar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
 
     await salvarRegra({
       termo: String(formData.get("termo") || ""),
@@ -23,7 +24,7 @@ export default function CriticidadeDenunciaTela() {
       ativo: true,
     });
 
-    event.currentTarget.reset();
+    form.reset();
     setGravidade("ALTA");
   }
 

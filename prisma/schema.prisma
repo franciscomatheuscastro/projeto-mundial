@@ -120,6 +120,8 @@ model PesquisaCliente {
   respostas    RespostaPesquisa[]
 
   planosAcao   PlanoAcao[]
+
+  convites ConvitePesquisa[]
 }
 
 
@@ -137,6 +139,9 @@ model RespostaPesquisa {
   criadoEm     DateTime @default(now())
 
   pesquisa     PesquisaCliente @relation(fields: [pesquisaId], references: [id], onDelete: Cascade)
+
+  convite      ConvitePesquisa? @relation(fields: [conviteId], references: [id], onDelete: SetNull)
+  conviteId    String?  @unique
 }
 
 model PlanoAcao {
@@ -180,6 +185,26 @@ model Agendamento {
   atualizadoEm DateTime          @updatedAt
 
   planoAcao    PlanoAcao?        @relation(fields: [planoAcaoId], references: [id], onDelete: SetNull)
+}
+
+model ConvitePesquisa {
+  id           String   @id @default(cuid())
+  pesquisaId   String
+
+  token        String   @unique
+  nome         String?
+  email        String?
+  setor        String?
+  cargo        String?
+
+  respondido   Boolean  @default(false)
+  respondidoEm DateTime?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  pesquisa     PesquisaCliente   @relation(fields: [pesquisaId], references: [id], onDelete: Cascade)
+  resposta     RespostaPesquisa?
 }
 
 

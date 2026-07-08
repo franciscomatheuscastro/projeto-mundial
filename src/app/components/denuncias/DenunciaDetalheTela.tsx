@@ -107,7 +107,7 @@ export default function DenunciaDetalheTela({
       <header className="border-b bg-white px-4 py-5 sm:px-6 lg:px-8">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-            MundialSafe
+            Canal de Denúncias
           </p>
 
           <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">

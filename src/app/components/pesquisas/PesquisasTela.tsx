@@ -33,6 +33,16 @@ const CORES_GRAFICO = [
   "#db2777",
 ];
 
+function montarLink(token?: string | null) {
+  if (!token) return "";
+
+  if (typeof window === "undefined") {
+    return `/pesquisa/${token}`;
+  }
+
+  return `${window.location.origin}/pesquisa/${token}`;
+}
+
 export default function PesquisasTela({
   modo,
   pesquisaId,
@@ -54,6 +64,7 @@ export default function PesquisasTela({
     salvarPesquisa,
     excluirPesquisa,
     alterarStatus,
+    gerarConvites,
   } = usePesquisasCliente(true, contexto);
 
   const [titulo, setTitulo] = useState("");
@@ -64,20 +75,31 @@ export default function PesquisasTela({
   const usuarioMundial = contexto === "mundial";
   const baseHref = usuarioMundial ? "/pesquisas" : "/minhas-pesquisas";
 
+  const [quantidadeConvites, setQuantidadeConvites] = useState(30);
+
   useEffect(() => {
-    if (modo === "nova" && usuarioMundial) carregarDadosFormulario();
-    if (modo === "detalhe" && pesquisaId) carregarPesquisaPorId(pesquisaId);
-    if (modo === "relatorio" && pesquisaId) carregarRelatorio(pesquisaId);
-  }, [modo, pesquisaId, contexto]);
-
-  const linkPublico = useMemo(() => {
-    if (!pesquisaSelecionada?.token) return "";
-
-    if (typeof window === "undefined") {
-      return `/pesquisa/${pesquisaSelecionada.token}`;
+    if (modo === "nova" && usuarioMundial) {
+      carregarDadosFormulario();
     }
 
-    return `${window.location.origin}/pesquisa/${pesquisaSelecionada.token}`;
+    if (modo === "detalhe" && pesquisaId) {
+      carregarPesquisaPorId(pesquisaId);
+    }
+
+    if (modo === "relatorio" && pesquisaId) {
+      carregarRelatorio(pesquisaId);
+    }
+  }, [
+    modo,
+    pesquisaId,
+    usuarioMundial,
+    carregarDadosFormulario,
+    carregarPesquisaPorId,
+    carregarRelatorio,
+  ]);
+
+  const linkPublico = useMemo(() => {
+    return montarLink(pesquisaSelecionada?.token);
   }, [pesquisaSelecionada?.token]);
 
   async function enviarPesquisa(event: FormEvent<HTMLFormElement>) {
@@ -85,7 +107,7 @@ export default function PesquisasTela({
 
     const resultado = await salvarPesquisa({
       titulo,
-      descricao,
+      descricao: descricao || null,
       clienteId,
       modeloId,
       status: StatusPesquisaCliente.ABERTA,
@@ -173,7 +195,7 @@ export default function PesquisasTela({
             <table className="w-full min-w-[820px] border-collapse">
               <thead className="bg-slate-50">
                 <tr>
-                  <Th>Pesquisa</Th>
+                  <Th>Pesquisa de Clima</Th>
                   {usuarioMundial && <Th>Cliente</Th>}
                   <Th>Modelo</Th>
                   <Th>Respostas</Th>
@@ -285,7 +307,7 @@ export default function PesquisasTela({
               </h1>
 
               <p className="mt-1 text-sm text-slate-500">
-                Vincule um cliente a um modelo e gere um link público.
+                Vincule um cliente a um modelo e gere uma pesquisa.
               </p>
             </div>
 
@@ -357,6 +379,7 @@ export default function PesquisasTela({
               </Link>
 
               <button
+                type="submit"
                 disabled={processando}
                 className="min-h-12 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -370,13 +393,19 @@ export default function PesquisasTela({
   }
 
   if (modo === "detalhe") {
+    const convites = pesquisaSelecionada?.convites || [];
+    const totalConvites = pesquisaSelecionada?.totalConvites || convites.length;
+    const totalConvitesRespondidos =
+      pesquisaSelecionada?.totalConvitesRespondidos ||
+      convites.filter((convite) => convite.respondido).length;
+
     return (
       <main className="min-h-screen bg-slate-100">
         <header className="bg-white px-4 py-5 shadow-sm sm:px-6 lg:px-8">
           <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
-                Pesquisa
+                Pesquisa de Clima
               </p>
 
               <h1 className="mt-1 text-2xl font-black text-slate-900">
@@ -400,7 +429,9 @@ export default function PesquisasTela({
         </header>
 
         <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[420px_1fr] lg:px-8">
-          <AlertaErro mensagem={erro} />
+          <div className="lg:col-span-2">
+            <AlertaErro mensagem={erro} />
+          </div>
 
           {!pesquisaSelecionada || carregando ? (
             <div className="rounded-3xl bg-white p-10 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-200 lg:col-span-2">
@@ -456,10 +487,17 @@ export default function PesquisasTela({
                     titulo="Perguntas"
                     valor={String(pesquisaSelecionada.perguntas.length)}
                   />
-                  <Info
-                    titulo="Cliente"
-                    valor={pesquisaSelecionada.cliente.nome}
-                  />
+                  <Info titulo="Cliente" valor={pesquisaSelecionada.cliente.nome} />
+
+                  {usuarioMundial && (
+                    <>
+                      <Info titulo="Convites" valor={String(totalConvites)} />
+                      <Info
+                        titulo="Respondidos"
+                        valor={String(totalConvitesRespondidos)}
+                      />
+                    </>
+                  )}
                 </div>
 
                 {usuarioMundial && (
@@ -480,45 +518,168 @@ export default function PesquisasTela({
                 )}
               </aside>
 
-              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-                <h2 className="mb-4 text-lg font-black text-slate-900">
-                  Perguntas vinculadas
-                </h2>
+              <div className="space-y-6">
+                {usuarioMundial && (
+                  <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+                    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h2 className="text-lg font-black text-slate-900">
+                          Links individuais
+                        </h2>
 
-                <div className="space-y-3">
-                  {pesquisaSelecionada.perguntas.map((pergunta) => (
-                    <div
-                      key={pergunta.id}
-                      className="rounded-2xl border border-slate-200 p-4"
-                    >
-                      <div className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">
-                        Pergunta {pergunta.ordem} · {pergunta.tipo}
+                        <p className="mt-1 text-sm text-slate-500">
+                          Cada link individual só pode ser respondido uma vez.
+                        </p>
                       </div>
-
-                      <div className="font-bold text-slate-900">
-                        {pergunta.titulo}
-                      </div>
-
-                      {pergunta.descricao && (
-                        <div className="mt-1 text-sm text-slate-500">
-                          {pergunta.descricao}
-                        </div>
-                      )}
-
-                      {pergunta.opcoes.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {pergunta.opcoes.map((opcao) => (
-                            <span
-                              key={opcao}
-                              className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
-                            >
-                              {opcao}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </div>
-                  ))}
+
+                    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end">
+                      <div className="flex-1">
+                        <label className="mb-2 block text-sm font-semibold text-slate-700">
+                          Quantidade de links
+                        </label>
+
+                        <input
+                          type="number"
+                          min={1}
+                          max={500}
+                          value={quantidadeConvites}
+                          onChange={(event) =>
+                            setQuantidadeConvites(Number(event.target.value))
+                          }
+                          className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={processando}
+                        onClick={() =>
+                          gerarConvites(pesquisaSelecionada.id, quantidadeConvites)
+                        }
+                        className="min-h-12 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {processando ? "Gerando..." : "Gerar links"}
+                      </button>
+                    </div>
+
+                    {convites.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
+                        Nenhum convite individual foi gerado para esta pesquisa.
+                        O link público continua funcionando, mas permite mais de
+                        uma resposta.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                        <table className="w-full min-w-[720px] border-collapse">
+                          <thead className="bg-slate-50">
+                            <tr>
+                              <Th>Participante</Th>
+                              <Th>Status</Th>
+                              <Th>Link</Th>
+                            </tr>
+                          </thead>
+
+                          <tbody>
+                            {convites.map((convite) => {
+                              const linkConvite = montarLink(convite.token);
+
+                              return (
+                                <tr
+                                  key={convite.id}
+                                  className="border-t border-slate-100"
+                                >
+                                  <td className="px-4 py-4">
+                                    <div className="text-sm font-bold text-slate-900">
+                                      {convite.nome || "Participante"}
+                                    </div>
+
+                                    <div className="text-xs text-slate-500">
+                                      {convite.email ||
+                                        convite.setor ||
+                                        "Sem identificação"}
+                                    </div>
+                                  </td>
+
+                                  <td className="px-4 py-4">
+                                    <span
+                                      className={`rounded-full px-3 py-1 text-xs font-bold ${
+                                        convite.respondido
+                                          ? "bg-green-100 text-green-700"
+                                          : "bg-yellow-100 text-yellow-700"
+                                      }`}
+                                    >
+                                      {convite.respondido
+                                        ? "Respondido"
+                                        : "Pendente"}
+                                    </span>
+                                  </td>
+
+                                  <td className="px-4 py-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className="max-w-[380px] truncate text-xs text-slate-500">
+                                        {linkConvite}
+                                      </div>
+
+                                      <a
+                                        href={linkConvite}
+                                        target="_blank"
+                                        className="text-sm font-bold text-blue-600 hover:text-blue-800"
+                                      >
+                                        Abrir
+                                      </a>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+                  <h2 className="mb-4 text-lg font-black text-slate-900">
+                    Perguntas vinculadas
+                  </h2>
+
+                  <div className="space-y-3">
+                    {pesquisaSelecionada.perguntas.map((pergunta) => (
+                      <div
+                        key={pergunta.id}
+                        className="rounded-2xl border border-slate-200 p-4"
+                      >
+                        <div className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">
+                          Pergunta {pergunta.ordem} · {pergunta.tipo}
+                        </div>
+
+                        <div className="font-bold text-slate-900">
+                          {pergunta.titulo}
+                        </div>
+
+                        {pergunta.descricao && (
+                          <div className="mt-1 text-sm text-slate-500">
+                            {pergunta.descricao}
+                          </div>
+                        )}
+
+                        {pergunta.opcoes.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {pergunta.opcoes.map((opcao, index) => (
+                              <span
+                                key={`${pergunta.id}-${opcao}-${index}`}
+                                className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
+                              >
+                                {opcao}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </>
@@ -534,7 +695,7 @@ export default function PesquisasTela({
         <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
-              Relatório
+              Pesquisa de Clima
             </p>
 
             <h1 className="mt-1 text-2xl font-black text-slate-900">
@@ -676,11 +837,7 @@ export default function PesquisasTela({
   );
 }
 
-function calcularDistribuicao(
-  respostas: {
-    valor: string;
-  }[]
-): DistribuicaoResposta[] {
+function calcularDistribuicao(respostas: { valor: string }[]): DistribuicaoResposta[] {
   const mapa = new Map<string, number>();
 
   respostas.forEach((resposta) => {
@@ -838,7 +995,7 @@ function Info({ titulo, valor }: { titulo: string; valor: string }) {
   return (
     <div className="rounded-2xl bg-slate-50 p-3">
       <p className="text-xs font-semibold text-slate-500">{titulo}</p>
-      <strong className="text-sm text-slate-900">{valor}</strong>
+      <strong className="break-words text-sm text-slate-900">{valor}</strong>
     </div>
   );
 }
@@ -848,8 +1005,8 @@ function StatusBadge({ status }: { status: string }) {
     status === "ABERTA"
       ? "bg-green-100 text-green-700"
       : status === "FECHADA"
-        ? "bg-red-100 text-red-700"
-        : "bg-slate-100 text-slate-700";
+      ? "bg-red-100 text-red-700"
+      : "bg-slate-100 text-slate-700";
 
   return (
     <span className={`rounded-full px-3 py-1 text-xs font-bold ${classes}`}>

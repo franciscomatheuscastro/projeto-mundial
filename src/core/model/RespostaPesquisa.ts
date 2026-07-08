@@ -27,6 +27,15 @@ export type PesquisaPublica = {
     titulo: string;
     descricao?: string | null;
   };
+  convite?: {
+    id: string;
+    token: string;
+    respondido: boolean;
+    nome?: string | null;
+    email?: string | null;
+    setor?: string | null;
+    cargo?: string | null;
+  } | null;
 };
 
 export type RespostaPesquisaItem = {
@@ -38,6 +47,7 @@ export type RespostaPesquisaItem = {
 export type NovaRespostaPesquisa = {
   pesquisaId: string;
   token: string;
+  conviteToken?: string | null;
   nome?: string | null;
   email?: string | null;
   setor?: string | null;

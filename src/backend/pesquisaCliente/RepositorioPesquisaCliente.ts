@@ -260,6 +260,49 @@ export default class RepositorioPesquisaCliente {
   }
 
 
+  static async gerarConvites(pesquisaId: string, quantidade: number) {
+    if (!pesquisaId) {
+      throw new Error("Pesquisa é obrigatória.");
+    }
+
+    if (!quantidade || quantidade < 1) {
+      throw new Error("Informe uma quantidade válida de convites.");
+    }
+
+    if (quantidade > 500) {
+      throw new Error("Você pode gerar no máximo 500 convites por vez.");
+    }
+
+    const pesquisa = await prisma.pesquisaCliente.findUnique({
+      where: { id: pesquisaId },
+    });
+
+    if (!pesquisa) {
+      throw new Error("Pesquisa não encontrada.");
+    }
+
+    const convites = Array.from({ length: quantidade }).map(() => ({
+      pesquisaId,
+      token: randomUUID(),
+    }));
+
+    await prisma.convitePesquisa.createMany({
+      data: convites,
+    });
+
+    const pesquisaAtualizada = await prisma.pesquisaCliente.findUnique({
+      where: { id: pesquisaId },
+      include: this.includeCompleto(),
+    });
+
+    if (!pesquisaAtualizada) {
+      throw new Error("Pesquisa não encontrada.");
+    }
+
+    return this.formatarDetalhada(pesquisaAtualizada);
+  }
+
+
   static async obterMinhas(clienteId: string) {
     const pesquisas = await prisma.pesquisaCliente.findMany({
       where: { clienteId },
@@ -374,6 +417,11 @@ export default class RepositorioPesquisaCliente {
           criadoEm: "desc" as const,
         },
       },
+      convites: {
+        orderBy: {
+          criadoEm: "desc" as const,
+        },
+      },
     };
   }
 
@@ -410,6 +458,22 @@ export default class RepositorioPesquisaCliente {
         criadoEm: resposta.criadoEm,
       })),
       totalRespostas: pesquisa.respostas.length,
+      convites: (pesquisa.convites || []).map((convite: any) => ({
+        id: convite.id,
+        pesquisaId: convite.pesquisaId,
+        token: convite.token,
+        nome: convite.nome,
+        email: convite.email,
+        setor: convite.setor,
+        cargo: convite.cargo,
+        respondido: convite.respondido,
+        respondidoEm: convite.respondidoEm,
+        criadoEm: convite.criadoEm,
+        atualizadoEm: convite.atualizadoEm,
+      })),
+      totalConvites: pesquisa.convites?.length || 0,
+      totalConvitesRespondidos:
+        pesquisa.convites?.filter((convite: any) => convite.respondido).length || 0,
     };
   }
 }

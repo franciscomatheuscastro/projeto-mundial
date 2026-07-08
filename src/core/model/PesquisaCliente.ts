@@ -82,6 +82,10 @@ export type PesquisaClienteDetalhada = {
   };
   respostas: RespostaPesquisaCliente[];
   totalRespostas: number;
+
+  convites?: ConvitePesquisaCliente[];
+  totalConvites?: number;
+  totalConvitesRespondidos?: number;
 };
 
 export type DadosFormularioPesquisaCliente = {
@@ -118,4 +122,20 @@ export type PesquisaClienteRelatorio = PesquisaClienteDetalhada & {
     respostas: RespostaPesquisaItem[];
   }[];
   mediaGeral: number;
+};
+
+
+
+export type ConvitePesquisaCliente = {
+  id: string;
+  pesquisaId: string;
+  token: string;
+  nome?: string | null;
+  email?: string | null;
+  setor?: string | null;
+  cargo?: string | null;
+  respondido: boolean;
+  respondidoEm?: Date | null;
+  criadoEm: Date;
+  atualizadoEm: Date;
 };

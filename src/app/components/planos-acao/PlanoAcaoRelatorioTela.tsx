@@ -145,7 +145,7 @@ export default function PlanoAcaoRelatorioTela({
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm font-semibold text-blue-600">
-                MundialSafe
+                Mundial Connect
               </p>
               <h1 className="text-2xl font-bold text-slate-900">
                 Relatório do Plano de Ação
@@ -322,7 +322,7 @@ export default function PlanoAcaoRelatorioTela({
 
           <footer className="pt-4 text-center text-xs text-slate-400">
             Relatório gerado em {new Date().toLocaleDateString("pt-BR")} ·
-            MundialSafe
+            Mundial Connect
           </footer>
         </section>
       </main>
@@ -353,7 +353,7 @@ function Capa({ plano }: { plano: any }) {
         </div>
 
         <div className="rounded-2xl bg-white/10 p-5 text-right backdrop-blur">
-          <p className="text-2xl font-bold">MundialSafe</p>
+          <p className="text-2xl font-bold">Mundial Connect</p>
           <p className="mt-2 max-w-xs text-sm text-blue-100">
             Transformando diagnósticos em ações de impacto.
           </p>

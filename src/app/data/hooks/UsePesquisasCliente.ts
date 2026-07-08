@@ -81,6 +81,41 @@ export function usePesquisasCliente(
     [contexto]
   );
 
+  const gerarConvites = useCallback(
+    async (pesquisaId: string, quantidade: number) => {
+      return new Promise<PesquisaClienteDetalhada>((resolve, reject) => {
+        startTransition(async () => {
+          try {
+            setErro(null);
+
+            const resultado =
+              await Backend.pesquisasCliente.gerarConvites(
+                pesquisaId,
+                quantidade
+              );
+
+            setPesquisaSelecionada(resultado);
+
+            if (carregarAoIniciar) {
+              await carregarPesquisas();
+            }
+
+            resolve(resultado);
+          } catch (error) {
+            const mensagem =
+              error instanceof Error
+                ? error.message
+                : "Erro ao gerar convites.";
+
+            setErro(mensagem);
+            reject(error);
+          }
+        });
+      });
+    },
+    [carregarPesquisas, carregarAoIniciar]
+  );
+
   const carregarRelatorio = useCallback(
     async (id: string) => {
       try {
@@ -248,5 +283,6 @@ export function usePesquisasCliente(
     carregarDadosFormulario,
     salvarPesquisa,
     alterarStatus,
+    gerarConvites,
   };
 }

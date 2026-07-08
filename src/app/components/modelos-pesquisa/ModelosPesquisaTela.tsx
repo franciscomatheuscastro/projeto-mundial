@@ -282,7 +282,7 @@ export default function ModelosPesquisaTela({ modo, modeloId }: Props) {
         <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
-              Construtor
+              Pesquisa de Clima
             </p>
 
             <h1 className="mt-1 text-2xl font-black text-slate-900">

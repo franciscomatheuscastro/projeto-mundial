@@ -28,7 +28,7 @@ export default function PlanoAcaoDetalheTela({
       <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-            MundialSafe
+            Pesquisa de Clima
           </p>
 
           <h1 className="mt-2 text-xl font-bold text-slate-900">

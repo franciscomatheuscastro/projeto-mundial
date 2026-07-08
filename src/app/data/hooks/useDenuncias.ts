@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import Backend from "@/src/backend";
 import {
   CriarDenunciaPublica,
@@ -24,7 +24,7 @@ export function useDenuncias(
   const [carregando, setCarregando] = useState(carregarInicial);
   const [processando, startTransition] = useTransition();
 
-  async function carregarDenuncias() {
+  const carregarDenuncias = useCallback(async () => {
     try {
       setCarregando(true);
       setErro(null);
@@ -42,191 +42,217 @@ export function useDenuncias(
     } finally {
       setCarregando(false);
     }
-  }
+  }, [contexto]);
 
-  async function carregarDenunciaPorId(id: string) {
-    try {
-      setCarregando(true);
-      setErro(null);
+  const carregarDenunciaPorId = useCallback(
+    async (id: string) => {
+      try {
+        setCarregando(true);
+        setErro(null);
 
-      const denuncia =
-        contexto === "cliente"
-          ? await Backend.denuncias.obterMinhaPorId(id)
-          : await Backend.denuncias.obterPorId(id);
+        const denuncia =
+          contexto === "cliente"
+            ? await Backend.denuncias.obterMinhaPorId(id)
+            : await Backend.denuncias.obterPorId(id);
 
-      setDenunciaSelecionada(denuncia);
-      return denuncia;
-    } catch (error) {
-      const mensagem =
-        error instanceof Error ? error.message : "Erro ao carregar denúncia.";
+        setDenunciaSelecionada(denuncia);
+        return denuncia;
+      } catch (error) {
+        const mensagem =
+          error instanceof Error ? error.message : "Erro ao carregar denúncia.";
 
-      setErro(mensagem);
-      throw error;
-    } finally {
-      setCarregando(false);
-    }
-  }
+        setErro(mensagem);
+        setDenunciaSelecionada(null);
+        throw error;
+      } finally {
+        setCarregando(false);
+      }
+    },
+    [contexto]
+  );
 
-  async function criarDenunciaPublica(denuncia: CriarDenunciaPublica) {
-    return new Promise<{ protocolo: string }>((resolve, reject) => {
-      startTransition(async () => {
-        try {
-          setErro(null);
+  const criarDenunciaPublica = useCallback(
+    async (denuncia: CriarDenunciaPublica) => {
+      return new Promise<{ protocolo: string }>((resolve, reject) => {
+        startTransition(async () => {
+          try {
+            setErro(null);
 
-          const resultado = await Backend.denuncias.criarPublica(denuncia);
+            const resultado = await Backend.denuncias.criarPublica(denuncia);
 
-          resolve(resultado);
-        } catch (error) {
-          const mensagem =
-            error instanceof Error ? error.message : "Erro ao criar denúncia.";
+            resolve(resultado);
+          } catch (error) {
+            const mensagem =
+              error instanceof Error ? error.message : "Erro ao criar denúncia.";
 
-          setErro(mensagem);
-          reject(error);
-        }
+            setErro(mensagem);
+            reject(error);
+          }
+        });
       });
-    });
-  }
+    },
+    []
+  );
 
+  const criarDenunciaManual = useCallback(
+    async (denuncia: Denuncia) => {
+      return new Promise<DenunciaDetalhada>((resolve, reject) => {
+        startTransition(async () => {
+          try {
+            setErro(null);
 
-  async function criarDenunciaManual(denuncia: Denuncia) {
-    return new Promise<DenunciaDetalhada>((resolve, reject) => {
-      startTransition(async () => {
-        try {
-          setErro(null);
+            const resultado = await Backend.denuncias.criarManual(denuncia);
 
-          const resultado =
-            await Backend.denuncias.criarManual(denuncia);
+            if (carregarInicial) {
+              await carregarDenuncias();
+            }
 
-          resolve(resultado);
-        } catch (error) {
-          setErro(
-            error instanceof Error
-              ? error.message
-              : "Erro ao criar denúncia."
-          );
+            setDenunciaSelecionada(resultado);
+            resolve(resultado);
+          } catch (error) {
+            const mensagem =
+              error instanceof Error ? error.message : "Erro ao criar denúncia.";
 
-          reject(error);
-        }
+            setErro(mensagem);
+            reject(error);
+          }
+        });
       });
-    });
-  }
+    },
+    [carregarDenuncias, carregarInicial]
+  );
 
-  async function criarMinhaDenunciaManual(
-    denuncia: Denuncia
-  ) {
-    return new Promise<DenunciaDetalhada>((resolve, reject) => {
-      startTransition(async () => {
-        try {
-          setErro(null);
+  const criarMinhaDenunciaManual = useCallback(
+    async (denuncia: Denuncia) => {
+      return new Promise<DenunciaDetalhada>((resolve, reject) => {
+        startTransition(async () => {
+          try {
+            setErro(null);
 
-          const resultado =
-            await Backend.denuncias.criarMinhaManual(
-              denuncia
-            );
+            const resultado =
+              await Backend.denuncias.criarMinhaManual(denuncia);
 
-          resolve(resultado);
-        } catch (error) {
-          setErro(
-            error instanceof Error
-              ? error.message
-              : "Erro ao criar denúncia."
-          );
+            if (carregarInicial) {
+              await carregarDenuncias();
+            }
 
-          reject(error);
-        }
+            setDenunciaSelecionada(resultado);
+            resolve(resultado);
+          } catch (error) {
+            const mensagem =
+              error instanceof Error ? error.message : "Erro ao criar denúncia.";
+
+            setErro(mensagem);
+            reject(error);
+          }
+        });
       });
-    });
-  }
+    },
+    [carregarDenuncias, carregarInicial]
+  );
 
-  async function consultarDenunciaPublica(
-    clienteId: string,
-    protocolo: string
-  ) {
-    try {
-      setCarregando(true);
-      setErro(null);
+  const consultarDenunciaPublica = useCallback(
+    async (clienteId: string, protocolo: string) => {
+      try {
+        setCarregando(true);
+        setErro(null);
 
-      const resultado = await Backend.denuncias.consultarPublica({
-        clienteId,
-        protocolo,
+        const resultado = await Backend.denuncias.consultarPublica({
+          clienteId,
+          protocolo,
+        });
+
+        return resultado;
+      } catch (error) {
+        const mensagem =
+          error instanceof Error ? error.message : "Erro ao consultar denúncia.";
+
+        setErro(mensagem);
+        throw error;
+      } finally {
+        setCarregando(false);
+      }
+    },
+    []
+  );
+
+  const salvarDenuncia = useCallback(
+    async (denuncia: DenunciaDetalhada) => {
+      return new Promise<void>((resolve, reject) => {
+        startTransition(async () => {
+          try {
+            setErro(null);
+
+            const resultado =
+              contexto === "cliente"
+                ? await Backend.denuncias.salvarMinha(denuncia)
+                : await Backend.denuncias.salvar(denuncia);
+
+            setDenunciaSelecionada(resultado);
+
+            if (carregarInicial) {
+              await carregarDenuncias();
+            }
+
+            resolve();
+          } catch (error) {
+            const mensagem =
+              error instanceof Error ? error.message : "Erro ao salvar denúncia.";
+
+            setErro(mensagem);
+            reject(error);
+          }
+        });
       });
+    },
+    [contexto, carregarDenuncias, carregarInicial]
+  );
 
-      return resultado;
-    } catch (error) {
-      const mensagem =
-        error instanceof Error ? error.message : "Erro ao consultar denúncia.";
+  const adicionarTratativa = useCallback(
+    async (denunciaId: string, tratativa: NovaTratativa) => {
+      return new Promise<void>((resolve, reject) => {
+        startTransition(async () => {
+          try {
+            setErro(null);
 
-      setErro(mensagem);
-      throw error;
-    } finally {
-      setCarregando(false);
-    }
-  }
+            const resultado =
+              contexto === "cliente"
+                ? await Backend.denuncias.adicionarMinhaTratativa(
+                    denunciaId,
+                    tratativa
+                  )
+                : await Backend.denuncias.adicionarTratativa(
+                    denunciaId,
+                    tratativa
+                  );
 
-  async function salvarDenuncia(denuncia: DenunciaDetalhada) {
-    return new Promise<void>((resolve, reject) => {
-      startTransition(async () => {
-        try {
-          setErro(null);
+            setDenunciaSelecionada(resultado);
 
-          const resultado =
-            contexto === "cliente"
-              ? await Backend.denuncias.salvarMinha(denuncia)
-              : await Backend.denuncias.salvar(denuncia);
+            if (carregarInicial) {
+              await carregarDenuncias();
+            }
 
-          setDenunciaSelecionada(resultado);
-          resolve();
-        } catch (error) {
-          const mensagem =
-            error instanceof Error ? error.message : "Erro ao salvar denúncia.";
+            resolve();
+          } catch (error) {
+            const mensagem =
+              error instanceof Error
+                ? error.message
+                : "Erro ao adicionar tratativa.";
 
-          setErro(mensagem);
-          reject(error);
-        }
+            setErro(mensagem);
+            reject(error);
+          }
+        });
       });
-    });
-  }
-
-  async function adicionarTratativa(
-    denunciaId: string,
-    tratativa: NovaTratativa
-  ) {
-    return new Promise<void>((resolve, reject) => {
-      startTransition(async () => {
-        try {
-          setErro(null);
-
-          const resultado =
-            contexto === "cliente"
-              ? await Backend.denuncias.adicionarMinhaTratativa(
-                  denunciaId,
-                  tratativa
-                )
-              : await Backend.denuncias.adicionarTratativa(
-                  denunciaId,
-                  tratativa
-                );
-
-          setDenunciaSelecionada(resultado);
-          resolve();
-        } catch (error) {
-          const mensagem =
-            error instanceof Error
-              ? error.message
-              : "Erro ao adicionar tratativa.";
-
-          setErro(mensagem);
-          reject(error);
-        }
-      });
-    });
-  }
+    },
+    [contexto, carregarDenuncias, carregarInicial]
+  );
 
   useEffect(() => {
     if (carregarInicial) {
       carregarDenuncias();
     }
-  }, [carregarInicial, contexto]);
+  }, [carregarInicial, carregarDenuncias]);
 
   return {
     denuncias,
