@@ -140,7 +140,7 @@ export default function AgendamentosTela({ contexto = "mundial" }: Props) {
               Agendamentos
             </p>
 
-            <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
+            <h1 className="mt-1 text-2xl font-black text-slate-900">
               Calendário de Agendamentos
             </h1>
 

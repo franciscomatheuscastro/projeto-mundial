@@ -35,7 +35,7 @@ export default function DenunciasTela({ contexto = "mundial" }: Props) {
               Canal de Denúncias
             </p>
 
-            <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
+            <h1 className="mt-1 text-2xl font-black text-slate-900">
               Denúncias
             </h1>
 
