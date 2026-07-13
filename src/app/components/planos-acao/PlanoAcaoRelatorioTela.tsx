@@ -352,12 +352,7 @@ function Capa({ plano }: { plano: any }) {
           </div>
         </div>
 
-        <div className="rounded-2xl bg-white/10 p-5 text-right backdrop-blur">
-          <p className="text-2xl font-bold">Mundial Connect</p>
-          <p className="mt-2 max-w-xs text-sm text-blue-100">
-            Transformando diagnósticos em ações de impacto.
-          </p>
-        </div>
+        
       </div>
     </section>
   );
