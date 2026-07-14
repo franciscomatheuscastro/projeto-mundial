@@ -73,6 +73,9 @@ export default function PesquisasTela({
   const [modeloId, setModeloId] = useState("");
 
   const usuarioMundial = contexto === "mundial";
+  const podeGerenciarLinks =
+    contexto === "mundial" || contexto === "cliente";
+
   const baseHref = usuarioMundial ? "/pesquisas" : "/minhas-pesquisas";
 
   const [quantidadeConvites, setQuantidadeConvites] = useState(30);
@@ -138,6 +141,21 @@ export default function PesquisasTela({
         : StatusPesquisaCliente.ABERTA;
 
     await alterarStatus(pesquisaSelecionada.id, novoStatus);
+    router.refresh();
+  }
+
+  async function gerarNovosConvites() {
+    if (!pesquisaSelecionada) return;
+
+    const quantidade = Math.min(
+      500,
+      Math.max(1, Number(quantidadeConvites) || 1)
+    );
+
+    setQuantidadeConvites(quantidade);
+
+    await gerarConvites(pesquisaSelecionada.id, quantidade);
+    await carregarPesquisaPorId(pesquisaSelecionada.id);
     router.refresh();
   }
 
@@ -444,23 +462,26 @@ export default function PesquisasTela({
                   Painel da pesquisa
                 </h2>
 
-                {usuarioMundial && (
+                {podeGerenciarLinks && (
                   <>
                     <p className="mb-2 text-sm font-semibold text-slate-700">
                       Link público
                     </p>
 
                     <div className="mb-4 break-all rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                      {linkPublico}
+                      {linkPublico || "Link público não disponível."}
                     </div>
 
-                    <a
-                      href={linkPublico}
-                      target="_blank"
-                      className="mb-3 block w-full rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-blue-700"
-                    >
-                      Abrir pesquisa pública
-                    </a>
+                    {linkPublico && (
+                      <a
+                        href={linkPublico}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mb-3 block w-full rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-blue-700"
+                      >
+                        Abrir pesquisa pública
+                      </a>
+                    )}
                   </>
                 )}
 
@@ -473,8 +494,8 @@ export default function PesquisasTela({
 
                 <div className="mb-6 text-sm text-slate-500">
                   {usuarioMundial
-                    ? "Gerencie o status da pesquisa e acompanhe o relatório."
-                    : "Acompanhe os indicadores consolidados da pesquisa."}
+                    ? "Gerencie o status, os links e acompanhe o relatório."
+                    : "Gerencie os links de participação e acompanhe os indicadores consolidados."}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -489,7 +510,7 @@ export default function PesquisasTela({
                   />
                   <Info titulo="Cliente" valor={pesquisaSelecionada.cliente.nome} />
 
-                  {usuarioMundial && (
+                  {podeGerenciarLinks && (
                     <>
                       <Info titulo="Convites" valor={String(totalConvites)} />
                       <Info
@@ -519,7 +540,7 @@ export default function PesquisasTela({
               </aside>
 
               <div className="space-y-6">
-                {usuarioMundial && (
+                {podeGerenciarLinks && (
                   <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
                     <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
@@ -545,7 +566,12 @@ export default function PesquisasTela({
                           max={500}
                           value={quantidadeConvites}
                           onChange={(event) =>
-                            setQuantidadeConvites(Number(event.target.value))
+                            setQuantidadeConvites(
+                              Math.min(
+                                500,
+                                Math.max(1, Number(event.target.value) || 1)
+                              )
+                            )
                           }
                           className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                         />
@@ -554,9 +580,7 @@ export default function PesquisasTela({
                       <button
                         type="button"
                         disabled={processando}
-                        onClick={() =>
-                          gerarConvites(pesquisaSelecionada.id, quantidadeConvites)
-                        }
+                        onClick={gerarNovosConvites}
                         className="min-h-12 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {processando ? "Gerando..." : "Gerar links"}
@@ -624,6 +648,7 @@ export default function PesquisasTela({
                                       <a
                                         href={linkConvite}
                                         target="_blank"
+                                        rel="noopener noreferrer"
                                         className="text-sm font-bold text-blue-600 hover:text-blue-800"
                                       >
                                         Abrir
