@@ -4,9 +4,11 @@ import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { GravidadeDenuncia } from "@prisma/client";
 import { useRouter } from "next/navigation";
+
 import { useDenuncias } from "@/src/app/data/hooks/useDenuncias";
 import { useClientes } from "@/src/app/data/hooks/useClientes";
 import { Denuncia } from "@/src/core/model/Denuncia";
+import CampoAnexos from "@/src/app/components/denuncias/CampoAnexos";
 
 type Props = {
   contexto?: "mundial" | "cliente";
@@ -17,17 +19,36 @@ export default function DenunciaFormularioTela({
 }: Props) {
   const router = useRouter();
 
-  const { processando, erro, criarDenunciaManual, criarMinhaDenunciaManual } =
-    useDenuncias(false, contexto);
+  const {
+    processando,
+    erro,
+    criarDenunciaManual,
+    criarMinhaDenunciaManual,
+    enviarAnexos,
+  } = useDenuncias(false, contexto);
 
   const { clientes, carregarClientes } = useClientes();
 
   const [anonima, setAnonima] = useState(false);
   const [clienteId, setClienteId] = useState("");
-  const [gravidade, setGravidade] = useState<GravidadeDenuncia>("MEDIA");
+  const [gravidade, setGravidade] =
+    useState<GravidadeDenuncia>("MEDIA");
+
+  const [arquivos, setArquivos] = useState<File[]>([]);
+  const [enviandoArquivos, setEnviandoArquivos] =
+    useState(false);
+
+  const [erroLocal, setErroLocal] = useState<string | null>(
+    null
+  );
 
   const usuarioMundial = contexto === "mundial";
-  const baseHref = usuarioMundial ? "/denuncias" : "/minhas-denuncias";
+
+  const baseHref = usuarioMundial
+    ? "/denuncias"
+    : "/minhas-denuncias";
+
+  const enviando = processando || enviandoArquivos;
 
   useEffect(() => {
     if (usuarioMundial) {
@@ -36,38 +57,62 @@ export default function DenunciaFormularioTela({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuarioMundial]);
 
-  async function salvar(event: FormEvent<HTMLFormElement>) {
+  async function salvar(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
+    if (enviando) {
+      return;
+    }
+
     const form = new FormData(event.currentTarget);
+
+    setErroLocal(null);
 
     const denuncia: Denuncia = {
       clienteId: usuarioMundial ? clienteId : "",
 
-      titulo: String(form.get("titulo") || ""),
-      descricao: String(form.get("descricao") || ""),
-      categoria: String(form.get("categoria") || "") || null,
-      localOcorrido: String(form.get("local") || "") || null,
-      dataOcorrido: String(form.get("data") || "") || null,
+      titulo: String(
+        form.get("titulo") || ""
+      ).trim(),
+
+      descricao: String(
+        form.get("descricao") || ""
+      ).trim(),
+
+      categoria:
+        String(
+          form.get("categoria") || ""
+        ).trim() || null,
+
+      localOcorrido:
+        String(form.get("local") || "").trim() || null,
+
+      dataOcorrido:
+        String(form.get("data") || "").trim() || null,
 
       anonima,
 
       nomeDenunciante: anonima
         ? null
-        : String(form.get("nome") || "") || null,
+        : String(form.get("nome") || "").trim() || null,
 
       emailDenunciante: anonima
         ? null
-        : String(form.get("email") || "") || null,
+        : String(form.get("email") || "").trim() || null,
 
       telefoneDenunciante: anonima
         ? null
-        : String(form.get("telefone") || "") || null,
+        : String(
+            form.get("telefone") || ""
+          ).trim() || null,
 
       gravidade,
       status: "RECEBIDA",
       respostaPublica: null,
       tratativas: [],
+
       cliente: {
         id: "",
         nome: "",
@@ -75,13 +120,43 @@ export default function DenunciaFormularioTela({
       },
     };
 
-    if (usuarioMundial) {
-      await criarDenunciaManual(denuncia);
-    } else {
-      await criarMinhaDenunciaManual(denuncia);
-    }
+    try {
+      const resultado = usuarioMundial
+        ? await criarDenunciaManual(denuncia)
+        : await criarMinhaDenunciaManual(denuncia);
 
-    router.push(baseHref);
+      if (arquivos.length > 0) {
+        setEnviandoArquivos(true);
+
+        try {
+          await enviarAnexos(
+            {
+              id: resultado.id,
+              protocolo: resultado.protocolo,
+            },
+            arquivos
+          );
+        } catch (error) {
+          setErroLocal(
+            error instanceof Error
+              ? `A denúncia foi salva, mas houve erro ao enviar um ou mais anexos: ${error.message}`
+              : "A denúncia foi salva, mas houve erro ao enviar os anexos."
+          );
+
+          return;
+        } finally {
+          setEnviandoArquivos(false);
+        }
+      }
+
+      router.push(`${baseHref}/${resultado.id}`);
+    } catch (error) {
+      setErroLocal(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível salvar a denúncia."
+      );
+    }
   }
 
   return (
@@ -97,7 +172,8 @@ export default function DenunciaFormularioTela({
           </h1>
 
           <p className="mt-1 max-w-3xl text-sm text-slate-500">
-            Cadastro manual de denúncia para registro, análise e tratativa.
+            Cadastro manual de denúncia para registro,
+            análise e tratativa.
           </p>
         </div>
       </header>
@@ -106,9 +182,9 @@ export default function DenunciaFormularioTela({
         onSubmit={salvar}
         className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8"
       >
-        {erro && (
+        {(erro || erroLocal) && (
           <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-            {erro}
+            {erroLocal || erro}
           </div>
         )}
 
@@ -127,13 +203,21 @@ export default function DenunciaFormularioTela({
                 <select
                   value={clienteId}
                   required
-                  onChange={(e) => setClienteId(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  disabled={enviando}
+                  onChange={(event) =>
+                    setClienteId(event.target.value)
+                  }
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                 >
-                  <option value="">Selecione o cliente</option>
+                  <option value="">
+                    Selecione o cliente
+                  </option>
 
                   {clientes.map((cliente) => (
-                    <option key={cliente.id} value={cliente.id}>
+                    <option
+                      key={cliente.id}
+                      value={cliente.id}
+                    >
                       {cliente.empresa || cliente.nome}
                     </option>
                   ))}
@@ -141,10 +225,31 @@ export default function DenunciaFormularioTela({
               </div>
             )}
 
-            <Campo label="Título" name="titulo" required />
-            <Campo label="Categoria" name="categoria" />
-            <Campo label="Local do ocorrido" name="local" />
-            <Campo label="Data do ocorrido" name="data" type="date" />
+            <Campo
+              label="Título"
+              name="titulo"
+              required
+              disabled={enviando}
+            />
+
+            <Campo
+              label="Categoria"
+              name="categoria"
+              disabled={enviando}
+            />
+
+            <Campo
+              label="Local do ocorrido"
+              name="local"
+              disabled={enviando}
+            />
+
+            <Campo
+              label="Data do ocorrido"
+              name="data"
+              type="date"
+              disabled={enviando}
+            />
 
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
@@ -153,10 +258,14 @@ export default function DenunciaFormularioTela({
 
               <select
                 value={gravidade}
-                onChange={(e) =>
-                  setGravidade(e.target.value as GravidadeDenuncia)
+                disabled={enviando}
+                onChange={(event) =>
+                  setGravidade(
+                    event.target
+                      .value as GravidadeDenuncia
+                  )
                 }
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
               >
                 <option value="BAIXA">Baixa</option>
                 <option value="MEDIA">Média</option>
@@ -174,8 +283,17 @@ export default function DenunciaFormularioTela({
                 name="descricao"
                 required
                 rows={8}
+                disabled={enviando}
                 placeholder="Descreva o ocorrido com o máximo de informações relevantes."
-                className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+              />
+            </div>
+
+            <div className="lg:col-span-2">
+              <CampoAnexos
+                arquivos={arquivos}
+                onChange={setArquivos}
+                disabled={enviando}
               />
             </div>
           </div>
@@ -190,7 +308,10 @@ export default function DenunciaFormularioTela({
             <input
               type="checkbox"
               checked={anonima}
-              onChange={(e) => setAnonima(e.target.checked)}
+              disabled={enviando}
+              onChange={(event) =>
+                setAnonima(event.target.checked)
+              }
               className="mt-1"
             />
 
@@ -198,15 +319,32 @@ export default function DenunciaFormularioTela({
               <strong className="block text-slate-900">
                 Denúncia anônima
               </strong>
-              Os dados do denunciante não serão registrados neste atendimento.
+
+              Os dados do denunciante não serão
+              registrados neste atendimento.
             </span>
           </label>
 
           {!anonima && (
             <div className="mt-5 grid gap-4 lg:grid-cols-3">
-              <Campo label="Nome" name="nome" />
-              <Campo label="E-mail" name="email" type="email" />
-              <Campo label="Telefone" name="telefone" />
+              <Campo
+                label="Nome"
+                name="nome"
+                disabled={enviando}
+              />
+
+              <Campo
+                label="E-mail"
+                name="email"
+                type="email"
+                disabled={enviando}
+              />
+
+              <Campo
+                label="Telefone"
+                name="telefone"
+                disabled={enviando}
+              />
             </div>
           )}
         </section>
@@ -214,17 +352,23 @@ export default function DenunciaFormularioTela({
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
+            disabled={enviando}
             onClick={() => router.push(baseHref)}
-            className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             Cancelar
           </button>
 
           <button
-            disabled={processando}
+            type="submit"
+            disabled={enviando}
             className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
-            {processando ? "Salvando..." : "Salvar denúncia"}
+            {enviandoArquivos
+              ? "Enviando anexos..."
+              : processando
+              ? "Salvando..."
+              : "Salvar denúncia"}
           </button>
         </div>
       </form>
@@ -237,11 +381,13 @@ function Campo({
   name,
   required,
   type = "text",
+  disabled = false,
 }: {
   label: string;
   name: string;
   required?: boolean;
   type?: string;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -253,7 +399,8 @@ function Campo({
         name={name}
         type={type}
         required={required}
-        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+        disabled={disabled}
+        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
       />
     </div>
   );

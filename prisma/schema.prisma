@@ -51,6 +51,11 @@ enum StatusPesquisaCliente {
   ARQUIVADA
 }
 
+enum TipoOrigemPlanoAcao {
+  PESQUISA_CLIMA
+  DENUNCIA
+}
+
 model Usuario {
   id           String        @id @default(cuid())
   nome         String
@@ -146,7 +151,7 @@ model RespostaPesquisa {
 
 model PlanoAcao {
   id           String          @id @default(cuid())
-  pesquisaId   String
+  pesquisaId   String?
 
   titulo       String
   diagnostico  String?
@@ -161,7 +166,17 @@ model PlanoAcao {
 
   agendamentos Agendamento[]
 
-  pesquisa     PesquisaCliente @relation(fields: [pesquisaId], references: [id], onDelete: Cascade)
+  tipoOrigem TipoOrigemPlanoAcao @default(PESQUISA_CLIMA)
+
+  denunciaId String?
+
+  pesquisa PesquisaCliente? @relation(fields: [pesquisaId], references: [id], onDelete: Cascade)
+
+  denuncia Denuncia? @relation(fields: [denunciaId], references: [id], onDelete: Cascade)
+
+  @@index([tipoOrigem])
+  @@index([pesquisaId])
+  @@index([denunciaId])
 }
 
 model Agendamento {
@@ -268,6 +283,27 @@ model Denuncia {
   atualizadoEm   DateTime          @updatedAt
 
   cliente        Cliente           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  anexos         AnexoDenuncia[]
+  planosAcao  PlanoAcao[]
+
+}
+
+
+
+model AnexoDenuncia {
+  id           String   @id @default(cuid())
+  denunciaId   String
+
+  nomeOriginal String
+  chave        String   @unique
+  tipoMime     String
+  tamanho      Int
+
+  criadoEm     DateTime @default(now())
+
+  denuncia     Denuncia @relation(fields: [denunciaId], references: [id], onDelete: Cascade)
+
+  @@index([denunciaId])
 }
 
 

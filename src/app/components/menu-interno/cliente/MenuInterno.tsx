@@ -66,8 +66,12 @@ function MenuConteudo({
           <MenuLink href="/painel-controle" mobile={mobile}>
             Dashboard
           </MenuLink>
+          
           <MenuLink href="/meus-agendamentos" mobile={mobile}>
             Agendamentos
+          </MenuLink>
+          <MenuLink href="/meus-planos-acao" mobile={mobile}>
+            Planos de ação
           </MenuLink>
         </GrupoMenu>
 
@@ -75,9 +79,7 @@ function MenuConteudo({
           <MenuLink href="/minhas-pesquisas" mobile={mobile}>
             Pesquisas
           </MenuLink>
-          <MenuLink href="/meus-planos-acao" mobile={mobile}>
-            Planos de ação
-          </MenuLink>
+          
         </GrupoMenu>
 
         <GrupoMenu titulo="Canal de Denúncias" mobile={mobile}>

@@ -4,22 +4,43 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePlanosAcao } from "@/src/app/data/hooks/usePlanosAcao";
+import {
+  obterClientePlano,
+  obterOrigemPlano,
+} from "@/src/core/model/PlanoAcao";
 
 type Props = {
   contexto?: "mundial" | "cliente";
 };
 
-export default function PlanosAcaoTela({ contexto = "mundial" }: Props) {
+export default function PlanosAcaoTela({
+  contexto = "mundial",
+}: Props) {
   const router = useRouter();
 
-  const { planos, carregando, erro, excluirPlano, processando } =
-    usePlanosAcao(true, contexto);
+  const {
+    planos,
+    carregando,
+    erro,
+    excluirPlano,
+    processando,
+  } = usePlanosAcao(true, contexto);
 
-  const baseHref = contexto === "cliente" ? "/meus-planos-acao" : "/planos-acao";
-  const usuarioMundial = contexto === "mundial";
+  const baseHref =
+    contexto === "cliente"
+      ? "/meus-planos-acao"
+      : "/planos-acao";
 
-  async function excluirPlanoAtual(id: string) {
-    const confirmado = confirm("Deseja excluir este plano de ação?");
+  const usuarioMundial =
+    contexto === "mundial";
+
+  async function excluirPlanoAtual(
+    id: string
+  ) {
+    const confirmado = confirm(
+      "Deseja excluir este plano de ação?"
+    );
+
     if (!confirmado) return;
 
     await excluirPlano(id);
@@ -28,13 +49,11 @@ export default function PlanosAcaoTela({ contexto = "mundial" }: Props) {
 
   return (
     <main className="min-h-screen bg-slate-100">
-
-      
       <header className="border-b bg-white px-4 py-5 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-              Pesquisa de Clima
+              Gestão estratégica
             </p>
 
             <h1 className="mt-1 text-2xl font-black text-slate-900">
@@ -43,7 +62,7 @@ export default function PlanosAcaoTela({ contexto = "mundial" }: Props) {
 
             <p className="mt-1 max-w-3xl text-sm text-slate-500">
               {usuarioMundial
-                ? "Gestão dos planos criados a partir das pesquisas de clima."
+                ? "Gestão dos planos originados por pesquisas de clima e denúncias."
                 : "Visualize os relatórios finais dos planos de ação da sua empresa."}
             </p>
           </div>
@@ -66,30 +85,68 @@ export default function PlanosAcaoTela({ contexto = "mundial" }: Props) {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Card titulo="Planos" valor={planos.length} />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <Card
+            titulo="Planos"
+            valor={planos.length}
+          />
+
+          <Card
+            titulo="Pesquisas"
+            valor={
+              planos.filter(
+                (plano) =>
+                  plano.tipoOrigem ===
+                  "PESQUISA_CLIMA"
+              ).length
+            }
+          />
+
+          <Card
+            titulo="Denúncias"
+            valor={
+              planos.filter(
+                (plano) =>
+                  plano.tipoOrigem ===
+                  "DENUNCIA"
+              ).length
+            }
+          />
+
           <Card
             titulo="Em andamento"
-            valor={planos.filter((p) => p.status === "EM_ANDAMENTO").length}
+            valor={
+              planos.filter(
+                (plano) =>
+                  plano.status ===
+                  "EM_ANDAMENTO"
+              ).length
+            }
           />
-          <Card
-            titulo="Concluídos"
-            valor={planos.filter((p) => p.status === "CONCLUIDO").length}
-          />
+
           <Card
             titulo="Ações"
-            valor={planos.reduce((total, plano) => total + plano.totalAcoes, 0)}
+            valor={planos.reduce(
+              (total, plano) =>
+                total + plano.totalAcoes,
+              0
+            )}
           />
         </div>
 
         <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="min-w-[900px] w-full border-collapse">
+            <table className="w-full min-w-[1050px] border-collapse">
               <thead className="bg-slate-50">
                 <tr>
                   <Th>Plano</Th>
-                  {usuarioMundial && <Th>Cliente</Th>}
-                  <Th>Pesquisa</Th>
+                  <Th>Tipo</Th>
+
+                  {usuarioMundial && (
+                    <Th>Cliente</Th>
+                  )}
+
+                  <Th>Origem</Th>
                   <Th>Ações</Th>
                   <Th>Status</Th>
                   <Th direita>Opções</Th>
@@ -99,79 +156,122 @@ export default function PlanosAcaoTela({ contexto = "mundial" }: Props) {
               <tbody>
                 {carregando ? (
                   <LinhaVazia
-                    colunas={usuarioMundial ? 6 : 5}
+                    colunas={
+                      usuarioMundial ? 7 : 6
+                    }
                     texto="Carregando planos de ação..."
                   />
                 ) : planos.length === 0 ? (
                   <LinhaVazia
-                    colunas={usuarioMundial ? 6 : 5}
+                    colunas={
+                      usuarioMundial ? 7 : 6
+                    }
                     texto="Nenhum plano de ação cadastrado."
                   />
                 ) : (
-                  planos.map((plano) => (
-                    <tr
-                      key={plano.id}
-                      className="border-t border-slate-100 hover:bg-slate-50/70"
-                    >
-                      <td className="px-4 py-4">
-                        <div className="max-w-xs font-semibold text-slate-900">
-                          {plano.titulo}
-                        </div>
-                      </td>
+                  planos.map((plano) => {
+                    const cliente =
+                      obterClientePlano(plano);
 
-                      {usuarioMundial && (
-                        <td className="px-4 py-4 text-sm text-slate-700">
-                          {plano.pesquisa.cliente.empresa ||
-                            plano.pesquisa.cliente.nome}
+                    const origem =
+                      obterOrigemPlano(plano);
+
+                    return (
+                      <tr
+                        key={plano.id}
+                        className="border-t border-slate-100 hover:bg-slate-50/70"
+                      >
+                        <td className="px-4 py-4">
+                          <div className="max-w-xs font-semibold text-slate-900">
+                            {plano.titulo}
+                          </div>
                         </td>
-                      )}
 
-                      <td className="px-4 py-4 text-sm text-slate-700">
-                        <div className="max-w-xs truncate">
-                          {plano.pesquisa.titulo}
-                        </div>
-                      </td>
+                        <td className="px-4 py-4">
+                          <TipoBadge
+                            tipo={
+                              plano.tipoOrigem
+                            }
+                          />
+                        </td>
 
-                      <td className="px-4 py-4 text-sm font-medium text-slate-700">
-                        {plano.totalAcoes}
-                      </td>
+                        {usuarioMundial && (
+                          <td className="px-4 py-4 text-sm text-slate-700">
+                            {cliente
+                              ? cliente.empresa ||
+                                cliente.nome
+                              : "-"}
+                          </td>
+                        )}
 
-                      <td className="px-4 py-4">
-                        <StatusBadge status={plano.status} />
-                      </td>
+                        <td className="px-4 py-4 text-sm text-slate-700">
+                          <div className="max-w-sm">
+                            <div className="truncate font-medium">
+                              {origem?.titulo ||
+                                "-"}
+                            </div>
 
-                      <td className="px-4 py-4">
-                        <div className="flex justify-end gap-3 whitespace-nowrap">
-                          {usuarioMundial && (
+                            {origem?.tipo ===
+                              "DENUNCIA" && (
+                              <div className="mt-1 text-xs text-slate-500">
+                                Protocolo:{" "}
+                                {
+                                  origem.identificador
+                                }
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-4 text-sm font-medium text-slate-700">
+                          {plano.totalAcoes}
+                        </td>
+
+                        <td className="px-4 py-4">
+                          <StatusBadge
+                            status={plano.status}
+                          />
+                        </td>
+
+                        <td className="px-4 py-4">
+                          <div className="flex justify-end gap-3 whitespace-nowrap">
+                            {usuarioMundial && (
+                              <Link
+                                href={`${baseHref}/${plano.id}`}
+                                className="text-sm font-semibold text-blue-600 hover:text-blue-800"
+                              >
+                                Editar
+                              </Link>
+                            )}
+
                             <Link
-                              href={`${baseHref}/${plano.id}`}
-                              className="text-sm font-semibold text-blue-600 hover:text-blue-800"
+                              href={`${baseHref}/${plano.id}/relatorio`}
+                              className="text-sm font-semibold text-slate-700 hover:text-slate-950"
                             >
-                              Editar
+                              Relatório
                             </Link>
-                          )}
 
-                          <Link
-                            href={`${baseHref}/${plano.id}/relatorio`}
-                            className="text-sm font-semibold text-slate-700 hover:text-slate-950"
-                          >
-                            Relatório
-                          </Link>
-
-                          {usuarioMundial && (
-                            <button
-                              type="button"
-                              disabled={processando}
-                              onClick={() => excluirPlanoAtual(plano.id)}
-                              className="text-sm font-semibold text-red-600 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              Excluir
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                            {usuarioMundial && (
+                              <button
+                                type="button"
+                                disabled={
+                                  processando
+                                }
+                                onClick={() =>
+                                  excluirPlanoAtual(
+                                    plano.id
+                                  )
+                                }
+                                className="text-sm font-semibold text-red-600 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                Excluir
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -182,10 +282,19 @@ export default function PlanosAcaoTela({ contexto = "mundial" }: Props) {
   );
 }
 
-function Card({ titulo, valor }: { titulo: string; valor: number | string }) {
+function Card({
+  titulo,
+  valor,
+}: {
+  titulo: string;
+  valor: number | string;
+}) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-sm font-medium text-slate-500">{titulo}</p>
+      <p className="text-sm font-medium text-slate-500">
+        {titulo}
+      </p>
+
       <strong className="mt-2 block text-3xl font-bold text-slate-900">
         {valor}
       </strong>
@@ -193,7 +302,34 @@ function Card({ titulo, valor }: { titulo: string; valor: number | string }) {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function TipoBadge({
+  tipo,
+}: {
+  tipo: string;
+}) {
+  const denuncia =
+    tipo === "DENUNCIA";
+
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+        denuncia
+          ? "bg-purple-100 text-purple-700"
+          : "bg-cyan-100 text-cyan-700"
+      }`}
+    >
+      {denuncia
+        ? "Denúncia"
+        : "Pesquisa de clima"}
+    </span>
+  );
+}
+
+function StatusBadge({
+  status,
+}: {
+  status: string;
+}) {
   const classe =
     status === "CONCLUIDO"
       ? "bg-green-100 text-green-700"
@@ -204,7 +340,9 @@ function StatusBadge({ status }: { status: string }) {
       : "bg-yellow-100 text-yellow-700";
 
   return (
-    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${classe}`}>
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-semibold ${classe}`}
+    >
       {formatarStatus(status)}
     </span>
   );
@@ -220,7 +358,9 @@ function Th({
   return (
     <th
       className={`px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 ${
-        direita ? "text-right" : "text-left"
+        direita
+          ? "text-right"
+          : "text-left"
       }`}
     >
       {children}
@@ -228,7 +368,13 @@ function Th({
   );
 }
 
-function LinhaVazia({ colunas, texto }: { colunas: number; texto: string }) {
+function LinhaVazia({
+  colunas,
+  texto,
+}: {
+  colunas: number;
+  texto: string;
+}) {
   return (
     <tr>
       <td
@@ -245,5 +391,7 @@ function formatarStatus(valor: string) {
   return valor
     .replaceAll("_", " ")
     .toLowerCase()
-    .replace(/\b\w/g, (letra) => letra.toUpperCase());
+    .replace(/\b\w/g, (letra) =>
+      letra.toUpperCase()
+    );
 }

@@ -69,8 +69,12 @@ function MenuConteudo({
           <MenuLink href="/clientes" mobile={mobile}>
             Clientes
           </MenuLink>
+          
           <MenuLink href="/agendamentos" mobile={mobile}>
             Agendamentos
+          </MenuLink>
+          <MenuLink href="/planos-acao" mobile={mobile}>
+            Planos de ação
           </MenuLink>
         </GrupoMenu>
 
@@ -81,9 +85,7 @@ function MenuConteudo({
           <MenuLink href="/pesquisas" mobile={mobile}>
             Pesquisas
           </MenuLink>
-          <MenuLink href="/planos-acao" mobile={mobile}>
-            Planos de ação
-          </MenuLink>
+          
         </GrupoMenu>
 
         <GrupoMenu titulo="Canal de Denúncias" mobile={mobile}>

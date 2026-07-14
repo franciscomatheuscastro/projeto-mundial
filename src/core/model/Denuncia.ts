@@ -25,6 +25,19 @@ export type ClienteDenuncia = {
   empresa: string | null;
 };
 
+export type AnexoDenunciaInput = {
+  chave: string;
+  nomeOriginal: string;
+  tipoMime: string;
+  tamanho: number;
+};
+
+export type AnexoDenuncia = AnexoDenunciaInput & {
+  id: string;
+  criadoEm: Date | string;
+  url?: string | null;
+};
+
 export type DenunciaPublica = {
   clienteId: string;
   titulo: string;
@@ -60,6 +73,7 @@ export type Denuncia = {
   gravidade: GravidadeDenuncia;
   respostaPublica?: string | null;
   tratativas: TratativaDenuncia[];
+  anexos?: AnexoDenuncia[];
 
   criadoEm?: Date | string;
   atualizadoEm?: Date | string;
@@ -76,6 +90,7 @@ export type DenunciaResumo = {
   anonima: boolean;
   status: StatusDenuncia;
   gravidade: GravidadeDenuncia;
+  quantidadeAnexos: number;
   criadoEm: Date | string;
   atualizadoEm: Date | string;
   cliente: ClienteDenuncia;
@@ -90,6 +105,7 @@ export type DenunciaDetalhada = DenunciaResumo & {
   telefoneDenunciante: string | null;
   respostaPublica: string | null;
   tratativas: TratativaDenuncia[];
+  anexos: AnexoDenuncia[];
 };
 
 export type ConsultaDenunciaPublica = {
@@ -98,4 +114,21 @@ export type ConsultaDenunciaPublica = {
   respostaPublica: string | null;
   criadoEm: Date | string;
   atualizadoEm: Date | string;
+};
+
+export type PrepararUploadDenunciaInput = {
+  denunciaId: string;
+  protocolo: string;
+  nomeArquivo: string;
+  tipoMime: string;
+  tamanho: number;
+};
+
+export type ConfirmarUploadDenunciaInput = {
+  denunciaId: string;
+  protocolo: string;
+  chave: string;
+  nomeOriginal: string;
+  tipoMime: string;
+  tamanho: number;
 };

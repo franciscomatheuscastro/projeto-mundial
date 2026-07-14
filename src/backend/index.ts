@@ -60,7 +60,8 @@ import salvarMinhaDenuncia from "./denuncia/salvarMinhaDenuncia";
 import adicionarMinhaTratativa from "./denuncia/adicionarMinhaTratativa";
 import criarDenunciaManual from "./denuncia/criarDenunciaManual";
 import criarMinhaDenunciaManual from "./denuncia/criarMinhaDenunciaManual";
-
+import prepararUploadDenuncia from "./denuncia/prepararUploadDenuncia";
+import confirmarUploadDenuncia from "./denuncia/confirmarUploadDenuncia";
 
 import obterTodosRegrasCriticidade from "./criticidadeDenuncia/obterTodos";
 import salvarRegraCriticidade from "./criticidadeDenuncia/salvar";
@@ -150,6 +151,10 @@ export default class Backend {
 
     criarManual: criarDenunciaManual,
     criarMinhaManual: criarMinhaDenunciaManual,
+
+    prepararUpload: prepararUploadDenuncia,
+    confirmarUpload: confirmarUploadDenuncia,
+
   };
 
   static readonly criticidadeDenuncia = {

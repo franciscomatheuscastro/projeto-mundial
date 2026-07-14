@@ -203,11 +203,23 @@ export default function AgendamentoFormularioTela({
               >
                 <option value="">Sem plano vinculado</option>
 
-                {planos.map((plano) => (
-                  <option key={plano.id} value={plano.id}>
-                    {plano.pesquisa.cliente.nome} - {plano.titulo}
-                  </option>
-                ))}
+                {planos.map((plano) => {
+                  const cliente =
+                    plano.pesquisa?.cliente ||
+                    plano.denuncia?.cliente;
+
+                  const origem =
+                    plano.tipoOrigem === "DENUNCIA"
+                      ? `Denúncia ${plano.denuncia?.protocolo || ""}`
+                      : "Pesquisa de clima";
+
+                  return (
+                    <option key={plano.id} value={plano.id}>
+                      {cliente?.empresa || cliente?.nome || "Cliente não identificado"} -{" "}
+                      {origem} - {plano.titulo}
+                    </option>
+                  );
+                })}
               </CampoSelect>
 
               <Campo

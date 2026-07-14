@@ -1,8 +1,16 @@
 "use client";
 
-import type { FormEvent, ReactNode } from "react";
+import type {
+  FormEvent,
+  ReactNode,
+} from "react";
+
 import { useEffect, useState } from "react";
-import { GravidadeDenuncia, StatusDenuncia } from "@prisma/client";
+import {
+  GravidadeDenuncia,
+  StatusDenuncia,
+} from "@prisma/client";
+
 import { useDenuncias } from "@/src/app/data/hooks/useDenuncias";
 
 type Props = {
@@ -14,7 +22,23 @@ function formatarTexto(valor: string) {
   return valor
     .replaceAll("_", " ")
     .toLowerCase()
-    .replace(/\b\w/g, (letra) => letra.toUpperCase());
+    .replace(/\b\w/g, (letra) =>
+      letra.toUpperCase()
+    );
+}
+
+function formatarTamanho(tamanho: number) {
+  if (tamanho < 1024) {
+    return `${tamanho} bytes`;
+  }
+
+  if (tamanho < 1024 * 1024) {
+    return `${(tamanho / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(tamanho / 1024 / 1024).toFixed(
+    2
+  )} MB`;
 }
 
 export default function DenunciaDetalheTela({
@@ -31,45 +55,116 @@ export default function DenunciaDetalheTela({
     adicionarTratativa,
   } = useDenuncias(false, contexto);
 
-  const [status, setStatus] = useState<StatusDenuncia>("RECEBIDA");
-  const [gravidade, setGravidade] = useState<GravidadeDenuncia>("MEDIA");
-  const [respostaPublica, setRespostaPublica] = useState("");
+  const [status, setStatus] =
+    useState<StatusDenuncia>("RECEBIDA");
+
+  const [gravidade, setGravidade] =
+    useState<GravidadeDenuncia>("MEDIA");
+
+  const [respostaPublica, setRespostaPublica] =
+    useState("");
+
+  const [mensagem, setMensagem] = useState<
+    string | null
+  >(null);
+
+  const [erroLocal, setErroLocal] = useState<
+    string | null
+  >(null);
 
   const usuarioMundial = contexto === "mundial";
 
   useEffect(() => {
-    carregarDenunciaPorId(id).then((denuncia) => {
-      setStatus(denuncia.status);
-      setGravidade(denuncia.gravidade);
-      setRespostaPublica(denuncia.respostaPublica || "");
-    });
+    carregarDenunciaPorId(id)
+      .then((denuncia) => {
+        setStatus(denuncia.status);
+        setGravidade(denuncia.gravidade);
+        setRespostaPublica(
+          denuncia.respostaPublica || ""
+        );
+      })
+      .catch(() => {
+        // O erro já é tratado pelo hook.
+      });
   }, [id, carregarDenunciaPorId]);
 
-  async function salvar(event: FormEvent<HTMLFormElement>) {
+  async function salvar(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
-    if (!denunciaSelecionada) return;
+    if (!denunciaSelecionada || processando) {
+      return;
+    }
 
-    await salvarDenuncia({
-      ...denunciaSelecionada,
-      status,
-      gravidade,
-      respostaPublica,
-    });
+    setMensagem(null);
+    setErroLocal(null);
+
+    try {
+      await salvarDenuncia({
+        ...denunciaSelecionada,
+        status,
+        gravidade,
+        respostaPublica,
+      });
+
+      setMensagem(
+        "Andamento da denúncia salvo com sucesso."
+      );
+    } catch (error) {
+      setErroLocal(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível salvar a denúncia."
+      );
+    }
   }
 
-  async function novaTratativa(event: FormEvent<HTMLFormElement>) {
+  async function novaTratativa(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
-    const formData = new FormData(event.currentTarget);
+    if (processando) {
+      return;
+    }
 
-    await adicionarTratativa(id, {
-      titulo: String(formData.get("titulo") || ""),
-      descricao: String(formData.get("descricao") || ""),
-      responsavel: String(formData.get("responsavel") || "") || null,
-    });
+    const formulario = event.currentTarget;
+    const formData = new FormData(formulario);
 
-    event.currentTarget.reset();
+    setMensagem(null);
+    setErroLocal(null);
+
+    try {
+      await adicionarTratativa(id, {
+        titulo: String(
+          formData.get("titulo") || ""
+        ).trim(),
+
+        descricao: String(
+          formData.get("descricao") || ""
+        ).trim(),
+
+        responsavel:
+          String(
+            formData.get("responsavel") || ""
+          ).trim() || null,
+      });
+
+      formulario.reset();
+
+      setStatus("EM_TRATATIVA");
+
+      setMensagem(
+        "Tratativa adicionada com sucesso."
+      );
+    } catch (error) {
+      setErroLocal(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível adicionar a tratativa."
+      );
+    }
   }
 
   if (carregando) {
@@ -82,7 +177,7 @@ export default function DenunciaDetalheTela({
     );
   }
 
-  if (erro) {
+  if (erro && !denunciaSelecionada) {
     return (
       <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
         <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
@@ -102,6 +197,8 @@ export default function DenunciaDetalheTela({
     );
   }
 
+  const anexos = denunciaSelecionada.anexos ?? [];
+
   return (
     <main className="min-h-screen bg-slate-100">
       <header className="border-b bg-white px-4 py-5 sm:px-6 lg:px-8">
@@ -111,17 +208,31 @@ export default function DenunciaDetalheTela({
           </p>
 
           <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
-            Denúncia {denunciaSelecionada.protocolo}
+            Denúncia{" "}
+            {denunciaSelecionada.protocolo}
           </h1>
 
           <p className="mt-1 text-sm text-slate-500">
-            {denunciaSelecionada.cliente.empresa ||
+            {denunciaSelecionada.cliente
+              .empresa ||
               denunciaSelecionada.cliente.nome}
           </p>
         </div>
       </header>
 
       <section className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+        {(erroLocal || erro) && (
+          <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {erroLocal || erro}
+          </div>
+        )}
+
+        {mensagem && (
+          <div className="rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+            {mensagem}
+          </div>
+        )}
+
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -135,29 +246,81 @@ export default function DenunciaDetalheTela({
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Badge tipo="gravidade" texto={gravidade} />
+              <Badge
+                tipo="gravidade"
+                texto={gravidade}
+              />
+
               <Badge tipo="status" texto={status} />
             </div>
           </div>
 
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Info label="Título" valor={denunciaSelecionada.titulo} />
+            <Info
+              label="Título"
+              valor={denunciaSelecionada.titulo}
+            />
+
             <Info
               label="Categoria"
-              valor={denunciaSelecionada.categoria || "-"}
+              valor={
+                denunciaSelecionada.categoria || "-"
+              }
             />
+
             <Info
               label="Anônima"
-              valor={denunciaSelecionada.anonima ? "Sim" : "Não"}
+              valor={
+                denunciaSelecionada.anonima
+                  ? "Sim"
+                  : "Não"
+              }
             />
+
             <Info
               label="Local"
-              valor={denunciaSelecionada.localOcorrido || "-"}
+              valor={
+                denunciaSelecionada.localOcorrido ||
+                "-"
+              }
+            />
+
+            <Info
+              label="Data do ocorrido"
+              valor={
+                denunciaSelecionada.dataOcorrido
+                  ? new Date(
+                      denunciaSelecionada.dataOcorrido
+                    ).toLocaleDateString("pt-BR")
+                  : "-"
+              }
+            />
+
+            <Info
+              label="Data do registro"
+              valor={new Date(
+                denunciaSelecionada.criadoEm
+              ).toLocaleString("pt-BR")}
+            />
+
+            <Info
+              label="Última atualização"
+              valor={new Date(
+                denunciaSelecionada.atualizadoEm
+              ).toLocaleString("pt-BR")}
+            />
+
+            <Info
+              label="Quantidade de anexos"
+              valor={String(anexos.length)}
             />
           </div>
 
           <div className="mt-5">
-            <p className="text-sm font-semibold text-slate-700">Descrição</p>
+            <p className="text-sm font-semibold text-slate-700">
+              Descrição
+            </p>
+
             <p className="mt-2 whitespace-pre-wrap rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
               {denunciaSelecionada.descricao}
             </p>
@@ -173,19 +336,90 @@ export default function DenunciaDetalheTela({
             <div className="mt-5 grid gap-4 md:grid-cols-3">
               <Info
                 label="Nome"
-                valor={denunciaSelecionada.nomeDenunciante || "-"}
+                valor={
+                  denunciaSelecionada.nomeDenunciante ||
+                  "-"
+                }
               />
+
               <Info
                 label="E-mail"
-                valor={denunciaSelecionada.emailDenunciante || "-"}
+                valor={
+                  denunciaSelecionada.emailDenunciante ||
+                  "-"
+                }
               />
+
               <Info
                 label="Telefone"
-                valor={denunciaSelecionada.telefoneDenunciante || "-"}
+                valor={
+                  denunciaSelecionada.telefoneDenunciante ||
+                  "-"
+                }
               />
             </div>
           </section>
         )}
+
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">
+              Anexos
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Documentos e evidências enviados junto à
+              denúncia.
+            </p>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {anexos.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                Nenhum anexo registrado.
+              </p>
+            ) : (
+              anexos.map((anexo) => (
+                <div
+                  key={anexo.id}
+                  className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-semibold text-slate-900">
+                      {anexo.nomeOriginal}
+                    </p>
+
+                    <p className="mt-1 text-xs text-slate-500">
+                      {formatarTamanho(
+                        anexo.tamanho
+                      )}{" "}
+                      •{" "}
+                      {new Date(
+                        anexo.criadoEm
+                      ).toLocaleString("pt-BR")}
+                    </p>
+                  </div>
+
+                  {anexo.url ? (
+                    <a
+                      href={anexo.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex w-full items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 sm:w-auto"
+                    >
+                      Baixar anexo
+                    </a>
+                  ) : (
+                    <span className="text-xs font-medium text-red-600">
+                      Anexo temporariamente
+                      indisponível
+                    </span>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </section>
 
         {usuarioMundial && (
           <form
@@ -200,85 +434,141 @@ export default function DenunciaDetalheTela({
               <CampoSelect
                 label="Status"
                 value={status}
-                onChange={(v) => setStatus(v as StatusDenuncia)}
+                disabled={processando}
+                onChange={(valor) =>
+                  setStatus(
+                    valor as StatusDenuncia
+                  )
+                }
               >
-                <option value="RECEBIDA">Recebida</option>
-                <option value="EM_ANALISE">Em análise</option>
-                <option value="EM_TRATATIVA">Em tratativa</option>
-                <option value="CONCLUIDA">Concluída</option>
-                <option value="ARQUIVADA">Arquivada</option>
+                <option value="RECEBIDA">
+                  Recebida
+                </option>
+
+                <option value="EM_ANALISE">
+                  Em análise
+                </option>
+
+                <option value="EM_TRATATIVA">
+                  Em tratativa
+                </option>
+
+                <option value="CONCLUIDA">
+                  Concluída
+                </option>
+
+                <option value="ARQUIVADA">
+                  Arquivada
+                </option>
               </CampoSelect>
 
               <CampoSelect
                 label="Gravidade"
                 value={gravidade}
-                onChange={(v) => setGravidade(v as GravidadeDenuncia)}
+                disabled={processando}
+                onChange={(valor) =>
+                  setGravidade(
+                    valor as GravidadeDenuncia
+                  )
+                }
               >
                 <option value="BAIXA">Baixa</option>
                 <option value="MEDIA">Média</option>
                 <option value="ALTA">Alta</option>
-                <option value="CRITICA">Crítica</option>
+                <option value="CRITICA">
+                  Crítica
+                </option>
               </CampoSelect>
 
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Resposta pública para consulta do protocolo
+                  Resposta pública para consulta do
+                  protocolo
                 </label>
 
                 <textarea
                   value={respostaPublica}
-                  onChange={(e) => setRespostaPublica(e.target.value)}
+                  disabled={processando}
+                  onChange={(event) =>
+                    setRespostaPublica(
+                      event.target.value
+                    )
+                  }
                   rows={4}
-                  className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
               </div>
             </div>
 
             <button
+              type="submit"
               disabled={processando}
               className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
-              {processando ? "Salvando..." : "Salvar andamento"}
+              {processando
+                ? "Salvando..."
+                : "Salvar andamento"}
             </button>
           </form>
         )}
 
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="text-lg font-bold text-slate-900">Tratativas</h2>
+          <h2 className="text-lg font-bold text-slate-900">
+            Tratativas
+          </h2>
 
           <div className="mt-5 space-y-3">
-            {denunciaSelecionada.tratativas.length === 0 ? (
+            {denunciaSelecionada.tratativas
+              .length === 0 ? (
               <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
                 Nenhuma tratativa registrada.
               </p>
             ) : (
-              denunciaSelecionada.tratativas.map((tratativa) => (
-                <div
-                  key={tratativa.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4"
-                >
-                  <p className="font-semibold text-slate-900">
-                    {tratativa.titulo}
-                  </p>
+              denunciaSelecionada.tratativas.map(
+                (tratativa) => (
+                  <div
+                    key={tratativa.id}
+                    className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4"
+                  >
+                    <p className="font-semibold text-slate-900">
+                      {tratativa.titulo}
+                    </p>
 
-                  <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                    {tratativa.descricao}
-                  </p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                      {tratativa.descricao}
+                    </p>
 
-                  <p className="mt-3 text-xs text-slate-400">
-                    {tratativa.responsavel || "Sem responsável"} •{" "}
-                    {new Date(tratativa.criadoEm).toLocaleString("pt-BR")}
-                  </p>
-                </div>
-              ))
+                    <p className="mt-3 text-xs text-slate-400">
+                      {tratativa.responsavel ||
+                        "Sem responsável"}{" "}
+                      •{" "}
+                      {new Date(
+                        tratativa.criadoEm
+                      ).toLocaleString("pt-BR")}
+                    </p>
+                  </div>
+                )
+              )
             )}
           </div>
 
           {usuarioMundial && (
-            <form onSubmit={novaTratativa} className="mt-6 grid gap-4">
-              <Campo name="titulo" label="Título da tratativa" required />
+            <form
+              onSubmit={novaTratativa}
+              className="mt-6 grid gap-4"
+            >
+              <Campo
+                name="titulo"
+                label="Título da tratativa"
+                required
+                disabled={processando}
+              />
 
-              <Campo name="responsavel" label="Responsável" />
+              <Campo
+                name="responsavel"
+                label="Responsável"
+                disabled={processando}
+              />
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
@@ -289,15 +579,19 @@ export default function DenunciaDetalheTela({
                   name="descricao"
                   required
                   rows={3}
-                  className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  disabled={processando}
+                  className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                 />
               </div>
 
               <button
+                type="submit"
                 disabled={processando}
                 className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-fit"
               >
-                Adicionar tratativa
+                {processando
+                  ? "Adicionando..."
+                  : "Adicionar tratativa"}
               </button>
             </form>
           )}
@@ -307,12 +601,19 @@ export default function DenunciaDetalheTela({
   );
 }
 
-function Info({ label, valor }: { label: string; valor: string }) {
+function Info({
+  label,
+  valor,
+}: {
+  label: string;
+  valor: string;
+}) {
   return (
     <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </p>
+
       <p className="mt-1 break-words text-sm font-medium text-slate-900">
         {valor}
       </p>
@@ -324,10 +625,12 @@ function Campo({
   name,
   label,
   required,
+  disabled = false,
 }: {
   name: string;
   label: string;
   required?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -338,7 +641,8 @@ function Campo({
       <input
         name={name}
         required={required}
-        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+        disabled={disabled}
+        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
       />
     </div>
   );
@@ -349,11 +653,13 @@ function CampoSelect({
   value,
   onChange,
   children,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (valor: string) => void;
   children: ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -363,8 +669,11 @@ function CampoSelect({
 
       <select
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+        disabled={disabled}
+        onChange={(event) =>
+          onChange(event.target.value)
+        }
+        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
       >
         {children}
       </select>
@@ -399,7 +708,9 @@ function Badge({
       : "bg-slate-100 text-slate-700";
 
   return (
-    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${classe}`}>
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-semibold ${classe}`}
+    >
       {formatarTexto(texto)}
     </span>
   );
