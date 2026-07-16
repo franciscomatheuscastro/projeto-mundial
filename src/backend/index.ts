@@ -67,6 +67,10 @@ import obterTodosRegrasCriticidade from "./criticidadeDenuncia/obterTodos";
 import salvarRegraCriticidade from "./criticidadeDenuncia/salvar";
 import excluirRegraCriticidade from "./criticidadeDenuncia/excluir";
 
+import obterMeusColaboradores from "./colaboradorCliente/obterMeus";
+import salvarMeuColaborador from "./colaboradorCliente/salvarMeu";
+import excluirMeuColaborador from "./colaboradorCliente/excluirMeu";
+
 export default class Backend {
   static readonly usuarios = {
     salvar: salvarUsuario,
@@ -161,6 +165,12 @@ export default class Backend {
     obterTodos: obterTodosRegrasCriticidade,
     salvar: salvarRegraCriticidade,
     excluir: excluirRegraCriticidade,
+  };
+
+  static readonly colaboradoresCliente = {
+    obterMeus: obterMeusColaboradores,
+    salvarMeu: salvarMeuColaborador,
+    excluirMeu: excluirMeuColaborador,
   };
     
 

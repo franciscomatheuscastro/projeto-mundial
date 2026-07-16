@@ -1,4 +1,5 @@
 import { auth } from "@/src/auth";
+import { PerfilUsuario } from "@prisma/client";
 import { redirect } from "next/navigation";
 
 export default async function Home() {
@@ -8,7 +9,14 @@ export default async function Home() {
     redirect("/login");
   }
 
-  if ((session.user as any).perfil === "CLIENTE") {
+  const perfil = (session.user as {
+    perfil?: PerfilUsuario;
+  }).perfil;
+
+  if (
+    perfil === PerfilUsuario.CLIENTE ||
+    perfil === PerfilUsuario.COMITE_CLIENTE
+  ) {
     redirect("/painel-controle");
   }
 

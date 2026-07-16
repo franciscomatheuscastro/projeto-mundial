@@ -1,6 +1,9 @@
 "use server";
 
+import { PerfilUsuario } from "@prisma/client";
+
 import { auth } from "@/src/auth";
+import { prisma } from "@/src/lib/prisma";
 import RepositorioDenuncia from "./RepositorioDenuncia";
 
 export default async function obterMinhasDenuncias() {
@@ -10,15 +13,50 @@ export default async function obterMinhasDenuncias() {
     throw new Error("Usuário não autenticado.");
   }
 
-  if ((session.user as any).perfil !== "CLIENTE") {
+  const usuario = session.user as {
+    id?: string;
+    perfil?: PerfilUsuario;
+    clienteId?: string | null;
+  };
+
+  const podeVisualizar =
+    usuario.perfil === PerfilUsuario.CLIENTE ||
+    usuario.perfil === PerfilUsuario.COMITE_CLIENTE;
+
+  if (!podeVisualizar) {
     throw new Error("Acesso não autorizado.");
   }
 
-  const clienteId = (session.user as any).clienteId;
-
-  if (!clienteId) {
+  if (!usuario.clienteId) {
     throw new Error("Usuário sem cliente vinculado.");
   }
 
-  return RepositorioDenuncia.obterPorCliente(clienteId);
+  if (usuario.perfil === PerfilUsuario.COMITE_CLIENTE) {
+    if (!usuario.id) {
+      throw new Error("Usuário não identificado.");
+    }
+
+    const colaborador =
+      await prisma.colaboradorCliente.findFirst({
+        where: {
+          usuarioId: usuario.id,
+          clienteId: usuario.clienteId,
+          ativo: true,
+          podeVerDenuncias: true,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (!colaborador) {
+      throw new Error(
+        "Você não possui permissão para visualizar denúncias."
+      );
+    }
+  }
+
+  return RepositorioDenuncia.obterPorCliente(
+    usuario.clienteId
+  );
 }

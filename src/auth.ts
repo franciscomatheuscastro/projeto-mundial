@@ -1,9 +1,21 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { PerfilUsuario } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+type UsuarioAutenticado = {
+  id: string;
+  perfil: PerfilUsuario;
+  clienteId: string | null;
+};
+
+export const {
+  handlers,
+  signIn,
+  signOut,
+  auth,
+} = NextAuth({
   pages: {
     signIn: "/login",
   },
@@ -15,18 +27,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        email: {},
-        senha: {},
+        email: {
+          label: "E-mail",
+          type: "email",
+        },
+        senha: {
+          label: "Senha",
+          type: "password",
+        },
       },
 
       async authorize(credentials) {
-        const email = String(credentials?.email ?? "").trim().toLowerCase();
+        const email = String(
+          credentials?.email ?? ""
+        )
+          .trim()
+          .toLowerCase();
+
         const senha = String(credentials?.senha ?? "");
 
-        if (!email || !senha) return null;
+        if (!email || !senha) {
+          return null;
+        }
 
         const usuario = await prisma.usuario.findUnique({
-          where: { email },
+          where: {
+            email,
+          },
           select: {
             id: true,
             nome: true,
@@ -35,14 +62,36 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             perfil: true,
             ativo: true,
             clienteId: true,
+            cliente: {
+              select: {
+                ativo: true,
+              },
+            },
           },
         });
 
-        if (!usuario || !usuario.ativo) return null;
+        if (!usuario || !usuario.ativo) {
+          return null;
+        }
 
-        const senhaValida = await bcrypt.compare(senha, usuario.senha);
+        if (
+          (
+            usuario.perfil === PerfilUsuario.CLIENTE ||
+            usuario.perfil === PerfilUsuario.COMITE_CLIENTE
+          ) &&
+          (!usuario.clienteId || !usuario.cliente?.ativo)
+        ) {
+          return null;
+        }
 
-        if (!senhaValida) return null;
+        const senhaValida = await bcrypt.compare(
+          senha,
+          usuario.senha
+        );
+
+        if (!senhaValida) {
+          return null;
+        }
 
         return {
           id: usuario.id,
@@ -58,9 +107,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.perfil = (user as any).perfil;
-        token.clienteId = (user as any).clienteId;
+        const usuario = user as typeof user &
+          UsuarioAutenticado;
+
+        token.id = usuario.id;
+        token.perfil = usuario.perfil;
+        token.clienteId = usuario.clienteId;
       }
 
       return token;
@@ -68,9 +120,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.id;
-        (session.user as any).perfil = token.perfil;
-        (session.user as any).clienteId = token.clienteId;
+        const usuarioSessao = session.user as typeof session.user &
+          UsuarioAutenticado;
+
+        usuarioSessao.id = String(token.id ?? "");
+        usuarioSessao.perfil =
+          token.perfil as PerfilUsuario;
+        usuarioSessao.clienteId =
+          typeof token.clienteId === "string"
+            ? token.clienteId
+            : null;
       }
 
       return session;

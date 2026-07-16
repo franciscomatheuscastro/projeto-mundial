@@ -1,4 +1,5 @@
 import { auth } from "@/src/auth";
+import { PerfilUsuario } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { MenuCliente } from "@/src/app/components/menu-interno/cliente/MenuInterno";
 
@@ -13,11 +14,20 @@ export default async function ClienteLayout({
     redirect("/login");
   }
 
-  if ((session.user as any).perfil !== "CLIENTE") {
+  const usuario = session.user as {
+    perfil?: PerfilUsuario;
+    clienteId?: string | null;
+  };
+
+  const podeAcessarPainelCliente =
+    usuario.perfil === PerfilUsuario.CLIENTE ||
+    usuario.perfil === PerfilUsuario.COMITE_CLIENTE;
+
+  if (!podeAcessarPainelCliente) {
     redirect("/dashboard");
   }
 
-  if (!(session.user as any).clienteId) {
+  if (!usuario.clienteId) {
     redirect("/login");
   }
 
@@ -25,7 +35,9 @@ export default async function ClienteLayout({
     <div className="min-h-screen bg-slate-100">
       <MenuCliente />
 
-      <div className="min-h-screen lg:pl-72">{children}</div>
+      <div className="min-h-screen lg:pl-72">
+        {children}
+      </div>
     </div>
   );
 }

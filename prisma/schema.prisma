@@ -14,6 +14,7 @@ enum PerfilUsuario {
   ASSISTENTE_SOCIAL
   RECEPCAO
   CLIENTE
+  COMITE_CLIENTE
 }
 
 enum StatusAgendamento {
@@ -69,7 +70,14 @@ model Usuario {
 
   criadoEm     DateTime      @default(now())
   atualizadoEm DateTime      @updatedAt
+
+  colaboradorCliente ColaboradorCliente?
+  @@index([clienteId])
+  @@index([perfil])
+
 }
+
+
 
 model Cliente {
   id           String   @id @default(cuid())
@@ -241,20 +249,28 @@ enum GravidadeDenuncia {
 }
 
 model ColaboradorCliente {
-  id           String   @id @default(cuid())
-  clienteId    String
+  id        String  @id @default(cuid())
+  clienteId String
+  usuarioId String? @unique
 
-  nome         String
-  email        String?
-  telefone     String?
-  setor        String?
-  cargo        String?
-  ativo        Boolean  @default(true)
+  nome     String
+  email    String?
+  telefone String?
+  setor    String?
+  cargo    String?
+  ativo    Boolean @default(true)
+
+  podeVerDenuncias    Boolean @default(true)
+  podeTratarDenuncias Boolean @default(true)
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  cliente      Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([clienteId])
+  @@index([ativo])
 }
 
 model Denuncia {

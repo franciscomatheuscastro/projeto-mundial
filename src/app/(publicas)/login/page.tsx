@@ -1,4 +1,5 @@
 import { auth, signIn } from "@/src/auth";
+import { PerfilUsuario } from "@prisma/client";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 
@@ -8,15 +9,28 @@ type LoginPageProps = {
   }>;
 };
 
-export default async function LoginPage({ searchParams }: LoginPageProps) {
+function obterRotaInicial(perfil?: PerfilUsuario | null): string {
+  if (
+    perfil === PerfilUsuario.CLIENTE ||
+    perfil === PerfilUsuario.COMITE_CLIENTE
+  ) {
+    return "/painel-controle";
+  }
+
+  return "/dashboard";
+}
+
+export default async function LoginPage({
+  searchParams,
+}: LoginPageProps) {
   const session = await auth();
 
   if (session?.user) {
-    if ((session.user as any).perfil === "CLIENTE") {
-      redirect("/painel-controle");
-    }
+    const perfil = (session.user as {
+      perfil?: PerfilUsuario;
+    }).perfil;
 
-    redirect("/dashboard");
+    redirect(obterRotaInicial(perfil));
   }
 
   const params = await searchParams;
@@ -25,8 +39,17 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   async function entrar(formData: FormData) {
     "use server";
 
-    const email = String(formData.get("email") ?? "").trim().toLowerCase();
+    const email = String(
+      formData.get("email") ?? ""
+    )
+      .trim()
+      .toLowerCase();
+
     const senha = String(formData.get("senha") ?? "");
+
+    if (!email || !senha) {
+      redirect("/login?erro=1");
+    }
 
     try {
       await signIn("credentials", {
@@ -48,12 +71,20 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <section className="grid w-full max-w-5xl overflow-hidden rounded-[28px] bg-white/10 shadow-2xl backdrop-blur md:grid-cols-2 md:rounded-[36px]">
         <div className="relative hidden min-h-[620px] flex-col items-center justify-center bg-gradient-to-b from-blue-800 to-cyan-500 p-10 text-white md:flex">
           <div className="absolute top-28 text-center">
-            <p className="text-sm tracking-[0.3em]">MUNDIAL</p>
-            <h2 className="text-3xl font-bold">Connect</h2>
+            <p className="text-sm tracking-[0.3em]">
+              MUNDIAL
+            </p>
+
+            <h2 className="text-3xl font-bold">
+              Connect
+            </h2>
           </div>
 
           <div className="text-center">
-            <h1 className="text-6xl font-black tracking-tight">Mundial</h1>
+            <h1 className="text-6xl font-black tracking-tight">
+              Mundial
+            </h1>
+
             <p className="mt-8 text-2xl font-semibold leading-relaxed text-blue-100">
               Gestão psicossocial <br />
               com segurança, controle <br />
@@ -62,6 +93,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </div>
 
           <div className="absolute bottom-24 h-36 w-36 rounded-[32px] border border-white/20 bg-white/10 blur-[1px]" />
+
           <div className="absolute bottom-24 right-28 h-28 w-28 rounded-full bg-cyan-400/70 blur-sm" />
         </div>
 
@@ -76,24 +108,29 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </h1>
 
             <p className="mt-2 text-sm leading-6 text-slate-500 sm:text-base">
-              Acesse a plataforma Mundial Connect com suas credenciais.
+              Acesse a plataforma Mundial Connect com suas
+              credenciais.
             </p>
           </div>
 
-         
-
           {temErro && (
             <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-700">
-              E-mail ou senha inválidos. Verifique os dados e tente novamente.
+              E-mail ou senha inválidos. Verifique os dados e
+              tente novamente.
             </div>
           )}
 
           <form action={entrar} className="space-y-5">
             <div>
-              <label className="mb-2 block text-sm font-bold uppercase text-slate-600">
+              <label
+                htmlFor="email"
+                className="mb-2 block text-sm font-bold uppercase text-slate-600"
+              >
                 E-mail
               </label>
+
               <input
+                id="email"
                 name="email"
                 type="email"
                 required
@@ -104,10 +141,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-bold uppercase text-slate-600">
+              <label
+                htmlFor="senha"
+                className="mb-2 block text-sm font-bold uppercase text-slate-600"
+              >
                 Senha
               </label>
+
               <input
+                id="senha"
                 name="senha"
                 type="password"
                 required
@@ -117,15 +159,17 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               />
             </div>
 
-            <button className="h-14 w-full rounded-2xl bg-blue-600 font-bold text-white shadow-lg shadow-blue-500/30 transition hover:bg-blue-700">
+            <button
+              type="submit"
+              className="h-14 w-full rounded-2xl bg-blue-600 font-bold text-white shadow-lg shadow-blue-500/30 transition hover:bg-blue-700"
+            >
               Entrar na plataforma →
             </button>
           </form>
 
-    
-
           <p className="mt-10 text-center text-sm text-slate-400">
-            Acesso exclusivo para usuários autorizados pela Mundial.
+            Acesso exclusivo para usuários autorizados pela
+            Mundial.
           </p>
         </div>
       </section>

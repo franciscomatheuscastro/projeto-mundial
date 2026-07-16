@@ -14,5 +14,12 @@ export default async function DenunciaDetalhePage({ params }: PageProps) {
 
   const { id } = await params;
 
-  return <DenunciaDetalheTela id={id} contexto="mundial" />;
+  return (
+    <DenunciaDetalheTela
+      id={id}
+      contexto="mundial"
+      podeGerenciar
+      podeTratar={false}
+    />
+  );
 }

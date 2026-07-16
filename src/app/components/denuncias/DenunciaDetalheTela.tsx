@@ -16,6 +16,8 @@ import { useDenuncias } from "@/src/app/data/hooks/useDenuncias";
 type Props = {
   id: string;
   contexto?: "mundial" | "cliente";
+  podeGerenciar?: boolean;
+  podeTratar?: boolean;
 };
 
 function formatarTexto(valor: string) {
@@ -44,6 +46,8 @@ function formatarTamanho(tamanho: number) {
 export default function DenunciaDetalheTela({
   id,
   contexto = "mundial",
+  podeGerenciar = false,
+  podeTratar = false,
 }: Props) {
   const {
     denunciaSelecionada,
@@ -145,10 +149,7 @@ export default function DenunciaDetalheTela({
           formData.get("descricao") || ""
         ).trim(),
 
-        responsavel:
-          String(
-            formData.get("responsavel") || ""
-          ).trim() || null,
+        responsavel: null,
       });
 
       formulario.reset();
@@ -421,7 +422,7 @@ export default function DenunciaDetalheTela({
           </div>
         </section>
 
-        {usuarioMundial && (
+        {podeGerenciar && (
           <form
             onSubmit={salvar}
             className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
@@ -552,7 +553,7 @@ export default function DenunciaDetalheTela({
             )}
           </div>
 
-          {usuarioMundial && (
+          {podeTratar && (
             <form
               onSubmit={novaTratativa}
               className="mt-6 grid gap-4"
@@ -561,12 +562,6 @@ export default function DenunciaDetalheTela({
                 name="titulo"
                 label="Título da tratativa"
                 required
-                disabled={processando}
-              />
-
-              <Campo
-                name="responsavel"
-                label="Responsável"
                 disabled={processando}
               />
 

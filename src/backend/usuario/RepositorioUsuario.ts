@@ -1,13 +1,24 @@
 import bcrypt from "bcryptjs";
 import { PerfilUsuario } from "@prisma/client";
 import { prisma } from "@/src/lib/prisma";
-import { Usuario, UsuarioSemSenha } from "@/src/core/model/Usuario";
+import {
+  Usuario,
+  UsuarioSemSenha,
+} from "@/src/core/model/Usuario";
 
 export default class RepositorioUsuario {
-  static async salvar(usuario: Usuario): Promise<UsuarioSemSenha> {
-    const email = usuario.email.trim().toLowerCase();
+  private static perfilVinculadoACliente(perfil: PerfilUsuario): boolean {
+    return (
+      perfil === PerfilUsuario.CLIENTE ||
+      perfil === PerfilUsuario.COMITE_CLIENTE
+    );
+  }
 
-    if (!usuario.nome?.trim()) {
+  static async salvar(usuario: Usuario): Promise<UsuarioSemSenha> {
+    const nome = usuario.nome?.trim();
+    const email = usuario.email?.trim().toLowerCase();
+
+    if (!nome) {
       throw new Error("Nome é obrigatório.");
     }
 
@@ -15,12 +26,20 @@ export default class RepositorioUsuario {
       throw new Error("E-mail é obrigatório.");
     }
 
-    if (usuario.perfil === PerfilUsuario.CLIENTE && !usuario.clienteId) {
-      throw new Error("Usuário cliente precisa estar vinculado a um cliente.");
+    if (
+      this.perfilVinculadoACliente(usuario.perfil) &&
+      !usuario.clienteId
+    ) {
+      throw new Error(
+        "Este perfil precisa estar vinculado a um cliente."
+      );
     }
 
     const usuarioExistente = await prisma.usuario.findUnique({
       where: { email },
+      select: {
+        id: true,
+      },
     });
 
     if (!usuario.id && usuarioExistente) {
@@ -37,23 +56,28 @@ export default class RepositorioUsuario {
 
     let senhaCriptografada: string | undefined;
 
-    if (usuario.senha) {
+    if (usuario.senha?.trim()) {
       senhaCriptografada = await bcrypt.hash(usuario.senha, 10);
     }
 
-    const clienteId =
-      usuario.perfil === PerfilUsuario.CLIENTE ? usuario.clienteId : null;
+    const clienteId = this.perfilVinculadoACliente(usuario.perfil)
+      ? usuario.clienteId
+      : null;
 
     if (usuario.id) {
       return prisma.usuario.update({
-        where: { id: usuario.id },
+        where: {
+          id: usuario.id,
+        },
         data: {
-          nome: usuario.nome,
+          nome,
           email,
           perfil: usuario.perfil,
           ativo: usuario.ativo ?? true,
           clienteId,
-          ...(senhaCriptografada && { senha: senhaCriptografada }),
+          ...(senhaCriptografada
+            ? { senha: senhaCriptografada }
+            : {}),
         },
         select: {
           id: true,
@@ -68,15 +92,15 @@ export default class RepositorioUsuario {
       });
     }
 
-    if (!usuario.senha) {
+    if (!senhaCriptografada) {
       throw new Error("Senha é obrigatória para novo usuário.");
     }
 
     return prisma.usuario.create({
       data: {
-        nome: usuario.nome,
+        nome,
         email,
-        senha: senhaCriptografada!,
+        senha: senhaCriptografada,
         perfil: usuario.perfil ?? PerfilUsuario.RECEPCAO,
         ativo: usuario.ativo ?? true,
         clienteId,
@@ -114,7 +138,9 @@ export default class RepositorioUsuario {
 
   static async obterPorId(id: string): Promise<UsuarioSemSenha> {
     const usuario = await prisma.usuario.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
       select: {
         id: true,
         nome: true,
@@ -136,7 +162,9 @@ export default class RepositorioUsuario {
 
   static async excluir(id: string): Promise<void> {
     await prisma.usuario.delete({
-      where: { id },
+      where: {
+        id,
+      },
     });
   }
 }
