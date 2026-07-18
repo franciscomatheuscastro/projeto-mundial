@@ -1,4 +1,14 @@
-import { GravidadeDenuncia } from "@prisma/client";
+import {
+  GravidadeDenuncia,
+  OrigemAtorDenuncia,
+  PerfilUsuario,
+  Prisma,
+  StatusDenuncia,
+  TipoAnexoDenuncia,
+  TipoEventoDenuncia,
+  VisibilidadeAnexoDenuncia,
+} from "@prisma/client";
+
 import { prisma } from "@/src/lib/prisma";
 
 import {
@@ -8,8 +18,9 @@ import {
   DenunciaDetalhada,
   DenunciaPublica,
   DenunciaResumo,
+  EditarTratativaInput,
+  NovaTratativa,
   PrepararUploadDenunciaInput,
-  TratativaDenuncia,
 } from "@/src/core/model/Denuncia";
 
 import RepositorioCriticidadeDenuncia from "../criticidadeDenuncia/RepositorioCriticidadeDenuncia";
@@ -23,9 +34,20 @@ import {
 
 const LIMITE_ANEXOS_POR_DENUNCIA = 5;
 
+export type AtorDenuncia = {
+  usuarioId?: string | null;
+  nome: string;
+  perfil?: PerfilUsuario | null;
+  origem: OrigemAtorDenuncia;
+};
+
+export type OpcoesVisualizacaoCliente = {
+  colaboradorId?: string | null;
+  podeVerTratativas?: boolean;
+};
+
 function gerarProtocolo() {
-  const data = new Date();
-  const ano = data.getFullYear();
+  const ano = new Date().getFullYear();
   const numero = Math.floor(100000 + Math.random() * 900000);
 
   return `DEN-${ano}-${numero}`;
@@ -35,7 +57,7 @@ async function gerarProtocoloUnico() {
   for (let tentativa = 0; tentativa < 10; tentativa++) {
     const protocolo = gerarProtocolo();
 
-    const denunciaExistente = await prisma.denuncia.findUnique({
+    const existente = await prisma.denuncia.findUnique({
       where: {
         protocolo,
       },
@@ -44,7 +66,7 @@ async function gerarProtocoloUnico() {
       },
     });
 
-    if (!denunciaExistente) {
+    if (!existente) {
       return protocolo;
     }
   }
@@ -74,21 +96,166 @@ function converterDataOpcional(
   return data;
 }
 
-function montarResumo(denuncia: any): DenunciaResumo {
+function formatarStatus(status: StatusDenuncia) {
+  return status
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letra) => letra.toUpperCase());
+}
+
+function classificarAnexo(tipoMime: string): {
+  tipo: TipoAnexoDenuncia;
+  visibilidade: VisibilidadeAnexoDenuncia;
+} {
+  const mime = tipoMime.toLowerCase();
+
+  if (mime.startsWith("audio/")) {
+    return {
+      tipo: "AUDIO",
+      visibilidade: "SOMENTE_MUNDIAL",
+    };
+  }
+
+  if (mime.startsWith("video/")) {
+    return {
+      tipo: "VIDEO",
+      visibilidade: "SOMENTE_MUNDIAL",
+    };
+  }
+
+  if (mime.startsWith("image/")) {
+    return {
+      tipo: "IMAGEM",
+      visibilidade: "MUNDIAL_E_COMITE",
+    };
+  }
+
+  if (
+    mime === "application/pdf" ||
+    mime.includes("word") ||
+    mime.includes("officedocument")
+  ) {
+    return {
+      tipo: "DOCUMENTO",
+      visibilidade: "MUNDIAL_E_COMITE",
+    };
+  }
+
+  return {
+    tipo: "OUTRO",
+    visibilidade: "MUNDIAL_E_COMITE",
+  };
+}
+
+async function validarCliente(clienteId: string) {
+  const cliente = await prisma.cliente.findUnique({
+    where: {
+      id: clienteId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!cliente) {
+    throw new Error("Cliente não encontrado.");
+  }
+}
+
+async function validarCategoria(
+  categoriaId: string,
+  aceitarInativa = false
+) {
+  if (!categoriaId?.trim()) {
+    throw new Error("Categoria é obrigatória.");
+  }
+
+  const categoria = await prisma.categoriaDenuncia.findFirst({
+    where: {
+      id: categoriaId,
+      ...(aceitarInativa ? {} : { ativo: true }),
+    },
+    select: {
+      id: true,
+      nome: true,
+      descricao: true,
+      ativo: true,
+      ordem: true,
+    },
+  });
+
+  if (!categoria) {
+    throw new Error("Selecione uma categoria válida.");
+  }
+
+  return categoria;
+}
+
+function validarDadosObrigatorios(dados: {
+  clienteId?: string;
+  titulo?: string;
+  descricao?: string;
+  categoriaId?: string;
+}) {
+  if (!dados.clienteId?.trim()) {
+    throw new Error("Cliente é obrigatório.");
+  }
+
+  if (!dados.titulo?.trim()) {
+    throw new Error("Título é obrigatório.");
+  }
+
+  if (!dados.descricao?.trim()) {
+    throw new Error("Descrição é obrigatória.");
+  }
+
+  if (!dados.categoriaId?.trim()) {
+    throw new Error("Categoria é obrigatória.");
+  }
+}
+
+function montarResumo(
+  denuncia: any
+): DenunciaResumo {
   const quantidadeAnexos =
     denuncia._count?.anexos ??
-    (Array.isArray(denuncia.anexos) ? denuncia.anexos.length : 0);
+    (Array.isArray(denuncia.anexos)
+      ? denuncia.anexos.length
+      : 0);
 
   return {
     id: denuncia.id,
     clienteId: denuncia.clienteId,
     protocolo: denuncia.protocolo,
     titulo: denuncia.titulo,
-    categoria: denuncia.categoria,
+
+    categoriaId:
+      denuncia.categoriaId || "",
+
+    categoria: denuncia.categoria
+      ? {
+          id: denuncia.categoria.id,
+          nome: denuncia.categoria.nome,
+          descricao:
+            denuncia.categoria.descricao,
+          ativo: denuncia.categoria.ativo,
+          ordem: denuncia.categoria.ordem,
+        }
+      : {
+          id: "",
+          nome: "Sem categoria",
+          descricao:
+            "Denúncia registrada antes da implantação das categorias.",
+          ativo: false,
+          ordem: 9999,
+        },
+
     anonima: denuncia.anonima,
     status: denuncia.status,
     gravidade: denuncia.gravidade,
+
     quantidadeAnexos,
+
     criadoEm: denuncia.criadoEm,
     atualizadoEm: denuncia.atualizadoEm,
 
@@ -110,7 +277,7 @@ async function montarAnexo(anexo: any): Promise<AnexoDenuncia> {
     );
   } catch (error) {
     console.error(
-      `Erro ao gerar URL de download do anexo ${anexo.id}:`,
+      `Erro ao gerar URL do anexo ${anexo.id}:`,
       error
     );
   }
@@ -121,6 +288,8 @@ async function montarAnexo(anexo: any): Promise<AnexoDenuncia> {
     nomeOriginal: anexo.nomeOriginal,
     tipoMime: anexo.tipoMime,
     tamanho: anexo.tamanho,
+    tipo: anexo.tipo,
+    visibilidade: anexo.visibilidade,
     criadoEm: anexo.criadoEm,
     url,
   };
@@ -129,7 +298,7 @@ async function montarAnexo(anexo: any): Promise<AnexoDenuncia> {
 async function montarDetalhada(
   denuncia: any
 ): Promise<DenunciaDetalhada> {
-  const anexos: AnexoDenuncia[] = await Promise.all(
+  const anexos = await Promise.all(
     Array.isArray(denuncia.anexos)
       ? denuncia.anexos.map(montarAnexo)
       : []
@@ -149,7 +318,39 @@ async function montarDetalhada(
     respostaPublica: denuncia.respostaPublica,
 
     tratativas: Array.isArray(denuncia.tratativas)
-      ? denuncia.tratativas
+      ? denuncia.tratativas.map((tratativa: any) => ({
+          id: tratativa.id,
+          denunciaId: tratativa.denunciaId,
+          titulo: tratativa.titulo,
+          descricao: tratativa.descricao,
+
+          responsavelId: tratativa.responsavelId,
+          responsavel: tratativa.responsavel
+            ? {
+                id: tratativa.responsavel.id,
+                nome: tratativa.responsavel.nome,
+                email: tratativa.responsavel.email,
+                cargo: tratativa.responsavel.cargo,
+                setor: tratativa.responsavel.setor,
+              }
+            : null,
+
+          criadoPorUsuarioId: tratativa.criadoPorUsuarioId,
+          criadoPorNome: tratativa.criadoPorNome,
+          criadoPorPerfil: tratativa.criadoPorPerfil,
+
+          atualizadoPorUsuarioId:
+            tratativa.atualizadoPorUsuarioId,
+          atualizadoPorNome:
+            tratativa.atualizadoPorNome,
+
+          criadoEm: tratativa.criadoEm,
+          atualizadoEm: tratativa.atualizadoEm,
+        }))
+      : [],
+
+    historico: Array.isArray(denuncia.historico)
+      ? denuncia.historico
       : [],
 
     anexos,
@@ -173,70 +374,86 @@ async function calcularGravidadeAutomatica(dados: {
   });
 }
 
-async function validarCliente(clienteId: string) {
-  const cliente = await prisma.cliente.findUnique({
-    where: {
-      id: clienteId,
+const includeDetalhadaMundial = {
+  cliente: true,
+  categoria: true,
+
+  anexos: {
+    orderBy: {
+      criadoEm: "asc" as const,
     },
+  },
+
+  tratativas: {
+    include: {
+      responsavel: true,
+    },
+    orderBy: {
+      criadoEm: "desc" as const,
+    },
+  },
+
+  historico: {
+    orderBy: {
+      criadoEm: "asc" as const,
+    },
+  },
+
+  _count: {
     select: {
-      id: true,
+      anexos: true,
     },
-  });
-
-  if (!cliente) {
-    throw new Error("Cliente não encontrado.");
-  }
-}
-
-function validarDadosObrigatorios(dados: {
-  clienteId?: string;
-  titulo?: string;
-  descricao?: string;
-}) {
-  if (!dados.clienteId?.trim()) {
-    throw new Error("Cliente é obrigatório.");
-  }
-
-  if (!dados.titulo?.trim()) {
-    throw new Error("Título é obrigatório.");
-  }
-
-  if (!dados.descricao?.trim()) {
-    throw new Error("Descrição é obrigatória.");
-  }
-}
+  },
+};
 
 export default class RepositorioDenuncia {
-  static async criarPublica(dados: DenunciaPublica): Promise<{
+  static async criarPublica(
+    dados: DenunciaPublica
+  ): Promise<{
     id: string;
     protocolo: string;
   }> {
     validarDadosObrigatorios(dados);
 
+    if (!dados.aceitouTermos) {
+      throw new Error(
+        "É necessário aceitar os Termos de Uso e o Aviso de Privacidade."
+      );
+    }
+
+    if (!dados.versaoTermosAceitos?.trim()) {
+      throw new Error(
+        "A versão dos termos aceitos não foi informada."
+      );
+    }
+
     await validarCliente(dados.clienteId);
+
+    const categoria = await validarCategoria(
+      dados.categoriaId
+    );
 
     const titulo = dados.titulo.trim();
     const descricao = dados.descricao.trim();
-    const categoria = textoOpcional(dados.categoria);
-
     const protocolo = await gerarProtocoloUnico();
 
     const gravidade = await calcularGravidadeAutomatica({
       titulo,
       descricao,
-      categoria,
+      categoria: categoria.nome,
     });
 
     const denuncia = await prisma.denuncia.create({
       data: {
         clienteId: dados.clienteId,
         protocolo,
-
         titulo,
         descricao,
-        categoria,
+        categoriaId: categoria.id,
 
-        localOcorrido: textoOpcional(dados.localOcorrido),
+        localOcorrido: textoOpcional(
+          dados.localOcorrido
+        ),
 
         dataOcorrido: converterDataOpcional(
           dados.dataOcorrido
@@ -262,7 +479,26 @@ export default class RepositorioDenuncia {
         status: "RECEBIDA",
 
         respostaPublica: null,
-        tratativas: [],
+
+        aceiteTermosEm: new Date(),
+        versaoTermosAceitos:
+          dados.versaoTermosAceitos.trim(),
+
+        historico: {
+          create: {
+            tipo: "DENUNCIA_REGISTRADA",
+            titulo: "Denúncia registrada",
+            descricao:
+              "A denúncia foi recebida e será encaminhada para análise.",
+            statusNovo: "RECEBIDA",
+            origemAtor: "PUBLICO",
+            atorNome: dados.anonima
+              ? "Denunciante anônimo"
+              : textoOpcional(dados.nomeDenunciante) ||
+                "Denunciante",
+            visivelPublicamente: true,
+          },
+        },
       },
       select: {
         id: true,
@@ -270,29 +506,33 @@ export default class RepositorioDenuncia {
       },
     });
 
-    return {
-      id: denuncia.id,
-      protocolo: denuncia.protocolo,
-    };
+    return denuncia;
   }
 
   static async criarManual(
-    dados: Denuncia
+    dados: Denuncia,
+    ator: AtorDenuncia = {
+      nome: "Mundial",
+      origem: "MUNDIAL",
+      perfil: "ADMIN",
+    }
   ): Promise<DenunciaDetalhada> {
     validarDadosObrigatorios(dados);
 
     await validarCliente(dados.clienteId);
 
+    const categoria = await validarCategoria(
+      dados.categoriaId
+    );
+
     const titulo = dados.titulo.trim();
     const descricao = dados.descricao.trim();
-    const categoria = textoOpcional(dados.categoria);
-
     const protocolo = await gerarProtocoloUnico();
 
     const gravidade = await calcularGravidadeAutomatica({
       titulo,
       descricao,
-      categoria,
+      categoria: categoria.nome,
       gravidade: dados.gravidade || null,
     });
 
@@ -300,13 +540,12 @@ export default class RepositorioDenuncia {
       data: {
         clienteId: dados.clienteId,
         protocolo,
-
         titulo,
         descricao,
-        categoria,
+        categoriaId: categoria.id,
 
         localOcorrido: textoOpcional(
-          dados.localOcorrido?.toString()
+          dados.localOcorrido
         ),
 
         dataOcorrido: converterDataOpcional(
@@ -336,23 +575,24 @@ export default class RepositorioDenuncia {
           dados.respostaPublica
         ),
 
-        tratativas: dados.tratativas || [],
-      },
-      include: {
-        cliente: true,
+        aceiteTermosEm: new Date(),
+        versaoTermosAceitos: "CADASTRO_INTERNO",
 
-        anexos: {
-          orderBy: {
-            criadoEm: "asc",
+        historico: {
+          create: {
+            tipo: "DENUNCIA_REGISTRADA",
+            titulo: "Denúncia registrada",
+            descricao:
+              "A denúncia foi registrada internamente.",
+            statusNovo: dados.status || "RECEBIDA",
+            origemAtor: ator.origem,
+            atorId: ator.usuarioId,
+            atorNome: ator.nome,
+            visivelPublicamente: true,
           },
         },
-
-        _count: {
-          select: {
-            anexos: true,
-          },
-        },
       },
+      include: includeDetalhadaMundial,
     });
 
     return montarDetalhada(denuncia);
@@ -360,12 +600,16 @@ export default class RepositorioDenuncia {
 
   static async criarManualCliente(
     clienteId: string,
-    dados: Denuncia
+    dados: Denuncia,
+    ator: AtorDenuncia
   ): Promise<DenunciaDetalhada> {
-    return this.criarManual({
-      ...dados,
-      clienteId,
-    });
+    return this.criarManual(
+      {
+        ...dados,
+        clienteId,
+      },
+      ator
+    );
   }
 
   static async consultarPublica(dados: {
@@ -391,6 +635,22 @@ export default class RepositorioDenuncia {
         respostaPublica: true,
         criadoEm: true,
         atualizadoEm: true,
+
+        historico: {
+          where: {
+            visivelPublicamente: true,
+          },
+          orderBy: {
+            criadoEm: "asc",
+          },
+          select: {
+            id: true,
+            titulo: true,
+            descricao: true,
+            statusNovo: true,
+            criadoEm: true,
+          },
+        },
       },
     });
 
@@ -402,7 +662,12 @@ export default class RepositorioDenuncia {
   }
 
   static async salvar(
-    denuncia: Denuncia
+    denuncia: Denuncia,
+    ator: AtorDenuncia = {
+      nome: "Mundial",
+      origem: "MUNDIAL",
+      perfil: "ADMIN",
+    }
   ): Promise<DenunciaDetalhada> {
     if (!denuncia.id) {
       throw new Error("Denúncia não encontrada.");
@@ -411,6 +676,9 @@ export default class RepositorioDenuncia {
     const denunciaAtual = await prisma.denuncia.findUnique({
       where: {
         id: denuncia.id,
+      },
+      include: {
+        categoria: true,
       },
     });
 
@@ -422,19 +690,29 @@ export default class RepositorioDenuncia {
       denuncia.titulo?.trim() || denunciaAtual.titulo;
 
     const descricao =
-      denuncia.descricao?.trim() || denunciaAtual.descricao;
+      denuncia.descricao?.trim() ||
+      denunciaAtual.descricao;
 
-    const categoria =
-      denuncia.categoria === undefined
-        ? denunciaAtual.categoria
-        : textoOpcional(denuncia.categoria);
+    const categoriaId =
+      denuncia.categoriaId?.trim() ||
+      denunciaAtual.categoriaId?.trim() ||
+      null;
+
+    if (!categoriaId) {
+      throw new Error(
+        "Esta denúncia ainda não possui uma categoria. Selecione uma categoria antes de salvar."
+      );
+    }
+
+    const categoria = await validarCategoria(
+      categoriaId,
+      categoriaId === denunciaAtual.categoriaId
+    );
 
     const localOcorrido =
       denuncia.localOcorrido === undefined
         ? denunciaAtual.localOcorrido
-        : textoOpcional(
-            denuncia.localOcorrido?.toString()
-          );
+        : textoOpcional(denuncia.localOcorrido);
 
     const dataOcorrido =
       denuncia.dataOcorrido === undefined
@@ -444,83 +722,123 @@ export default class RepositorioDenuncia {
     const anonima =
       denuncia.anonima ?? denunciaAtual.anonima;
 
-    const gravidade = await calcularGravidadeAutomatica({
-      titulo,
-      descricao,
-      categoria,
-      gravidade:
-        denuncia.gravidade || denunciaAtual.gravidade,
+    const status =
+      denuncia.status || denunciaAtual.status;
+
+    const gravidade =
+      denuncia.gravidade || denunciaAtual.gravidade;
+
+    const respostaPublica =
+      denuncia.respostaPublica === undefined
+        ? denunciaAtual.respostaPublica
+        : textoOpcional(denuncia.respostaPublica);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.denuncia.update({
+        where: {
+          id: denuncia.id,
+        },
+        data: {
+          titulo,
+          descricao,
+          categoriaId: categoria.id,
+          localOcorrido,
+          dataOcorrido,
+          anonima,
+
+          nomeDenunciante: anonima
+            ? null
+            : denuncia.nomeDenunciante === undefined
+              ? denunciaAtual.nomeDenunciante
+              : textoOpcional(
+                  denuncia.nomeDenunciante
+                ),
+
+          emailDenunciante: anonima
+            ? null
+            : denuncia.emailDenunciante === undefined
+              ? denunciaAtual.emailDenunciante
+              : textoOpcional(
+                  denuncia.emailDenunciante
+                )?.toLowerCase() || null,
+
+          telefoneDenunciante: anonima
+            ? null
+            : denuncia.telefoneDenunciante === undefined
+              ? denunciaAtual.telefoneDenunciante
+              : textoOpcional(
+                  denuncia.telefoneDenunciante
+                ),
+
+          status,
+          gravidade,
+          respostaPublica,
+        },
+      });
+
+      if (denunciaAtual.status !== status) {
+        await tx.historicoDenuncia.create({
+          data: {
+            denunciaId: denuncia.id!,
+            tipo: "STATUS_ALTERADO",
+            titulo: `Status alterado para ${formatarStatus(
+              status
+            )}`,
+            descricao:
+              respostaPublica ||
+              "O andamento da denúncia foi atualizado.",
+            statusAnterior: denunciaAtual.status,
+            statusNovo: status,
+            origemAtor: ator.origem,
+            atorId: ator.usuarioId,
+            atorNome: ator.nome,
+            visivelPublicamente: true,
+          },
+        });
+      }
+
+      if (denunciaAtual.gravidade !== gravidade) {
+        await tx.historicoDenuncia.create({
+          data: {
+            denunciaId: denuncia.id!,
+            tipo: "GRAVIDADE_ALTERADA",
+            titulo: "Classificação interna atualizada",
+            origemAtor: ator.origem,
+            atorId: ator.usuarioId,
+            atorNome: ator.nome,
+            visivelPublicamente: false,
+          },
+        });
+      }
+
+      if (
+        denunciaAtual.respostaPublica !==
+        respostaPublica
+      ) {
+        await tx.historicoDenuncia.create({
+          data: {
+            denunciaId: denuncia.id!,
+            tipo: "RESPOSTA_PUBLICA_ALTERADA",
+            titulo: "Nova atualização disponibilizada",
+            descricao:
+              respostaPublica ||
+              "A resposta pública foi atualizada.",
+            origemAtor: ator.origem,
+            atorId: ator.usuarioId,
+            atorNome: ator.nome,
+            visivelPublicamente: true,
+          },
+        });
+      }
     });
 
-    const resultado = await prisma.denuncia.update({
-      where: {
-        id: denuncia.id,
-      },
-      data: {
-        titulo,
-        descricao,
-        categoria,
-        localOcorrido,
-        dataOcorrido,
-        anonima,
-
-        nomeDenunciante: anonima
-          ? null
-          : denuncia.nomeDenunciante === undefined
-          ? denunciaAtual.nomeDenunciante
-          : textoOpcional(denuncia.nomeDenunciante),
-
-        emailDenunciante: anonima
-          ? null
-          : denuncia.emailDenunciante === undefined
-          ? denunciaAtual.emailDenunciante
-          : textoOpcional(
-              denuncia.emailDenunciante
-            )?.toLowerCase() || null,
-
-        telefoneDenunciante: anonima
-          ? null
-          : denuncia.telefoneDenunciante === undefined
-          ? denunciaAtual.telefoneDenunciante
-          : textoOpcional(denuncia.telefoneDenunciante),
-
-        status: denuncia.status || denunciaAtual.status,
-        gravidade,
-
-        respostaPublica:
-          denuncia.respostaPublica === undefined
-            ? denunciaAtual.respostaPublica
-            : textoOpcional(denuncia.respostaPublica),
-
-        tratativas:
-          denuncia.tratativas ?? denunciaAtual.tratativas,
-      },
-      include: {
-        cliente: true,
-
-        anexos: {
-          orderBy: {
-            criadoEm: "asc",
-          },
-        },
-
-        _count: {
-          select: {
-            anexos: true,
-          },
-        },
-      },
-    });
-
-    return montarDetalhada(resultado);
+    return this.obterPorId(denuncia.id);
   }
 
   static async adicionarTratativa(
     denunciaId: string,
-    tratativa: Omit<
-      TratativaDenuncia,
-      "id" | "criadoEm"
-    >
+    tratativa: NovaTratativa,
+    ator: AtorDenuncia
   ): Promise<DenunciaDetalhada> {
     if (!denunciaId?.trim()) {
       throw new Error("Denúncia não encontrada.");
@@ -529,6 +847,10 @@ export default class RepositorioDenuncia {
     const denuncia = await prisma.denuncia.findUnique({
       where: {
         id: denunciaId,
+      },
+      select: {
+        id: true,
+        clienteId: true,
       },
     });
 
@@ -551,52 +873,188 @@ export default class RepositorioDenuncia {
       );
     }
 
-    const tratativasAtuais = Array.isArray(
-      denuncia.tratativas
-    )
-      ? denuncia.tratativas
-      : [];
-
-    const novaTratativa: TratativaDenuncia = {
-      id: `tratativa-${crypto.randomUUID()}`,
-      titulo,
-      descricao,
-      responsavel: textoOpcional(
-        tratativa.responsavel
-      ),
-      criadoEm: new Date().toISOString(),
-    };
-
-    const resultado = await prisma.denuncia.update({
-      where: {
-        id: denunciaId,
-      },
-      data: {
-        tratativas: [
-          ...tratativasAtuais,
-          novaTratativa,
-        ],
-
-        status: "EM_TRATATIVA",
-      },
-      include: {
-        cliente: true,
-
-        anexos: {
-          orderBy: {
-            criadoEm: "asc",
+    if (tratativa.responsavelId) {
+      const responsavel =
+        await prisma.colaboradorCliente.findFirst({
+          where: {
+            id: tratativa.responsavelId,
+            clienteId: denuncia.clienteId,
+            ativo: true,
+            podeTratarDenuncias: true,
           },
-        },
-
-        _count: {
           select: {
-            anexos: true,
+            id: true,
           },
+        });
+
+      if (!responsavel) {
+        throw new Error(
+          "O responsável não pertence ao cliente ou não possui permissão para tratar denúncias."
+        );
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.tratativaDenuncia.create({
+        data: {
+          denunciaId,
+          titulo,
+          descricao,
+          responsavelId:
+            tratativa.responsavelId || null,
+
+          criadoPorUsuarioId:
+            ator.usuarioId || null,
+          criadoPorNome: ator.nome,
+          criadoPorPerfil: ator.perfil || null,
+
+          atualizadoPorUsuarioId:
+            ator.usuarioId || null,
+          atualizadoPorNome: ator.nome,
         },
-      },
+      });
+
+      await tx.denuncia.update({
+        where: {
+          id: denunciaId,
+        },
+        data: {
+          status: "EM_TRATATIVA",
+        },
+      });
+
+      await tx.historicoDenuncia.create({
+        data: {
+          denunciaId,
+          tipo: "TRATATIVA_CRIADA",
+          titulo: "Tratativa interna iniciada",
+          origemAtor: ator.origem,
+          atorId: ator.usuarioId,
+          atorNome: ator.nome,
+          visivelPublicamente: false,
+        },
+      });
+
+      await tx.historicoDenuncia.create({
+        data: {
+          denunciaId,
+          tipo: "STATUS_ALTERADO",
+          titulo: "Denúncia em tratativa",
+          descricao:
+            "A denúncia está em processo de tratativa.",
+          statusNovo: "EM_TRATATIVA",
+          origemAtor: ator.origem,
+          atorId: ator.usuarioId,
+          atorNome: ator.nome,
+          visivelPublicamente: true,
+        },
+      });
     });
 
-    return montarDetalhada(resultado);
+    return this.obterPorId(denunciaId);
+  }
+
+  static async editarTratativa(
+    dados: EditarTratativaInput,
+    ator: AtorDenuncia,
+    colaboradorId?: string | null
+  ): Promise<DenunciaDetalhada> {
+    const tratativaAtual =
+      await prisma.tratativaDenuncia.findFirst({
+        where: {
+          id: dados.id,
+          denunciaId: dados.denunciaId,
+        },
+        include: {
+          denuncia: {
+            select: {
+              clienteId: true,
+            },
+          },
+        },
+      });
+
+    if (!tratativaAtual) {
+      throw new Error("Tratativa não encontrada.");
+    }
+
+    const usuarioMundial =
+      ator.origem === "MUNDIAL";
+
+    const responsavelPodeEditar =
+      colaboradorId &&
+      tratativaAtual.responsavelId === colaboradorId;
+
+    if (!usuarioMundial && !responsavelPodeEditar) {
+      throw new Error(
+        "Você não possui permissão para editar esta tratativa."
+      );
+    }
+
+    const titulo = dados.titulo?.trim();
+    const descricao = dados.descricao?.trim();
+
+    if (!titulo || !descricao) {
+      throw new Error(
+        "Título e descrição da tratativa são obrigatórios."
+      );
+    }
+
+    if (dados.responsavelId) {
+      const responsavel =
+        await prisma.colaboradorCliente.findFirst({
+          where: {
+            id: dados.responsavelId,
+            clienteId:
+              tratativaAtual.denuncia.clienteId,
+            ativo: true,
+            podeTratarDenuncias: true,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (!responsavel) {
+        throw new Error(
+          "Responsável inválido para esta denúncia."
+        );
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.tratativaDenuncia.update({
+        where: {
+          id: dados.id,
+        },
+        data: {
+          titulo,
+          descricao,
+
+          responsavelId: usuarioMundial
+            ? dados.responsavelId || null
+            : tratativaAtual.responsavelId,
+
+          atualizadoPorUsuarioId:
+            ator.usuarioId || null,
+          atualizadoPorNome: ator.nome,
+        },
+      });
+
+      await tx.historicoDenuncia.create({
+        data: {
+          denunciaId: dados.denunciaId,
+          tipo: "TRATATIVA_EDITADA",
+          titulo: "Tratativa interna atualizada",
+          origemAtor: ator.origem,
+          atorId: ator.usuarioId,
+          atorNome: ator.nome,
+          visivelPublicamente: false,
+        },
+      });
+    });
+
+    return this.obterPorId(dados.denunciaId);
   }
 
   static async obterTodos(): Promise<
@@ -613,6 +1071,7 @@ export default class RepositorioDenuncia {
       ],
       include: {
         cliente: true,
+        categoria: true,
 
         _count: {
           select: {
@@ -646,10 +1105,176 @@ export default class RepositorioDenuncia {
       ],
       include: {
         cliente: true,
+        categoria: true,
 
         _count: {
           select: {
-            anexos: true,
+            anexos: {
+              where: {
+                visibilidade: "MUNDIAL_E_COMITE",
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return denuncias.map(montarResumo);
+  }
+
+  static async obterParaRelatorio(
+    filtro: {
+      dataInicio?: string;
+      dataFim?: string;
+      clienteId?: string;
+      colaboradorId?: string;
+    }
+  ): Promise<DenunciaResumo[]> {
+    let inicio: Date | undefined;
+    let fim: Date | undefined;
+
+    if (filtro.dataInicio) {
+      inicio = new Date(
+        `${filtro.dataInicio}T00:00:00`
+      );
+
+      if (Number.isNaN(inicio.getTime())) {
+        throw new Error(
+          "Data inicial inválida."
+        );
+      }
+    }
+
+    if (filtro.dataFim) {
+      fim = new Date(
+        `${filtro.dataFim}T23:59:59.999`
+      );
+
+      if (Number.isNaN(fim.getTime())) {
+        throw new Error(
+          "Data final inválida."
+        );
+      }
+    }
+
+    if (
+      inicio &&
+      fim &&
+      inicio > fim
+    ) {
+      throw new Error(
+        "A data inicial não pode ser posterior à data final."
+      );
+    }
+
+    const denuncias =
+      await prisma.denuncia.findMany({
+        where: {
+          ...(filtro.clienteId
+            ? {
+                clienteId:
+                  filtro.clienteId,
+              }
+            : {}),
+
+          ...(inicio || fim
+            ? {
+                criadoEm: {
+                  ...(inicio
+                    ? {
+                        gte: inicio,
+                      }
+                    : {}),
+
+                  ...(fim
+                    ? {
+                        lte: fim,
+                      }
+                    : {}),
+                },
+              }
+            : {}),
+
+          ...(filtro.colaboradorId
+            ? {
+                tratativas: {
+                  some: {
+                    responsavelId:
+                      filtro.colaboradorId,
+                  },
+                },
+              }
+            : {}),
+        },
+
+        orderBy: [
+          {
+            gravidade: "desc",
+          },
+          {
+            criadoEm: "desc",
+          },
+        ],
+
+        include: {
+          cliente: true,
+          categoria: true,
+
+          _count: {
+            select: {
+              anexos: true,
+            },
+          },
+        },
+      });
+
+    return denuncias.map(montarResumo);
+  }
+
+
+  static async obterPorClienteEColaborador(
+    clienteId: string,
+    colaboradorId: string
+  ): Promise<DenunciaResumo[]> {
+    if (!clienteId?.trim()) {
+      throw new Error("Cliente é obrigatório.");
+    }
+
+    if (!colaboradorId?.trim()) {
+      throw new Error("Colaborador é obrigatório.");
+    }
+
+    const denuncias = await prisma.denuncia.findMany({
+      where: {
+        clienteId,
+
+        tratativas: {
+          some: {
+            responsavelId: colaboradorId,
+          },
+        },
+      },
+
+      orderBy: [
+        {
+          gravidade: "desc",
+        },
+        {
+          criadoEm: "desc",
+        },
+      ],
+
+      include: {
+        cliente: true,
+        categoria: true,
+
+        _count: {
+          select: {
+            anexos: {
+              where: {
+                visibilidade: "MUNDIAL_E_COMITE",
+              },
+            },
           },
         },
       },
@@ -669,21 +1294,7 @@ export default class RepositorioDenuncia {
       where: {
         id,
       },
-      include: {
-        cliente: true,
-
-        anexos: {
-          orderBy: {
-            criadoEm: "asc",
-          },
-        },
-
-        _count: {
-          select: {
-            anexos: true,
-          },
-        },
-      },
+      include: includeDetalhadaMundial,
     });
 
     if (!denuncia) {
@@ -693,9 +1304,38 @@ export default class RepositorioDenuncia {
     return montarDetalhada(denuncia);
   }
 
+  static async obterColaboradorPorUsuario(
+    usuarioId: string,
+    clienteId: string
+  ) {
+    if (!usuarioId?.trim()) {
+      throw new Error("Usuário não informado.");
+    }
+
+    if (!clienteId?.trim()) {
+      throw new Error("Cliente não informado.");
+    }
+
+    return prisma.colaboradorCliente.findFirst({
+      where: {
+        usuarioId,
+        clienteId,
+      },
+
+      select: {
+        id: true,
+        nome: true,
+        ativo: true,
+        podeVerDenuncias: true,
+        podeTratarDenuncias: true,
+      },
+    });
+  }
+
   static async obterPorIdECliente(
     id: string,
-    clienteId: string
+    clienteId: string,
+    opcoes: OpcoesVisualizacaoCliente = {}
   ): Promise<DenunciaDetalhada> {
     if (!id?.trim()) {
       throw new Error("Denúncia não encontrada.");
@@ -705,15 +1345,68 @@ export default class RepositorioDenuncia {
       throw new Error("Cliente é obrigatório.");
     }
 
+    const colaboradorId =
+      opcoes.colaboradorId || null;
+
+    const podeVerTratativas =
+      opcoes.podeVerTratativas === true;
+
     const denuncia = await prisma.denuncia.findFirst({
       where: {
         id,
         clienteId,
+
+        ...(colaboradorId
+          ? {
+              tratativas: {
+                some: {
+                  responsavelId: colaboradorId,
+                },
+              },
+            }
+          : {}),
       },
+
       include: {
         cliente: true,
+        categoria: true,
 
         anexos: {
+          where: {
+            visibilidade:
+              "MUNDIAL_E_COMITE",
+          },
+          orderBy: {
+            criadoEm: "asc",
+          },
+        },
+
+        tratativas:
+          colaboradorId && podeVerTratativas
+            ? {
+                where: {
+                  responsavelId: colaboradorId,
+                },
+                include: {
+                  responsavel: true,
+                },
+                orderBy: {
+                  criadoEm: "desc",
+                },
+              }
+            : {
+                where: {
+                  id: "__SEM_TRATATIVAS__",
+                },
+                include: {
+                  responsavel: true,
+                },
+              },
+
+        historico: {
+          where: {
+            visivelPublicamente: true,
+          },
           orderBy: {
             criadoEm: "asc",
           },
@@ -721,14 +1414,21 @@ export default class RepositorioDenuncia {
 
         _count: {
           select: {
-            anexos: true,
+            anexos: {
+              where: {
+                visibilidade:
+                  "MUNDIAL_E_COMITE",
+              },
+            },
           },
         },
       },
     });
 
     if (!denuncia) {
-      throw new Error("Denúncia não encontrada.");
+      throw new Error(
+        "Denúncia não encontrada ou não direcionada para este colaborador."
+      );
     }
 
     return montarDetalhada(denuncia);
@@ -820,6 +1520,12 @@ export default class RepositorioDenuncia {
         id: true,
         clienteId: true,
 
+        anexos: {
+          select: {
+            tipo: true,
+          },
+        },
+
         _count: {
           select: {
             anexos: true,
@@ -830,6 +1536,21 @@ export default class RepositorioDenuncia {
 
     if (!denuncia) {
       throw new Error("Denúncia não encontrada.");
+    }
+
+    const classificacao = classificarAnexo(
+      dados.tipoMime
+    );
+
+    if (
+      classificacao.tipo === "VIDEO" &&
+      denuncia.anexos.some(
+        (anexo) => anexo.tipo === "VIDEO"
+      )
+    ) {
+      throw new Error(
+        "É permitido anexar somente um vídeo por denúncia."
+      );
     }
 
     const prefixoEsperado =
@@ -905,6 +1626,8 @@ export default class RepositorioDenuncia {
         nomeOriginal: dados.nomeOriginal,
         tipoMime: dados.tipoMime,
         tamanho: dados.tamanho,
+        tipo: classificacao.tipo,
+        visibilidade: classificacao.visibilidade,
       },
     });
 

@@ -3,14 +3,13 @@
 import { auth } from "@/src/auth";
 
 import type {
-  NovaTratativa,
+  EditarTratativaInput,
 } from "@/src/core/model/Denuncia";
 
 import RepositorioDenuncia from "./RepositorioDenuncia";
 
-export default async function adicionarMinhaTratativa(
-  denunciaId: string,
-  tratativa: NovaTratativa
+export default async function editarMinhaTratativa(
+  dados: EditarTratativaInput
 ) {
   const session = await auth();
 
@@ -23,13 +22,20 @@ export default async function adicionarMinhaTratativa(
   const usuario = session.user as any;
 
   const perfil = usuario.perfil as
+    | "ADMIN"
+    | "GESTOR"
+    | "PSICOLOGO"
+    | "ASSISTENTE_SOCIAL"
+    | "RECEPCAO"
     | "CLIENTE"
-    | "COMITE_CLIENTE"
-    | string;
+    | "COMITE_CLIENTE";
 
-  if (perfil !== "COMITE_CLIENTE") {
+  if (
+    perfil !== "COMITE_CLIENTE" &&
+    perfil !== "CLIENTE"
+  ) {
     throw new Error(
-      "Apenas integrantes do comitê podem adicionar tratativas."
+      "Acesso não autorizado."
     );
   }
 
@@ -42,25 +48,25 @@ export default async function adicionarMinhaTratativa(
     );
   }
 
-  if (!usuario.id?.trim()) {
+  if (!dados?.id?.trim()) {
     throw new Error(
-      "Usuário não identificado."
+      "Tratativa não informada."
     );
   }
 
-  if (!denunciaId?.trim()) {
+  if (!dados?.denunciaId?.trim()) {
     throw new Error(
       "Denúncia não informada."
     );
   }
 
-  if (!tratativa?.titulo?.trim()) {
+  if (!dados?.titulo?.trim()) {
     throw new Error(
       "O título da tratativa é obrigatório."
     );
   }
 
-  if (!tratativa?.descricao?.trim()) {
+  if (!dados?.descricao?.trim()) {
     throw new Error(
       "A descrição da tratativa é obrigatória."
     );
@@ -80,7 +86,7 @@ export default async function adicionarMinhaTratativa(
 
   if (!colaborador.ativo) {
     throw new Error(
-      "Seu acesso ao comitê está desativado."
+      "Seu acesso como colaborador está desativado."
     );
   }
 
@@ -90,40 +96,33 @@ export default async function adicionarMinhaTratativa(
     );
   }
 
-  /*
-   * O comitê somente pode adicionar uma tratativa
-   * quando a denúncia estiver direcionada a ele.
-   */
-  if (
-    tratativa.responsavelId &&
-    tratativa.responsavelId !==
-      colaborador.id
-  ) {
-    throw new Error(
-      "Você não pode atribuir a tratativa a outro colaborador."
-    );
-  }
-
-  return RepositorioDenuncia.adicionarTratativa(
-    denunciaId.trim(),
+  return RepositorioDenuncia.editarTratativa(
     {
-      titulo: tratativa.titulo.trim(),
-      descricao:
-        tratativa.descricao.trim(),
+      ...dados,
 
-      responsavelId: colaborador.id,
+      id: dados.id.trim(),
+      denunciaId: dados.denunciaId.trim(),
+      titulo: dados.titulo.trim(),
+      descricao: dados.descricao.trim(),
+
+      /*
+       * O colaborador não pode trocar o responsável
+       * da tratativa. O repositório preservará o
+       * responsável atual.
+       */
+      responsavelId:
+        dados.responsavelId?.trim() ||
+        null,
     },
     {
-      usuarioId: usuario.id,
-
+      usuarioId: usuario.id || null,
       nome:
         usuario.nome ||
         usuario.name ||
         colaborador.nome,
-
-      perfil: "COMITE_CLIENTE",
-
+      perfil,
       origem: "COMITE_CLIENTE",
-    }
+    },
+    colaborador.id
   );
 }

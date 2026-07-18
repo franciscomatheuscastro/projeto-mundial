@@ -9,51 +9,125 @@ import {
 
 import Backend from "@/src/backend";
 
-import {
+import type {
+  AnexoDenuncia,
+  ConsultaDenunciaPublica,
   CriarDenunciaPublica,
   Denuncia,
   DenunciaDetalhada,
   DenunciaResumo,
+  EditarTratativaInput,
   NovaTratativa,
 } from "@/src/core/model/Denuncia";
 
-type ContextoDenuncias = "mundial" | "cliente";
+type ContextoDenuncias =
+  | "mundial"
+  | "cliente";
 
-function identificarMime(arquivo: File) {
-  if (arquivo.type) {
-    return arquivo.type;
+const LIMITE_ANEXOS = 5;
+
+function identificarMime(
+  arquivo: File
+) {
+  if (arquivo.type?.trim()) {
+    return arquivo.type.trim().toLowerCase();
   }
 
   const extensao =
-    arquivo.name.split(".").pop()?.toLowerCase() || "";
+    arquivo.name
+      .split(".")
+      .pop()
+      ?.toLowerCase() || "";
 
-  const tiposPorExtensao: Record<string, string> = {
+  const tiposPorExtensao: Record<
+    string,
+    string
+  > = {
     pdf: "application/pdf",
+
     jpg: "image/jpeg",
     jpeg: "image/jpeg",
     png: "image/png",
     webp: "image/webp",
+
     doc: "application/msword",
     docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    m4a: "audio/mp4",
+    ogg: "audio/ogg",
+    oga: "audio/ogg",
+    aac: "audio/aac",
+
+    mp4: "video/mp4",
+    webm: "video/webm",
+    mov: "video/quicktime",
   };
 
   return tiposPorExtensao[extensao] || "";
+}
+
+function validarArquivos(
+  arquivos: File[]
+) {
+  if (arquivos.length > LIMITE_ANEXOS) {
+    throw new Error(
+      `É permitido enviar no máximo ${LIMITE_ANEXOS} anexos.`
+    );
+  }
+
+  const identificadores =
+    new Set<string>();
+
+  for (const arquivo of arquivos) {
+    const identificador = [
+      arquivo.name,
+      arquivo.size,
+      arquivo.lastModified,
+    ].join("-");
+
+    if (
+      identificadores.has(identificador)
+    ) {
+      throw new Error(
+        `O arquivo ${arquivo.name} foi selecionado mais de uma vez.`
+      );
+    }
+
+    identificadores.add(identificador);
+  }
+
+  const quantidadeVideos =
+    arquivos.filter((arquivo) =>
+      identificarMime(
+        arquivo
+      ).startsWith("video/")
+    ).length;
+
+  if (quantidadeVideos > 1) {
+    throw new Error(
+      "É permitido enviar no máximo um vídeo por denúncia."
+    );
+  }
 }
 
 export function useDenuncias(
   carregarInicial = true,
   contexto: ContextoDenuncias = "mundial"
 ) {
-  const [denuncias, setDenuncias] = useState<
-    DenunciaResumo[]
-  >([]);
+  const [denuncias, setDenuncias] =
+    useState<DenunciaResumo[]>([]);
 
   const [
     denunciaSelecionada,
     setDenunciaSelecionada,
-  ] = useState<DenunciaDetalhada | null>(null);
+  ] = useState<DenunciaDetalhada | null>(
+    null
+  );
 
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] =
+    useState<string | null>(null);
 
   const [carregando, setCarregando] =
     useState(carregarInicial);
@@ -61,159 +135,206 @@ export function useDenuncias(
   const [processando, startTransition] =
     useTransition();
 
-  const carregarDenuncias = useCallback(async () => {
-    try {
-      setCarregando(true);
-      setErro(null);
-
-      const dados =
-        contexto === "cliente"
-          ? await Backend.denuncias.obterMinhas()
-          : await Backend.denuncias.obterTodos();
-
-      setDenuncias(dados);
-    } catch (error) {
-      setErro(
+  const registrarErro = useCallback(
+    (
+      error: unknown,
+      mensagemPadrao: string
+    ) => {
+      const mensagem =
         error instanceof Error
           ? error.message
-          : "Erro ao carregar denúncias."
-      );
-    } finally {
-      setCarregando(false);
-    }
-  }, [contexto]);
+          : mensagemPadrao;
 
-  const carregarDenunciaPorId = useCallback(
-    async (id: string) => {
+      setErro(mensagem);
+
+      return mensagem;
+    },
+    []
+  );
+
+  const carregarDenuncias =
+    useCallback(async () => {
       try {
         setCarregando(true);
         setErro(null);
 
-        const denuncia =
+        const dados =
           contexto === "cliente"
-            ? await Backend.denuncias.obterMinhaPorId(id)
-            : await Backend.denuncias.obterPorId(id);
+            ? await Backend.denuncias.obterMinhas()
+            : await Backend.denuncias.obterTodos();
 
-        setDenunciaSelecionada(denuncia);
+        setDenuncias(dados);
 
-        return denuncia;
+        return dados;
       } catch (error) {
-        const mensagem =
-          error instanceof Error
-            ? error.message
-            : "Erro ao carregar denúncia.";
-
-        setErro(mensagem);
-        setDenunciaSelecionada(null);
+        registrarErro(
+          error,
+          "Erro ao carregar denúncias."
+        );
 
         throw error;
       } finally {
         setCarregando(false);
       }
-    },
-    [contexto]
-  );
+    }, [contexto, registrarErro]);
 
-  const criarDenunciaPublica = useCallback(
-    async (denuncia: CriarDenunciaPublica) => {
-      return new Promise<{
-        id: string;
-        protocolo: string;
-      }>((resolve, reject) => {
-        startTransition(async () => {
-          try {
-            setErro(null);
+  const carregarDenunciaPorId =
+    useCallback(
+      async (id: string) => {
+        if (!id?.trim()) {
+          throw new Error(
+            "Identificador da denúncia não informado."
+          );
+        }
 
-            const resultado =
-              await Backend.denuncias.criarPublica(
-                denuncia
+        try {
+          setCarregando(true);
+          setErro(null);
+
+          const denuncia =
+            contexto === "cliente"
+              ? await Backend.denuncias.obterMinhaPorId(
+                  id
+                )
+              : await Backend.denuncias.obterPorId(
+                  id
+                );
+
+          setDenunciaSelecionada(denuncia);
+
+          return denuncia;
+        } catch (error) {
+          registrarErro(
+            error,
+            "Erro ao carregar denúncia."
+          );
+
+          setDenunciaSelecionada(null);
+
+          throw error;
+        } finally {
+          setCarregando(false);
+        }
+      },
+      [contexto, registrarErro]
+    );
+
+  const criarDenunciaPublica =
+    useCallback(
+      async (
+        denuncia: CriarDenunciaPublica
+      ) => {
+        return new Promise<{
+          id: string;
+          protocolo: string;
+        }>((resolve, reject) => {
+          startTransition(async () => {
+            try {
+              setErro(null);
+
+              const resultado =
+                await Backend.denuncias.criarPublica(
+                  denuncia
+                );
+
+              resolve(resultado);
+            } catch (error) {
+              registrarErro(
+                error,
+                "Erro ao criar denúncia."
               );
 
-            resolve(resultado);
-          } catch (error) {
-            const mensagem =
-              error instanceof Error
-                ? error.message
-                : "Erro ao criar denúncia.";
-
-            setErro(mensagem);
-            reject(error);
-          }
+              reject(error);
+            }
+          });
         });
-      });
-    },
-    []
-  );
+      },
+      [registrarErro]
+    );
 
-  const criarDenunciaManual = useCallback(
-    async (denuncia: Denuncia) => {
-      return new Promise<DenunciaDetalhada>(
-        (resolve, reject) => {
-          startTransition(async () => {
-            try {
-              setErro(null);
+  const criarDenunciaManual =
+    useCallback(
+      async (denuncia: Denuncia) => {
+        return new Promise<DenunciaDetalhada>(
+          (resolve, reject) => {
+            startTransition(async () => {
+              try {
+                setErro(null);
 
-              const resultado =
-                await Backend.denuncias.criarManual(
-                  denuncia
+                const resultado =
+                  await Backend.denuncias.criarManual(
+                    denuncia
+                  );
+
+                setDenunciaSelecionada(
+                  resultado
                 );
 
-              if (carregarInicial) {
-                await carregarDenuncias();
-              }
+                if (carregarInicial) {
+                  await carregarDenuncias();
+                }
 
-              setDenunciaSelecionada(resultado);
-              resolve(resultado);
-            } catch (error) {
-              const mensagem =
-                error instanceof Error
-                  ? error.message
-                  : "Erro ao criar denúncia.";
-
-              setErro(mensagem);
-              reject(error);
-            }
-          });
-        }
-      );
-    },
-    [carregarDenuncias, carregarInicial]
-  );
-
-  const criarMinhaDenunciaManual = useCallback(
-    async (denuncia: Denuncia) => {
-      return new Promise<DenunciaDetalhada>(
-        (resolve, reject) => {
-          startTransition(async () => {
-            try {
-              setErro(null);
-
-              const resultado =
-                await Backend.denuncias.criarMinhaManual(
-                  denuncia
+                resolve(resultado);
+              } catch (error) {
+                registrarErro(
+                  error,
+                  "Erro ao criar denúncia."
                 );
 
-              if (carregarInicial) {
-                await carregarDenuncias();
+                reject(error);
               }
+            });
+          }
+        );
+      },
+      [
+        carregarDenuncias,
+        carregarInicial,
+        registrarErro,
+      ]
+    );
 
-              setDenunciaSelecionada(resultado);
-              resolve(resultado);
-            } catch (error) {
-              const mensagem =
-                error instanceof Error
-                  ? error.message
-                  : "Erro ao criar denúncia.";
+  const criarMinhaDenunciaManual =
+    useCallback(
+      async (denuncia: Denuncia) => {
+        return new Promise<DenunciaDetalhada>(
+          (resolve, reject) => {
+            startTransition(async () => {
+              try {
+                setErro(null);
 
-              setErro(mensagem);
-              reject(error);
-            }
-          });
-        }
-      );
-    },
-    [carregarDenuncias, carregarInicial]
-  );
+                const resultado =
+                  await Backend.denuncias.criarMinhaManual(
+                    denuncia
+                  );
+
+                setDenunciaSelecionada(
+                  resultado
+                );
+
+                if (carregarInicial) {
+                  await carregarDenuncias();
+                }
+
+                resolve(resultado);
+              } catch (error) {
+                registrarErro(
+                  error,
+                  "Erro ao criar denúncia."
+                );
+
+                reject(error);
+              }
+            });
+          }
+        );
+      },
+      [
+        carregarDenuncias,
+        carregarInicial,
+        registrarErro,
+      ]
+    );
 
   const enviarAnexos = useCallback(
     async (
@@ -222,7 +343,7 @@ export function useDenuncias(
         protocolo: string;
       },
       arquivos: File[]
-    ) => {
+    ): Promise<AnexoDenuncia[]> => {
       if (!denuncia.id?.trim()) {
         throw new Error(
           "Identificador da denúncia não informado."
@@ -239,10 +360,16 @@ export function useDenuncias(
         return [];
       }
 
-      const anexosEnviados = [];
+      validarArquivos(arquivos);
+
+      setErro(null);
+
+      const anexosEnviados:
+        AnexoDenuncia[] = [];
 
       for (const arquivo of arquivos) {
-        const tipoMime = identificarMime(arquivo);
+        const tipoMime =
+          identificarMime(arquivo);
 
         if (!tipoMime) {
           throw new Error(
@@ -251,13 +378,16 @@ export function useDenuncias(
         }
 
         const preparado =
-          await Backend.denuncias.prepararUpload({
-            denunciaId: denuncia.id,
-            protocolo: denuncia.protocolo,
-            nomeArquivo: arquivo.name,
-            tipoMime,
-            tamanho: arquivo.size,
-          });
+          await Backend.denuncias.prepararUpload(
+            {
+              denunciaId: denuncia.id,
+              protocolo:
+                denuncia.protocolo,
+              nomeArquivo: arquivo.name,
+              tipoMime,
+              tamanho: arquivo.size,
+            }
+          );
 
         let respostaUpload: Response;
 
@@ -266,20 +396,21 @@ export function useDenuncias(
             preparado.uploadUrl,
             {
               method: "PUT",
+
               headers: {
                 "Content-Type": tipoMime,
               },
+
               body: arquivo,
             }
           );
         } catch (error) {
           console.error(
-            "Falha na requisição direta ao Bucket:",
+            "Falha ao enviar arquivo para o armazenamento:",
             {
               arquivo: arquivo.name,
               tipoMime,
               tamanho: arquivo.size,
-              url: preparado.uploadUrl,
               error,
             }
           );
@@ -290,16 +421,22 @@ export function useDenuncias(
         }
 
         if (!respostaUpload.ok) {
-          const corpo = await respostaUpload
-            .text()
-            .catch(() => "");
+          const corpo =
+            await respostaUpload
+              .text()
+              .catch(() => "");
 
-          console.error("Resposta de erro do Bucket:", {
-            arquivo: arquivo.name,
-            status: respostaUpload.status,
-            statusText: respostaUpload.statusText,
-            corpo,
-          });
+          console.error(
+            "Erro retornado pelo armazenamento:",
+            {
+              arquivo: arquivo.name,
+              status:
+                respostaUpload.status,
+              statusText:
+                respostaUpload.statusText,
+              corpo,
+            }
+          );
 
           throw new Error(
             `Não foi possível enviar ${arquivo.name}. O armazenamento retornou HTTP ${respostaUpload.status}.`
@@ -307,14 +444,18 @@ export function useDenuncias(
         }
 
         const anexo =
-          await Backend.denuncias.confirmarUpload({
-            denunciaId: denuncia.id,
-            protocolo: denuncia.protocolo,
-            chave: preparado.chave,
-            nomeOriginal: preparado.nomeOriginal,
-            tipoMime,
-            tamanho: arquivo.size,
-          });
+          await Backend.denuncias.confirmarUpload(
+            {
+              denunciaId: denuncia.id,
+              protocolo:
+                denuncia.protocolo,
+              chave: preparado.chave,
+              nomeOriginal:
+                preparado.nomeOriginal,
+              tipoMime,
+              tamanho: arquivo.size,
+            }
+          );
 
         anexosEnviados.push(anexo);
       }
@@ -329,10 +470,14 @@ export function useDenuncias(
                 denuncia.id
               );
 
-        setDenunciaSelecionada(denunciaAtualizada);
-      } catch {
-        // O upload já foi concluído.
-        // Falha ao atualizar a tela não deve invalidar o envio.
+        setDenunciaSelecionada(
+          denunciaAtualizada
+        );
+      } catch (error) {
+        console.error(
+          "Os anexos foram enviados, mas a denúncia não pôde ser recarregada:",
+          error
+        );
       }
 
       return anexosEnviados;
@@ -340,126 +485,213 @@ export function useDenuncias(
     [contexto]
   );
 
-  const consultarDenunciaPublica = useCallback(
-    async (clienteId: string, protocolo: string) => {
-      try {
-        setCarregando(true);
-        setErro(null);
+  const consultarDenunciaPublica =
+    useCallback(
+      async (
+        clienteId: string,
+        protocolo: string
+      ): Promise<ConsultaDenunciaPublica> => {
+        if (!clienteId?.trim()) {
+          throw new Error(
+            "Cliente não informado."
+          );
+        }
 
-        return await Backend.denuncias.consultarPublica({
-          clienteId,
-          protocolo,
-        });
-      } catch (error) {
-        const mensagem =
-          error instanceof Error
-            ? error.message
-            : "Erro ao consultar denúncia.";
+        if (!protocolo?.trim()) {
+          throw new Error(
+            "Informe o protocolo da denúncia."
+          );
+        }
 
-        setErro(mensagem);
+        try {
+          setCarregando(true);
+          setErro(null);
 
-        throw error;
-      } finally {
-        setCarregando(false);
-      }
-    },
-    []
-  );
-
-  const salvarDenuncia = useCallback(
-    async (denuncia: DenunciaDetalhada) => {
-      return new Promise<void>((resolve, reject) => {
-        startTransition(async () => {
-          try {
-            setErro(null);
-
-            const resultado =
-              contexto === "cliente"
-                ? await Backend.denuncias.salvarMinha(
-                    denuncia
-                  )
-                : await Backend.denuncias.salvar(
-                    denuncia
-                  );
-
-            setDenunciaSelecionada(resultado);
-
-            if (carregarInicial) {
-              await carregarDenuncias();
+          return await Backend.denuncias.consultarPublica(
+            {
+              clienteId,
+              protocolo:
+                protocolo.trim().toUpperCase(),
             }
+          );
+        } catch (error) {
+          registrarErro(
+            error,
+            "Erro ao consultar denúncia."
+          );
 
-            resolve();
-          } catch (error) {
-            const mensagem =
-              error instanceof Error
-                ? error.message
-                : "Erro ao salvar denúncia.";
+          throw error;
+        } finally {
+          setCarregando(false);
+        }
+      },
+      [registrarErro]
+    );
 
-            setErro(mensagem);
-            reject(error);
+  const salvarDenuncia =
+    useCallback(
+      async (
+        denuncia: DenunciaDetalhada
+      ) => {
+        return new Promise<DenunciaDetalhada>(
+          (resolve, reject) => {
+            startTransition(async () => {
+              try {
+                setErro(null);
+
+                const resultado =
+                  contexto === "cliente"
+                    ? await Backend.denuncias.salvarMinha(
+                        denuncia
+                      )
+                    : await Backend.denuncias.salvar(
+                        denuncia
+                      );
+
+                setDenunciaSelecionada(
+                  resultado
+                );
+
+                if (carregarInicial) {
+                  await carregarDenuncias();
+                }
+
+                resolve(resultado);
+              } catch (error) {
+                registrarErro(
+                  error,
+                  "Erro ao salvar denúncia."
+                );
+
+                reject(error);
+              }
+            });
           }
-        });
-      });
-    },
-    [
-      contexto,
-      carregarDenuncias,
-      carregarInicial,
-    ]
-  );
+        );
+      },
+      [
+        contexto,
+        carregarDenuncias,
+        carregarInicial,
+        registrarErro,
+      ]
+    );
 
-  const adicionarTratativa = useCallback(
-    async (
-      denunciaId: string,
-      tratativa: NovaTratativa
-    ) => {
-      return new Promise<void>((resolve, reject) => {
-        startTransition(async () => {
-          try {
-            setErro(null);
+  const adicionarTratativa =
+    useCallback(
+      async (
+        denunciaId: string,
+        tratativa: NovaTratativa
+      ) => {
+        return new Promise<DenunciaDetalhada>(
+          (resolve, reject) => {
+            startTransition(async () => {
+              try {
+                setErro(null);
 
-            const resultado =
-              contexto === "cliente"
-                ? await Backend.denuncias.adicionarMinhaTratativa(
-                    denunciaId,
-                    tratativa
-                  )
-                : await Backend.denuncias.adicionarTratativa(
-                    denunciaId,
-                    tratativa
-                  );
+                const resultado =
+                  contexto === "cliente"
+                    ? await Backend.denuncias.adicionarMinhaTratativa(
+                        denunciaId,
+                        tratativa
+                      )
+                    : await Backend.denuncias.adicionarTratativa(
+                        denunciaId,
+                        tratativa
+                      );
 
-            setDenunciaSelecionada(resultado);
+                setDenunciaSelecionada(
+                  resultado
+                );
 
-            if (carregarInicial) {
-              await carregarDenuncias();
-            }
+                if (carregarInicial) {
+                  await carregarDenuncias();
+                }
 
-            resolve();
-          } catch (error) {
-            const mensagem =
-              error instanceof Error
-                ? error.message
-                : "Erro ao adicionar tratativa.";
+                resolve(resultado);
+              } catch (error) {
+                registrarErro(
+                  error,
+                  "Erro ao adicionar tratativa."
+                );
 
-            setErro(mensagem);
-            reject(error);
+                reject(error);
+              }
+            });
           }
-        });
-      });
-    },
-    [
-      contexto,
-      carregarDenuncias,
-      carregarInicial,
-    ]
-  );
+        );
+      },
+      [
+        contexto,
+        carregarDenuncias,
+        carregarInicial,
+        registrarErro,
+      ]
+    );
+
+  const editarTratativa =
+    useCallback(
+      async (
+        dados: EditarTratativaInput
+      ) => {
+        return new Promise<DenunciaDetalhada>(
+          (resolve, reject) => {
+            startTransition(async () => {
+              try {
+                setErro(null);
+
+                const resultado =
+                  contexto === "cliente"
+                    ? await Backend.denuncias.editarMinhaTratativa(
+                        dados
+                      )
+                    : await Backend.denuncias.editarTratativa(
+                        dados
+                      );
+
+                setDenunciaSelecionada(
+                  resultado
+                );
+
+                if (carregarInicial) {
+                  await carregarDenuncias();
+                }
+
+                resolve(resultado);
+              } catch (error) {
+                registrarErro(
+                  error,
+                  "Erro ao editar tratativa."
+                );
+
+                reject(error);
+              }
+            });
+          }
+        );
+      },
+      [
+        contexto,
+        carregarDenuncias,
+        carregarInicial,
+        registrarErro,
+      ]
+    );
+
+  const limparErro = useCallback(() => {
+    setErro(null);
+  }, []);
 
   useEffect(() => {
     if (carregarInicial) {
-      carregarDenuncias();
+      carregarDenuncias().catch(() => {
+        // O erro já foi registrado pelo hook.
+      });
     }
-  }, [carregarInicial, carregarDenuncias]);
+  }, [
+    carregarInicial,
+    carregarDenuncias,
+  ]);
 
   return {
     denuncias,
@@ -470,12 +702,18 @@ export function useDenuncias(
     processando,
     erro,
 
+    limparErro,
+
     carregarDenuncias,
     carregarDenunciaPorId,
+
     criarDenunciaPublica,
     consultarDenunciaPublica,
+
     salvarDenuncia,
+
     adicionarTratativa,
+    editarTratativa,
 
     criarDenunciaManual,
     criarMinhaDenunciaManual,

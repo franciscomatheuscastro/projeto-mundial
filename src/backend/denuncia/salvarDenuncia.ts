@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { PerfilUsuario } from "@prisma/client";
 
 import { auth } from "@/src/auth";
-import { Denuncia } from "@/src/core/model/Denuncia";
+
+import type {
+  Denuncia,
+} from "@/src/core/model/Denuncia";
+
 import RepositorioDenuncia from "./RepositorioDenuncia";
 
 const PERFIS_MUNDIAL: PerfilUsuario[] = [
@@ -21,24 +25,31 @@ export default async function salvarDenuncia(
   const session = await auth();
 
   if (!session?.user) {
-    throw new Error("Usuário não autenticado.");
+    throw new Error(
+      "Usuário não autenticado."
+    );
   }
 
   const usuario = session.user as {
     id?: string;
+    name?: string | null;
+    nome?: string | null;
+    email?: string | null;
     perfil?: PerfilUsuario;
   };
 
   if (
     !usuario.perfil ||
-    !PERFIS_MUNDIAL.includes(usuario.perfil)
+    !PERFIS_MUNDIAL.includes(
+      usuario.perfil
+    )
   ) {
     throw new Error(
       "Somente usuários internos da Mundial podem alterar a denúncia."
     );
   }
 
-  if (!denuncia.id) {
+  if (!denuncia.id?.trim()) {
     throw new Error(
       "Denúncia não identificada."
     );
@@ -56,10 +67,12 @@ export default async function salvarDenuncia(
     );
   }
 
-  /*
-   * Uma denúncia não deve ser concluída sem uma resposta
-   * final que possa ser consultada pelo denunciante.
-   */
+  if (!denuncia.categoriaId?.trim()) {
+    throw new Error(
+      "Categoria da denúncia é obrigatória."
+    );
+  }
+
   if (
     denuncia.status === "CONCLUIDA" &&
     !denuncia.respostaPublica?.trim()
@@ -74,47 +87,93 @@ export default async function salvarDenuncia(
       denuncia.id
     );
 
-  if (!denunciaAtual) {
-    throw new Error(
-      "Denúncia não encontrada."
-    );
-  }
-
   const resultado =
-    await RepositorioDenuncia.salvar({
-      ...denuncia,
+    await RepositorioDenuncia.salvar(
+      {
+        ...denuncia,
 
-      /*
-       * Impede que o cliente da denúncia seja trocado
-       * por um valor manipulado no navegador.
-       */
-      clienteId: denunciaAtual.clienteId,
+        /*
+         * Mantém o cliente original e impede
+         * manipulação pelo navegador.
+         */
+        clienteId:
+          denunciaAtual.clienteId,
 
-      titulo: denuncia.titulo.trim(),
-      descricao: denuncia.descricao.trim(),
+        titulo:
+          denuncia.titulo.trim(),
 
-      categoria:
-        denuncia.categoria?.trim() || null,
+        descricao:
+          denuncia.descricao.trim(),
 
-      localOcorrido:
-        denuncia.localOcorrido?.trim() || null,
+        /*
+         * Categoria agora é uma relação.
+         * O campo persistido é categoriaId.
+         */
+        categoriaId:
+          denuncia.categoriaId.trim(),
 
-      respostaPublica:
-        denuncia.respostaPublica?.trim() || null,
-    });
+        localOcorrido:
+          denuncia.localOcorrido?.trim() ||
+          null,
 
-  revalidatePath("/denuncias");
+        nomeDenunciante:
+          denuncia.nomeDenunciante?.trim() ||
+          null,
+
+        emailDenunciante:
+          denuncia.emailDenunciante
+            ?.trim()
+            .toLowerCase() || null,
+
+        telefoneDenunciante:
+          denuncia.telefoneDenunciante
+            ?.trim() || null,
+
+        respostaPublica:
+          denuncia.respostaPublica?.trim() ||
+          null,
+      },
+      {
+        usuarioId:
+          usuario.id || null,
+
+        nome:
+          usuario.nome ||
+          usuario.name ||
+          usuario.email ||
+          "Usuário Mundial",
+
+        perfil:
+          usuario.perfil,
+
+        origem:
+          "MUNDIAL",
+      }
+    );
+
+  revalidatePath(
+    "/denuncias"
+  );
+
   revalidatePath(
     `/denuncias/${resultado.id}`
   );
 
-  revalidatePath("/minhas-denuncias");
+  revalidatePath(
+    "/minhas-denuncias"
+  );
+
   revalidatePath(
     `/minhas-denuncias/${resultado.id}`
   );
 
-  revalidatePath("/dashboard");
-  revalidatePath("/painel-controle");
+  revalidatePath(
+    "/dashboard"
+  );
+
+  revalidatePath(
+    "/painel-controle"
+  );
 
   return resultado;
 }

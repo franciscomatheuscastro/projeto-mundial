@@ -3,14 +3,13 @@
 import { auth } from "@/src/auth";
 
 import type {
-  NovaTratativa,
+  EditarTratativaInput,
 } from "@/src/core/model/Denuncia";
 
 import RepositorioDenuncia from "./RepositorioDenuncia";
 
-export default async function adicionarTratativa(
-  denunciaId: string,
-  tratativa: NovaTratativa
+export default async function editarTratativa(
+  dados: EditarTratativaInput
 ) {
   const session = await auth();
 
@@ -31,59 +30,63 @@ export default async function adicionarTratativa(
     | "CLIENTE"
     | "COMITE_CLIENTE";
 
-  const perfisPermitidos = [
+  const perfisAutorizados = [
     "ADMIN",
     "GESTOR",
     "PSICOLOGO",
     "ASSISTENTE_SOCIAL",
   ];
 
-  if (!perfisPermitidos.includes(perfil)) {
+  if (!perfisAutorizados.includes(perfil)) {
     throw new Error(
-      "Você não possui permissão para adicionar tratativas."
+      "Você não possui permissão para editar tratativas."
     );
   }
 
-  if (!denunciaId?.trim()) {
+  if (!dados?.id?.trim()) {
+    throw new Error(
+      "Tratativa não informada."
+    );
+  }
+
+  if (!dados?.denunciaId?.trim()) {
     throw new Error(
       "Denúncia não informada."
     );
   }
 
-  if (!tratativa?.titulo?.trim()) {
+  if (!dados?.titulo?.trim()) {
     throw new Error(
       "O título da tratativa é obrigatório."
     );
   }
 
-  if (!tratativa?.descricao?.trim()) {
+  if (!dados?.descricao?.trim()) {
     throw new Error(
       "A descrição da tratativa é obrigatória."
     );
   }
 
-  return RepositorioDenuncia.adicionarTratativa(
-    denunciaId.trim(),
+  return RepositorioDenuncia.editarTratativa(
     {
-      titulo: tratativa.titulo.trim(),
-      descricao:
-        tratativa.descricao.trim(),
+      ...dados,
+
+      id: dados.id.trim(),
+      denunciaId: dados.denunciaId.trim(),
+      titulo: dados.titulo.trim(),
+      descricao: dados.descricao.trim(),
 
       responsavelId:
-        tratativa.responsavelId?.trim() ||
+        dados.responsavelId?.trim() ||
         null,
     },
     {
       usuarioId: usuario.id || null,
-
       nome:
         usuario.nome ||
         usuario.name ||
-        usuario.email ||
         "Usuário Mundial",
-
       perfil,
-
       origem: "MUNDIAL",
     }
   );

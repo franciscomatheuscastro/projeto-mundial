@@ -53,15 +53,24 @@ import obterTodosDenuncias from "./denuncia/obterTodos";
 import obterDenunciaPorId from "./denuncia/obterPorId";
 import obterDenunciasPorCliente from "./denuncia/obterPorCliente";
 import salvarDenuncia from "./denuncia/salvarDenuncia";
+
 import adicionarTratativaDenuncia from "./denuncia/adicionarTratativa";
+import editarTratativaDenuncia from "./denuncia/editarTratativa";
+
 import obterMinhasDenuncias from "./denuncia/obterMinhasDenuncias";
 import obterMinhaDenunciaPorId from "./denuncia/obterMinhaDenunciaPorId";
 import salvarMinhaDenuncia from "./denuncia/salvarMinhaDenuncia";
+
 import adicionarMinhaTratativa from "./denuncia/adicionarMinhaTratativa";
+import editarMinhaTratativa from "./denuncia/editarMinhaTratativa";
+
 import criarDenunciaManual from "./denuncia/criarDenunciaManual";
 import criarMinhaDenunciaManual from "./denuncia/criarMinhaDenunciaManual";
+
 import prepararUploadDenuncia from "./denuncia/prepararUploadDenuncia";
 import confirmarUploadDenuncia from "./denuncia/confirmarUploadDenuncia";
+
+import obterDadosRelatorioDenuncias from "./denuncia/obterDadosRelatorio";
 
 import obterTodosRegrasCriticidade from "./criticidadeDenuncia/obterTodos";
 import salvarRegraCriticidade from "./criticidadeDenuncia/salvar";
@@ -70,6 +79,12 @@ import excluirRegraCriticidade from "./criticidadeDenuncia/excluir";
 import obterMeusColaboradores from "./colaboradorCliente/obterMeus";
 import salvarMeuColaborador from "./colaboradorCliente/salvarMeu";
 import excluirMeuColaborador from "./colaboradorCliente/excluirMeu";
+import obterColaboradoresPorCliente from "./colaboradorCliente/obterPorCliente";
+
+import obterTodasCategoriasDenuncia from "./categoriaDenuncia/obterTodas";
+import obterCategoriasDenunciaAtivas from "./categoriaDenuncia/obterAtivas";
+import salvarCategoriaDenuncia from "./categoriaDenuncia/salvar";
+import alterarStatusCategoriaDenuncia from "./categoriaDenuncia/alterarStatus";
 
 export default class Backend {
   static readonly usuarios = {
@@ -140,25 +155,64 @@ export default class Backend {
   };
 
   static readonly denuncias = {
-    criarPublica: criarDenunciaPublica,
-    consultarPublica: consultarDenunciaPublica,
-    obterTodos: obterTodosDenuncias,
-    obterPorId: obterDenunciaPorId,
-    obterPorCliente: obterDenunciasPorCliente,
-    salvar: salvarDenuncia,
-    adicionarTratativa: adicionarTratativaDenuncia,
+    criarPublica:
+      criarDenunciaPublica,
 
-    obterMinhas: obterMinhasDenuncias,
-    obterMinhaPorId: obterMinhaDenunciaPorId,
-    salvarMinha: salvarMinhaDenuncia,
+    consultarPublica:
+      consultarDenunciaPublica,
+
+    obterTodos:
+      obterTodosDenuncias,
+
+    obterPorId:
+      obterDenunciaPorId,
+
+    obterPorCliente:
+      obterDenunciasPorCliente,
+
+    salvar:
+      salvarDenuncia,
+
+    adicionarTratativa:
+      adicionarTratativaDenuncia,
+
+    editarTratativa:
+      editarTratativaDenuncia,
+
+    obterMinhas:
+      obterMinhasDenuncias,
+
+    obterMinhaPorId:
+      obterMinhaDenunciaPorId,
+
+    salvarMinha:
+      salvarMinhaDenuncia,
+
     adicionarMinhaTratativa,
 
-    criarManual: criarDenunciaManual,
-    criarMinhaManual: criarMinhaDenunciaManual,
+    editarMinhaTratativa,
 
-    prepararUpload: prepararUploadDenuncia,
-    confirmarUpload: confirmarUploadDenuncia,
+    criarManual:
+      criarDenunciaManual,
 
+    criarMinhaManual:
+      criarMinhaDenunciaManual,
+
+    prepararUpload:
+      prepararUploadDenuncia,
+
+    confirmarUpload:
+      confirmarUploadDenuncia,
+
+    obterDadosRelatorio:
+      obterDadosRelatorioDenuncias,
+  };
+
+  static readonly categoriasDenuncia = {
+    obterTodas: obterTodasCategoriasDenuncia,
+    obterAtivas: obterCategoriasDenunciaAtivas,
+    salvar: salvarCategoriaDenuncia,
+    alterarStatus: alterarStatusCategoriaDenuncia,
   };
 
   static readonly criticidadeDenuncia = {
@@ -169,9 +223,8 @@ export default class Backend {
 
   static readonly colaboradoresCliente = {
     obterMeus: obterMeusColaboradores,
+    obterPorCliente: obterColaboradoresPorCliente,
     salvarMeu: salvarMeuColaborador,
     excluirMeu: excluirMeuColaborador,
   };
-    
-
-}
+  }

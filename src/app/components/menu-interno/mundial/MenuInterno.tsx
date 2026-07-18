@@ -92,6 +92,9 @@ function MenuConteudo({
           <MenuLink href="/denuncias" mobile={mobile}>
             Denúncias
           </MenuLink>
+          <MenuLink href="/categorias-denuncias" mobile={mobile}>
+            Categorias
+          </MenuLink>
           <MenuLink href="/criticidade" mobile={mobile}>
             Criticidade
           </MenuLink>

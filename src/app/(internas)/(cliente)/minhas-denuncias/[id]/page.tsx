@@ -1,7 +1,14 @@
 import { auth } from "@/src/auth";
+
 import { PerfilUsuario } from "@prisma/client";
+
 import { prisma } from "@/src/lib/prisma";
-import { redirect } from "next/navigation";
+
+import {
+  notFound,
+  redirect,
+} from "next/navigation";
+
 import DenunciaDetalheTela from "@/src/app/components/denuncias/DenunciaDetalheTela";
 
 type PageProps = {
@@ -21,26 +28,63 @@ export default async function ClienteDenunciaDetalhePage({
 
   const usuario = session.user as {
     id?: string;
+    nome?: string | null;
     perfil?: PerfilUsuario;
     clienteId?: string | null;
   };
 
-  const podeAcessar =
-    usuario.perfil === PerfilUsuario.CLIENTE ||
-    usuario.perfil === PerfilUsuario.COMITE_CLIENTE;
+  const usuarioCliente =
+    usuario.perfil === PerfilUsuario.CLIENTE;
 
-  if (!podeAcessar || !usuario.clienteId) {
+  const usuarioComite =
+    usuario.perfil ===
+    PerfilUsuario.COMITE_CLIENTE;
+
+  if (
+    (!usuarioCliente && !usuarioComite) ||
+    !usuario.clienteId
+  ) {
     redirect("/dashboard");
   }
 
   const { id } = await params;
 
-  let podeTratar = false;
+  if (!id?.trim()) {
+    notFound();
+  }
 
-  if (
-    usuario.perfil === PerfilUsuario.COMITE_CLIENTE &&
-    usuario.id
-  ) {
+  /*
+   * Confirma que a denúncia pertence ao cliente
+   * vinculado ao usuário autenticado.
+   */
+  const denuncia =
+    await prisma.denuncia.findFirst({
+      where: {
+        id,
+        clienteId: usuario.clienteId,
+      },
+
+      select: {
+        id: true,
+      },
+    });
+
+  if (!denuncia) {
+    notFound();
+  }
+
+  let podeVerTratativas = false;
+  let podeTratar = false;
+  let podeEditarTratativas = false;
+  let colaboradorLogadoId:
+    | string
+    | null = null;
+
+  if (usuarioComite) {
+    if (!usuario.id) {
+      redirect("/painel-controle");
+    }
+
     const colaborador =
       await prisma.colaboradorCliente.findFirst({
         where: {
@@ -48,7 +92,9 @@ export default async function ClienteDenunciaDetalhePage({
           clienteId: usuario.clienteId,
           ativo: true,
         },
+
         select: {
+          id: true,
           podeVerDenuncias: true,
           podeTratarDenuncias: true,
         },
@@ -58,16 +104,46 @@ export default async function ClienteDenunciaDetalhePage({
       redirect("/painel-controle");
     }
 
+    colaboradorLogadoId =
+      colaborador.id;
+
+    podeVerTratativas =
+      colaborador.podeTratarDenuncias ===
+      true;
+
     podeTratar =
-      colaborador.podeTratarDenuncias === true;
+      colaborador.podeTratarDenuncias ===
+      true;
+
+    podeEditarTratativas =
+      colaborador.podeTratarDenuncias ===
+      true;
   }
 
   return (
     <DenunciaDetalheTela
       id={id}
       contexto="cliente"
+
       podeGerenciar={false}
+
+      podeVerTratativas={
+        podeVerTratativas
+      }
+
       podeTratar={podeTratar}
+
+      podeEditarTratativas={
+        podeEditarTratativas
+      }
+
+      podeAtribuirResponsavel={false}
+
+      colaboradorLogadoId={
+        colaboradorLogadoId
+      }
+
+      colaboradoresDisponiveis={[]}
     />
   );
 }

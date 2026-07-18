@@ -58,23 +58,26 @@ enum TipoOrigemPlanoAcao {
 }
 
 model Usuario {
-  id           String        @id @default(cuid())
-  nome         String
-  email        String        @unique
-  senha        String
-  perfil       PerfilUsuario @default(RECEPCAO)
-  ativo        Boolean       @default(true)
+  id     String @id @default(cuid())
+  nome   String
+  email  String @unique
+  senha  String
+  perfil PerfilUsuario @default(RECEPCAO)
+  ativo  Boolean @default(true)
 
-  clienteId    String?
-  cliente      Cliente?      @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  clienteId String?
+  cliente   Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
 
-  criadoEm     DateTime      @default(now())
-  atualizadoEm DateTime      @updatedAt
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 
   colaboradorCliente ColaboradorCliente?
+
+  tratativasCriadas     TratativaDenuncia[] @relation("TratativaCriadaPor")
+  tratativasAtualizadas TratativaDenuncia[] @relation("TratativaAtualizadaPor")
+
   @@index([clienteId])
   @@index([perfil])
-
 }
 
 
@@ -269,58 +272,138 @@ model ColaboradorCliente {
   cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
 
+  tratativasResponsavel TratativaDenuncia[] @relation("ResponsavelTratativa")
+
   @@index([clienteId])
   @@index([ativo])
 }
 
 model Denuncia {
-  id             String            @id @default(cuid())
-  clienteId      String
+  id        String @id @default(cuid())
+  clienteId String
 
-  protocolo      String            @unique
-  titulo         String
-  descricao      String
-  categoria      String?
-  localOcorrido  String?
-  dataOcorrido   DateTime?
+  protocolo String @unique
+  titulo    String
+  descricao String
 
-  anonima        Boolean           @default(true)
+  categoriaId String?
+  categoria   CategoriaDenuncia? @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+
+  localOcorrido String?
+  dataOcorrido  DateTime?
+
+  anonima             Boolean @default(true)
   nomeDenunciante     String?
   emailDenunciante    String?
   telefoneDenunciante String?
 
-  status         StatusDenuncia    @default(RECEBIDA)
-  gravidade      GravidadeDenuncia @default(MEDIA)
+  status    StatusDenuncia    @default(RECEBIDA)
+  gravidade GravidadeDenuncia @default(MEDIA)
 
   respostaPublica String?
-  tratativas      Json             @default("[]")
 
-  criadoEm       DateTime          @default(now())
-  atualizadoEm   DateTime          @updatedAt
+  aceiteTermosEm      DateTime?
+  versaoTermosAceitos String?
+  ipAceiteHash        String?
+  userAgentAceite     String?
 
-  cliente        Cliente           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  anexos         AnexoDenuncia[]
-  planosAcao  PlanoAcao[]
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 
+  cliente    Cliente              @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  anexos     AnexoDenuncia[]
+  planosAcao PlanoAcao[]
+  tratativas TratativaDenuncia[]
+  historico  HistoricoDenuncia[]
+
+  @@index([clienteId])
+  @@index([categoriaId])
+  @@index([status])
+  @@index([gravidade])
+  @@index([criadoEm])
 }
 
+model TratativaDenuncia {
+  id         String @id @default(cuid())
+  denunciaId String
 
+  titulo    String
+  descricao String
+
+  responsavelId String?
+  responsavel   ColaboradorCliente? @relation("ResponsavelTratativa", fields: [responsavelId], references: [id], onDelete: SetNull)
+
+  criadoPorUsuarioId String?
+  criadoPorUsuario   Usuario? @relation("TratativaCriadaPor", fields: [criadoPorUsuarioId], references: [id], onDelete: SetNull)
+
+  atualizadoPorUsuarioId String?
+  atualizadoPorUsuario   Usuario? @relation("TratativaAtualizadaPor", fields: [atualizadoPorUsuarioId], references: [id], onDelete: SetNull)
+
+  criadoPorNome     String
+  criadoPorPerfil   PerfilUsuario?
+  atualizadoPorNome String?
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  denuncia Denuncia @relation(fields: [denunciaId], references: [id], onDelete: Cascade)
+
+  @@index([denunciaId])
+  @@index([responsavelId])
+  @@index([criadoPorUsuarioId])
+  @@index([atualizadoPorUsuarioId])
+}
 
 model AnexoDenuncia {
-  id           String   @id @default(cuid())
-  denunciaId   String
+  id         String @id @default(cuid())
+  denunciaId String
 
   nomeOriginal String
-  chave        String   @unique
+  chave        String @unique
   tipoMime     String
   tamanho      Int
 
-  criadoEm     DateTime @default(now())
+  tipo         TipoAnexoDenuncia
+  visibilidade VisibilidadeAnexoDenuncia @default(MUNDIAL_E_COMITE)
 
-  denuncia     Denuncia @relation(fields: [denunciaId], references: [id], onDelete: Cascade)
+  criadoEm DateTime @default(now())
+
+  denuncia Denuncia @relation(fields: [denunciaId], references: [id], onDelete: Cascade)
 
   @@index([denunciaId])
+  @@index([tipo])
+  @@index([visibilidade])
 }
+
+model HistoricoDenuncia {
+  id         String @id @default(cuid())
+  denunciaId String
+
+  tipo      TipoEventoDenuncia
+  titulo    String
+  descricao String?
+
+  statusAnterior StatusDenuncia?
+  statusNovo     StatusDenuncia?
+
+  origemAtor OrigemAtorDenuncia
+  atorNome   String?
+  atorId     String?
+
+  visivelPublicamente Boolean @default(false)
+
+  criadoEm DateTime @default(now())
+
+  denuncia Denuncia @relation(fields: [denunciaId], references: [id], onDelete: Cascade)
+
+  @@index([denunciaId, criadoEm])
+  @@index([visivelPublicamente])
+}
+
+
+
+
+
 
 
 model RegraCriticidadeDenuncia {
@@ -332,4 +415,53 @@ model RegraCriticidadeDenuncia {
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+}
+
+model CategoriaDenuncia {
+  id          String  @id @default(cuid())
+  nome        String  @unique
+  descricao   String?
+  ativo       Boolean @default(true)
+  ordem       Int     @default(0)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  denuncias Denuncia[]
+
+  @@index([ativo, ordem])
+}
+
+
+
+enum TipoAnexoDenuncia {
+  DOCUMENTO
+  IMAGEM
+  AUDIO
+  VIDEO
+  OUTRO
+}
+
+enum VisibilidadeAnexoDenuncia {
+  SOMENTE_MUNDIAL
+  MUNDIAL_E_COMITE
+}
+
+enum TipoEventoDenuncia {
+  DENUNCIA_REGISTRADA
+  STATUS_ALTERADO
+  GRAVIDADE_ALTERADA
+  TRATATIVA_CRIADA
+  TRATATIVA_EDITADA
+  RESPONSAVEL_ATRIBUIDO
+  RESPOSTA_PUBLICA_ALTERADA
+  ANEXO_ADICIONADO
+}
+
+enum OrigemAtorDenuncia {
+  PUBLICO
+  MUNDIAL
+  CLIENTE
+  COMITE_CLIENTE
+  SISTEMA
 }
