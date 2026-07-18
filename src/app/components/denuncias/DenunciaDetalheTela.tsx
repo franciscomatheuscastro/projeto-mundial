@@ -1,13 +1,9 @@
 "use client";
 
-import type {
-  FormEvent,
-  ReactNode,
-} from "react";
-
+import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-
 import {
+  DestinoTratativaDenuncia,
   GravidadeDenuncia,
   StatusDenuncia,
 } from "@prisma/client";
@@ -25,13 +21,11 @@ type ColaboradorDisponivel = {
 type Props = {
   id: string;
   contexto?: "mundial" | "cliente";
-
   podeGerenciar?: boolean;
   podeTratar?: boolean;
   podeVerTratativas?: boolean;
   podeEditarTratativas?: boolean;
-  podeAtribuirResponsavel?: boolean;
-
+  podeLiberarTratativa?: boolean;
   colaboradorLogadoId?: string | null;
   colaboradoresDisponiveis?: ColaboradorDisponivel[];
 };
@@ -40,9 +34,7 @@ function formatarTexto(valor: string) {
   return valor
     .replaceAll("_", " ")
     .toLowerCase()
-    .replace(/\b\w/g, (letra) =>
-      letra.toUpperCase()
-    );
+    .replace(/\b\w/g, (letra) => letra.toUpperCase());
 }
 
 function formatarTamanho(tamanho: number) {
@@ -54,21 +46,17 @@ function formatarTamanho(tamanho: number) {
     return `${(tamanho / 1024).toFixed(1)} KB`;
   }
 
-  return `${(tamanho / 1024 / 1024).toFixed(
-    2
-  )} MB`;
+  return `${(tamanho / 1024 / 1024).toFixed(2)} MB`;
 }
 
 export default function DenunciaDetalheTela({
   id,
   contexto = "mundial",
-
   podeGerenciar = false,
   podeTratar = false,
   podeVerTratativas = false,
   podeEditarTratativas = false,
-  podeAtribuirResponsavel = false,
-
+  podeLiberarTratativa = false,
   colaboradorLogadoId = null,
   colaboradoresDisponiveis = [],
 }: Props) {
@@ -77,41 +65,35 @@ export default function DenunciaDetalheTela({
     carregando,
     erro,
     processando,
-
     carregarDenunciaPorId,
     salvarDenuncia,
+    liberarTratativa,
     adicionarTratativa,
     editarTratativa,
   } = useDenuncias(false, contexto);
 
   const [status, setStatus] =
     useState<StatusDenuncia>("RECEBIDA");
-
   const [gravidade, setGravidade] =
     useState<GravidadeDenuncia>("MEDIA");
-
   const [respostaPublica, setRespostaPublica] =
+    useState("");
+
+  const [destino, setDestino] =
+    useState<DestinoTratativaDenuncia>("MUNDIAL");
+  const [colaboradorId, setColaboradorId] =
     useState("");
 
   const [tratativaEditandoId, setTratativaEditandoId] =
     useState<string | null>(null);
-
-  const [tituloEdicao, setTituloEdicao] =
-    useState("");
-
+  const [tituloEdicao, setTituloEdicao] = useState("");
   const [descricaoEdicao, setDescricaoEdicao] =
     useState("");
 
-  const [responsavelEdicao, setResponsavelEdicao] =
-    useState("");
-
-  const [mensagem, setMensagem] = useState<
-    string | null
-  >(null);
-
-  const [erroLocal, setErroLocal] = useState<
-    string | null
-  >(null);
+  const [mensagem, setMensagem] =
+    useState<string | null>(null);
+  const [erroLocal, setErroLocal] =
+    useState<string | null>(null);
 
   const usuarioMundial = contexto === "mundial";
 
@@ -124,20 +106,61 @@ export default function DenunciaDetalheTela({
           denuncia.respostaPublica || ""
         );
       })
-      .catch(() => {
-        // O hook já registra o erro.
-      });
+      .catch(() => {});
   }, [id, carregarDenunciaPorId]);
 
-  const tratativasVisiveis = useMemo(() => {
-    if (!podeVerTratativas) {
-      return [];
+  const tratativas = useMemo(
+    () =>
+      podeVerTratativas
+        ? denunciaSelecionada?.tratativas ?? []
+        : [],
+    [denunciaSelecionada?.tratativas, podeVerTratativas]
+  );
+
+  const possuiTratativa = tratativas.length > 0;
+
+  const responsavelExclusivo = useMemo(() => {
+    if (!denunciaSelecionada?.tratativaLiberada) {
+      return "Não definido";
     }
 
-    return denunciaSelecionada?.tratativas ?? [];
+    if (
+      denunciaSelecionada.destinoTratativa === "MUNDIAL"
+    ) {
+      return "Mundial";
+    }
+
+    return (
+      denunciaSelecionada.colaboradorResponsavel?.nome ||
+      "Colaborador não localizado"
+    );
+  }, [denunciaSelecionada]);
+
+  const usuarioPodeExecutarTratativa = useMemo(() => {
+    if (
+      !podeTratar ||
+      !denunciaSelecionada?.tratativaLiberada
+    ) {
+      return false;
+    }
+
+    if (
+      denunciaSelecionada.destinoTratativa === "MUNDIAL"
+    ) {
+      return usuarioMundial;
+    }
+
+    return Boolean(
+      !usuarioMundial &&
+        colaboradorLogadoId &&
+        colaboradorLogadoId ===
+          denunciaSelecionada.colaboradorResponsavelId
+    );
   }, [
-    denunciaSelecionada?.tratativas,
-    podeVerTratativas,
+    podeTratar,
+    denunciaSelecionada,
+    usuarioMundial,
+    colaboradorLogadoId,
   ]);
 
   async function salvarAndamento(
@@ -145,9 +168,7 @@ export default function DenunciaDetalheTela({
   ) {
     event.preventDefault();
 
-    if (!denunciaSelecionada || processando) {
-      return;
-    }
+    if (!denunciaSelecionada || processando) return;
 
     setMensagem(null);
     setErroLocal(null);
@@ -172,14 +193,47 @@ export default function DenunciaDetalheTela({
     }
   }
 
+  async function confirmarLiberacao(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    if (processando) return;
+
+    setMensagem(null);
+    setErroLocal(null);
+
+    try {
+      const resultado = await liberarTratativa({
+        denunciaId: id,
+        destino,
+        colaboradorId:
+          destino === "COLABORADOR"
+            ? colaboradorId
+            : null,
+      });
+
+      setStatus(resultado.status);
+      setMensagem(
+        destino === "MUNDIAL"
+          ? "Tratativa liberada exclusivamente para a Mundial."
+          : "Tratativa direcionada exclusivamente ao colaborador."
+      );
+    } catch (error) {
+      setErroLocal(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível liberar a tratativa."
+      );
+    }
+  }
+
   async function novaTratativa(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-    if (processando) {
-      return;
-    }
+    if (processando) return;
 
     const formulario = event.currentTarget;
     const formData = new FormData(formulario);
@@ -192,24 +246,14 @@ export default function DenunciaDetalheTela({
         titulo: String(
           formData.get("titulo") || ""
         ).trim(),
-
         descricao: String(
           formData.get("descricao") || ""
         ).trim(),
-
-        responsavelId:
-          String(
-            formData.get("responsavelId") || ""
-          ).trim() || null,
       });
 
       formulario.reset();
-
       setStatus("EM_TRATATIVA");
-
-      setMensagem(
-        "Tratativa adicionada com sucesso."
-      );
+      setMensagem("Tratativa adicionada com sucesso.");
     } catch (error) {
       setErroLocal(
         error instanceof Error
@@ -223,21 +267,16 @@ export default function DenunciaDetalheTela({
     id: string;
     titulo: string;
     descricao: string;
-    responsavelId?: string | null;
   }) {
     setTratativaEditandoId(tratativa.id);
     setTituloEdicao(tratativa.titulo);
     setDescricaoEdicao(tratativa.descricao);
-    setResponsavelEdicao(
-      tratativa.responsavelId || ""
-    );
   }
 
   function cancelarEdicao() {
     setTratativaEditandoId(null);
     setTituloEdicao("");
     setDescricaoEdicao("");
-    setResponsavelEdicao("");
   }
 
   async function salvarEdicaoTratativa(
@@ -245,12 +284,7 @@ export default function DenunciaDetalheTela({
   ) {
     event.preventDefault();
 
-    if (
-      !tratativaEditandoId ||
-      processando
-    ) {
-      return;
-    }
+    if (!tratativaEditandoId || processando) return;
 
     setMensagem(null);
     setErroLocal(null);
@@ -261,15 +295,10 @@ export default function DenunciaDetalheTela({
         denunciaId: id,
         titulo: tituloEdicao.trim(),
         descricao: descricaoEdicao.trim(),
-        responsavelId:
-          responsavelEdicao || null,
       });
 
       cancelarEdicao();
-
-      setMensagem(
-        "Tratativa atualizada com sucesso."
-      );
+      setMensagem("Tratativa atualizada com sucesso.");
     } catch (error) {
       setErroLocal(
         error instanceof Error
@@ -280,70 +309,41 @@ export default function DenunciaDetalheTela({
   }
 
   if (carregando) {
-    return (
-      <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
-          Carregando denúncia...
-        </div>
-      </main>
-    );
+    return <Estado texto="Carregando denúncia..." />;
   }
 
   if (erro && !denunciaSelecionada) {
-    return (
-      <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          {erro}
-        </div>
-      </main>
-    );
+    return <Estado texto={erro} erro />;
   }
 
   if (!denunciaSelecionada) {
-    return (
-      <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
-          Denúncia não encontrada.
-        </div>
-      </main>
-    );
+    return <Estado texto="Denúncia não encontrada." />;
   }
 
-  const anexos =
-    denunciaSelecionada.anexos ?? [];
+  const anexos = denunciaSelecionada.anexos ?? [];
 
   return (
     <main className="min-h-screen bg-slate-100">
       <header className="border-b bg-white px-4 py-5 sm:px-6 lg:px-8">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-            Canal de Denúncias
-          </p>
-
-          <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
-            Denúncia{" "}
-            {denunciaSelecionada.protocolo}
-          </h1>
-
-          <p className="mt-1 text-sm text-slate-500">
-            {denunciaSelecionada.cliente
-              .empresa ||
-              denunciaSelecionada.cliente.nome}
-          </p>
-        </div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+          Canal de Denúncias
+        </p>
+        <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
+          Denúncia {denunciaSelecionada.protocolo}
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          {denunciaSelecionada.cliente.empresa ||
+            denunciaSelecionada.cliente.nome}
+        </p>
       </header>
 
       <section className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         {(erroLocal || erro) && (
-          <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-            {erroLocal || erro}
-          </div>
+          <Alerta tipo="erro" texto={erroLocal || erro || ""} />
         )}
 
         {mensagem && (
-          <div className="rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
-            {mensagem}
-          </div>
+          <Alerta tipo="sucesso" texto={mensagem} />
         )}
 
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -352,138 +352,52 @@ export default function DenunciaDetalheTela({
               <h2 className="text-lg font-bold text-slate-900">
                 Dados da denúncia
               </h2>
-
               <p className="mt-1 text-sm text-slate-500">
                 Informações registradas no protocolo.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Badge
-                tipo="gravidade"
-                texto={gravidade}
-              />
-
+              <Badge tipo="gravidade" texto={gravidade} />
               <Badge tipo="status" texto={status} />
             </div>
           </div>
 
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Info
-              label="Título"
-              valor={denunciaSelecionada.titulo}
-            />
-
+            <Info label="Título" valor={denunciaSelecionada.titulo} />
             <Info
               label="Categoria"
-              valor={
-                denunciaSelecionada.categoria
-                  ?.nome || "-"
-              }
+              valor={denunciaSelecionada.categoria?.nome || "-"}
             />
-
             <Info
-              label="Anônima"
+              label="Responsável pelas tratativas"
+              valor={responsavelExclusivo}
+            />
+            <Info
+              label="Tratativa liberada"
               valor={
-                denunciaSelecionada.anonima
+                denunciaSelecionada.tratativaLiberada
                   ? "Sim"
                   : "Não"
               }
             />
-
-            <Info
-              label="Local"
-              valor={
-                denunciaSelecionada.localOcorrido ||
-                "-"
-              }
-            />
-
-            <Info
-              label="Data do ocorrido"
-              valor={
-                denunciaSelecionada.dataOcorrido
-                  ? new Date(
-                      denunciaSelecionada.dataOcorrido
-                    ).toLocaleDateString("pt-BR")
-                  : "-"
-              }
-            />
-
-            <Info
-              label="Data do registro"
-              valor={new Date(
-                denunciaSelecionada.criadoEm
-              ).toLocaleString("pt-BR")}
-            />
-
-            <Info
-              label="Última atualização"
-              valor={new Date(
-                denunciaSelecionada.atualizadoEm
-              ).toLocaleString("pt-BR")}
-            />
-
-            <Info
-              label="Quantidade de anexos"
-              valor={String(anexos.length)}
-            />
           </div>
 
-          <div className="mt-5">
-            <p className="text-sm font-semibold text-slate-700">
-              Descrição
-            </p>
-
-            <p className="mt-2 whitespace-pre-wrap rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
-              {denunciaSelecionada.descricao}
-            </p>
-          </div>
+          <p className="mt-5 whitespace-pre-wrap rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+            {denunciaSelecionada.descricao}
+          </p>
         </section>
 
-        {!denunciaSelecionada.anonima && (
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div>
             <h2 className="text-lg font-bold text-slate-900">
-              Identificação do denunciante
+              Anexos
             </h2>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
-              <Info
-                label="Nome"
-                valor={
-                  denunciaSelecionada.nomeDenunciante ||
-                  "-"
-                }
-              />
-
-              <Info
-                label="E-mail"
-                valor={
-                  denunciaSelecionada.emailDenunciante ||
-                  "-"
-                }
-              />
-
-              <Info
-                label="Telefone"
-                valor={
-                  denunciaSelecionada.telefoneDenunciante ||
-                  "-"
-                }
-              />
-            </div>
-          </section>
-        )}
-
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="text-lg font-bold text-slate-900">
-            Anexos
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Documentos e evidências disponíveis para o seu
-            perfil.
-          </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Documentos e evidências disponíveis para este perfil.
+            </p>
+          </div>
 
           <div className="mt-5 space-y-3">
             {anexos.length === 0 ? (
@@ -506,9 +420,9 @@ export default function DenunciaDetalheTela({
                       {" • "}
                       {formatarTamanho(anexo.tamanho)}
                       {" • "}
-                      {new Date(
-                        anexo.criadoEm
-                      ).toLocaleString("pt-BR")}
+                      {new Date(anexo.criadoEm).toLocaleString(
+                        "pt-BR"
+                      )}
                     </p>
 
                     {usuarioMundial &&
@@ -525,7 +439,7 @@ export default function DenunciaDetalheTela({
                       href={anexo.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex w-full items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 sm:w-auto"
+                      className="inline-flex w-full items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 sm:w-auto"
                     >
                       Abrir anexo
                     </a>
@@ -539,6 +453,83 @@ export default function DenunciaDetalheTela({
             )}
           </div>
         </section>
+
+        {podeLiberarTratativa &&
+          !denunciaSelecionada.tratativaLiberada && (
+            <form
+              onSubmit={confirmarLiberacao}
+              className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6"
+            >
+              <h2 className="text-lg font-bold text-amber-950">
+                Liberar tratativa
+              </h2>
+
+              <p className="mt-1 text-sm leading-6 text-amber-800">
+                Defina quem ficará responsável por todas as
+                tratativas desta denúncia. Após a liberação,
+                Mundial e colaborador não poderão atuar
+                simultaneamente.
+              </p>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <CampoSelect
+                  label="Responsável exclusivo"
+                  value={destino}
+                  disabled={processando}
+                  onChange={(valor) =>
+                    setDestino(
+                      valor as DestinoTratativaDenuncia
+                    )
+                  }
+                >
+                  <option value="MUNDIAL">Mundial</option>
+                  <option value="COLABORADOR">
+                    Colaborador do cliente
+                  </option>
+                </CampoSelect>
+
+                {destino === "COLABORADOR" && (
+                  <CampoSelect
+                    label="Colaborador responsável"
+                    value={colaboradorId}
+                    disabled={processando}
+                    onChange={setColaboradorId}
+                  >
+                    <option value="">
+                      Selecione o colaborador
+                    </option>
+                    {colaboradoresDisponiveis.map(
+                      (colaborador) => (
+                        <option
+                          key={colaborador.id}
+                          value={colaborador.id}
+                        >
+                          {colaborador.nome}
+                          {colaborador.cargo
+                            ? ` — ${colaborador.cargo}`
+                            : ""}
+                        </option>
+                      )
+                    )}
+                  </CampoSelect>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={
+                  processando ||
+                  (destino === "COLABORADOR" &&
+                    !colaboradorId)
+                }
+                className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-60 sm:w-auto"
+              >
+                {processando
+                  ? "Liberando..."
+                  : "Liberar tratativa"}
+              </button>
+            </form>
+          )}
 
         {podeGerenciar && (
           <form
@@ -555,26 +546,21 @@ export default function DenunciaDetalheTela({
                 value={status}
                 disabled={processando}
                 onChange={(valor) =>
-                  setStatus(
-                    valor as StatusDenuncia
-                  )
+                  setStatus(valor as StatusDenuncia)
                 }
               >
-                <option value="RECEBIDA">
-                  Recebida
-                </option>
-                <option value="EM_ANALISE">
-                  Em análise
-                </option>
+                <option value="RECEBIDA">Recebida</option>
+                <option value="EM_ANALISE">Em análise</option>
                 <option value="EM_TRATATIVA">
                   Em tratativa
                 </option>
-                <option value="CONCLUIDA">
+                <option
+                  value="CONCLUIDA"
+                  disabled={!possuiTratativa}
+                >
                   Concluída
                 </option>
-                <option value="ARQUIVADA">
-                  Arquivada
-                </option>
+                <option value="ARQUIVADA">Arquivada</option>
               </CampoSelect>
 
               <CampoSelect
@@ -590,35 +576,41 @@ export default function DenunciaDetalheTela({
                 <option value="BAIXA">Baixa</option>
                 <option value="MEDIA">Média</option>
                 <option value="ALTA">Alta</option>
-                <option value="CRITICA">
-                  Crítica
-                </option>
+                <option value="CRITICA">Crítica</option>
               </CampoSelect>
 
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Atualização pública
+                  Resposta final pública
                 </label>
-
                 <textarea
                   value={respostaPublica}
-                  disabled={processando}
+                  disabled={processando || !possuiTratativa}
                   onChange={(event) =>
-                    setRespostaPublica(
-                      event.target.value
-                    )
+                    setRespostaPublica(event.target.value)
                   }
                   rows={4}
-                  placeholder="Esta informação poderá ser visualizada pelo denunciante através do protocolo."
-                  className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+                  placeholder={
+                    possuiTratativa
+                      ? "Resposta que será disponibilizada ao denunciante."
+                      : "Registre pelo menos uma tratativa antes de liberar a resposta final."
+                  }
+                  className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
                 />
+                {!possuiTratativa && (
+                  <p className="mt-2 text-xs font-semibold text-amber-700">
+                    A resposta final e a conclusão permanecem
+                    bloqueadas até existir pelo menos uma
+                    tratativa.
+                  </p>
+                )}
               </div>
             </div>
 
             <button
               type="submit"
               disabled={processando}
-              className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
+              className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
             >
               {processando
                 ? "Salvando..."
@@ -632,32 +624,19 @@ export default function DenunciaDetalheTela({
             <h2 className="text-lg font-bold text-slate-900">
               Tratativas internas
             </h2>
-
             <p className="mt-1 text-sm text-slate-500">
-              Conteúdo interno não exibido na consulta
-              pública.
+              Responsável exclusivo: {responsavelExclusivo}.
             </p>
 
             <div className="mt-5 space-y-4">
-              {tratativasVisiveis.length === 0 ? (
+              {tratativas.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                  Nenhuma tratativa disponível.
+                  Nenhuma tratativa registrada.
                 </p>
               ) : (
-                tratativasVisiveis.map((tratativa) => {
-                  const responsavelPodeEditar =
-                    colaboradorLogadoId &&
-                    tratativa.responsavelId ===
-                      colaboradorLogadoId;
-
-                  const exibirEdicao =
-                    podeEditarTratativas &&
-                    (usuarioMundial ||
-                      responsavelPodeEditar);
-
+                tratativas.map((tratativa) => {
                   const editando =
-                    tratativaEditandoId ===
-                    tratativa.id;
+                    tratativaEditandoId === tratativa.id;
 
                   return (
                     <div
@@ -666,9 +645,7 @@ export default function DenunciaDetalheTela({
                     >
                       {editando ? (
                         <form
-                          onSubmit={
-                            salvarEdicaoTratativa
-                          }
+                          onSubmit={salvarEdicaoTratativa}
                           className="space-y-4"
                         >
                           <CampoControlado
@@ -677,12 +654,10 @@ export default function DenunciaDetalheTela({
                             disabled={processando}
                             onChange={setTituloEdicao}
                           />
-
                           <div>
                             <label className="mb-2 block text-sm font-semibold text-slate-700">
                               Descrição
                             </label>
-
                             <textarea
                               value={descricaoEdicao}
                               disabled={processando}
@@ -696,40 +671,7 @@ export default function DenunciaDetalheTela({
                               className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
                             />
                           </div>
-
-                          {podeAtribuirResponsavel && (
-                            <CampoSelect
-                              label="Responsável"
-                              value={
-                                responsavelEdicao
-                              }
-                              disabled={processando}
-                              onChange={
-                                setResponsavelEdicao
-                              }
-                            >
-                              <option value="">
-                                Sem responsável
-                              </option>
-
-                              {colaboradoresDisponiveis.map(
-                                (colaborador) => (
-                                  <option
-                                    key={
-                                      colaborador.id
-                                    }
-                                    value={
-                                      colaborador.id
-                                    }
-                                  >
-                                    {colaborador.nome}
-                                  </option>
-                                )
-                              )}
-                            </CampoSelect>
-                          )}
-
-                          <div className="flex flex-col gap-2 sm:flex-row">
+                          <div className="flex gap-2">
                             <button
                               type="submit"
                               disabled={processando}
@@ -737,10 +679,8 @@ export default function DenunciaDetalheTela({
                             >
                               Salvar edição
                             </button>
-
                             <button
                               type="button"
-                              disabled={processando}
                               onClick={cancelarEdicao}
                               className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
                             >
@@ -750,70 +690,36 @@ export default function DenunciaDetalheTela({
                         </form>
                       ) : (
                         <>
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex justify-between gap-4">
                             <div>
                               <p className="font-semibold text-slate-900">
                                 {tratativa.titulo}
                               </p>
-
                               <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                                {
-                                  tratativa.descricao
-                                }
+                                {tratativa.descricao}
                               </p>
                             </div>
 
-                            {exibirEdicao && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  iniciarEdicao(
-                                    tratativa
-                                  )
-                                }
-                                className="text-sm font-semibold text-blue-600 hover:text-blue-800"
-                              >
-                                Editar
-                              </button>
-                            )}
-                          </div>
-
-                          <div className="mt-4 space-y-1 border-t border-slate-200 pt-3 text-xs text-slate-500">
-                            <p>
-                              Responsável:{" "}
-                              {tratativa.responsavel
-                                ?.nome ||
-                                "Não atribuído"}
-                            </p>
-
-                            <p>
-                              Criada por{" "}
-                              {
-                                tratativa.criadoPorNome
-                              }{" "}
-                              em{" "}
-                              {new Date(
-                                tratativa.criadoEm
-                              ).toLocaleString(
-                                "pt-BR"
+                            {podeEditarTratativas &&
+                              usuarioPodeExecutarTratativa && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    iniciarEdicao(tratativa)
+                                  }
+                                  className="text-sm font-semibold text-blue-600"
+                                >
+                                  Editar
+                                </button>
                               )}
-                            </p>
-
-                            {tratativa.atualizadoPorNome && (
-                              <p>
-                                Última edição por{" "}
-                                {
-                                  tratativa.atualizadoPorNome
-                                }{" "}
-                                em{" "}
-                                {new Date(
-                                  tratativa.atualizadoEm
-                                ).toLocaleString(
-                                  "pt-BR"
-                                )}
-                              </p>
-                            )}
                           </div>
+
+                          <p className="mt-4 border-t border-slate-200 pt-3 text-xs text-slate-500">
+                            Criada por {tratativa.criadoPorNome} em{" "}
+                            {new Date(
+                              tratativa.criadoEm
+                            ).toLocaleString("pt-BR")}
+                          </p>
                         </>
                       )}
                     </div>
@@ -822,7 +728,7 @@ export default function DenunciaDetalheTela({
               )}
             </div>
 
-            {podeTratar && (
+            {usuarioPodeExecutarTratativa && (
               <form
                 onSubmit={novaTratativa}
                 className="mt-6 grid gap-4 border-t border-slate-200 pt-6"
@@ -833,12 +739,10 @@ export default function DenunciaDetalheTela({
                   required
                   disabled={processando}
                 />
-
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-700">
                     Descrição da tratativa
                   </label>
-
                   <textarea
                     name="descricao"
                     required
@@ -847,39 +751,6 @@ export default function DenunciaDetalheTela({
                     className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
                   />
                 </div>
-
-                {podeAtribuirResponsavel && (
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">
-                      Direcionar para
-                    </label>
-
-                    <select
-                      name="responsavelId"
-                      disabled={processando}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
-                    >
-                      <option value="">
-                        Somente Mundial
-                      </option>
-
-                      {colaboradoresDisponiveis.map(
-                        (colaborador) => (
-                          <option
-                            key={colaborador.id}
-                            value={colaborador.id}
-                          >
-                            {colaborador.nome}
-                            {colaborador.cargo
-                              ? ` — ${colaborador.cargo}`
-                              : ""}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </div>
-                )}
-
                 <button
                   type="submit"
                   disabled={processando}
@@ -891,10 +762,60 @@ export default function DenunciaDetalheTela({
                 </button>
               </form>
             )}
+
+            {!usuarioPodeExecutarTratativa &&
+              denunciaSelecionada.tratativaLiberada && (
+                <p className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
+                  As tratativas desta denúncia são exclusivas de{" "}
+                  {responsavelExclusivo}.
+                </p>
+              )}
           </section>
         )}
       </section>
     </main>
+  );
+}
+
+function Estado({
+  texto,
+  erro = false,
+}: {
+  texto: string;
+  erro?: boolean;
+}) {
+  return (
+    <main className="min-h-screen bg-slate-100 px-4 py-6">
+      <div
+        className={`rounded-2xl border px-4 py-3 text-sm font-medium ${
+          erro
+            ? "border-red-100 bg-red-50 text-red-700"
+            : "border-slate-200 bg-white text-slate-500"
+        }`}
+      >
+        {texto}
+      </div>
+    </main>
+  );
+}
+
+function Alerta({
+  tipo,
+  texto,
+}: {
+  tipo: "erro" | "sucesso";
+  texto: string;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border px-4 py-3 text-sm font-medium ${
+        tipo === "erro"
+          ? "border-red-100 bg-red-50 text-red-700"
+          : "border-green-100 bg-green-50 text-green-700"
+      }`}
+    >
+      {texto}
+    </div>
   );
 }
 
@@ -910,7 +831,6 @@ function Info({
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </p>
-
       <p className="mt-1 break-words text-sm font-medium text-slate-900">
         {valor}
       </p>
@@ -934,7 +854,6 @@ function Campo({
       <label className="mb-2 block text-sm font-semibold text-slate-700">
         {label}
       </label>
-
       <input
         name={name}
         required={required}
@@ -961,14 +880,11 @@ function CampoControlado({
       <label className="mb-2 block text-sm font-semibold text-slate-700">
         {label}
       </label>
-
       <input
         value={value}
         required
         disabled={disabled}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
+        onChange={(event) => onChange(event.target.value)}
         className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
       />
     </div>
@@ -993,13 +909,10 @@ function CampoSelect({
       <label className="mb-2 block text-sm font-semibold text-slate-700">
         {label}
       </label>
-
       <select
         value={value}
         disabled={disabled}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
+        onChange={(event) => onChange(event.target.value)}
         className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
       >
         {children}

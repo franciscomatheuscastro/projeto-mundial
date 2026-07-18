@@ -19,6 +19,7 @@ import {
   DenunciaPublica,
   DenunciaResumo,
   EditarTratativaInput,
+  LiberarTratativaInput,
   NovaTratativa,
   PrepararUploadDenunciaInput,
 } from "@/src/core/model/Denuncia";
@@ -256,6 +257,21 @@ function montarResumo(
 
     quantidadeAnexos,
 
+    tratativaLiberada: denuncia.tratativaLiberada,
+    destinoTratativa: denuncia.destinoTratativa,
+    colaboradorResponsavelId:
+      denuncia.colaboradorResponsavelId,
+    colaboradorResponsavel:
+      denuncia.colaboradorResponsavel
+        ? {
+            id: denuncia.colaboradorResponsavel.id,
+            nome: denuncia.colaboradorResponsavel.nome,
+            email: denuncia.colaboradorResponsavel.email,
+            cargo: denuncia.colaboradorResponsavel.cargo,
+            setor: denuncia.colaboradorResponsavel.setor,
+          }
+        : null,
+
     criadoEm: denuncia.criadoEm,
     atualizadoEm: denuncia.atualizadoEm,
 
@@ -316,6 +332,8 @@ async function montarDetalhada(
     telefoneDenunciante: denuncia.telefoneDenunciante,
 
     respostaPublica: denuncia.respostaPublica,
+    tratativaLiberadaEm:
+      denuncia.tratativaLiberadaEm,
 
     tratativas: Array.isArray(denuncia.tratativas)
       ? denuncia.tratativas.map((tratativa: any) => ({
@@ -323,17 +341,6 @@ async function montarDetalhada(
           denunciaId: tratativa.denunciaId,
           titulo: tratativa.titulo,
           descricao: tratativa.descricao,
-
-          responsavelId: tratativa.responsavelId,
-          responsavel: tratativa.responsavel
-            ? {
-                id: tratativa.responsavel.id,
-                nome: tratativa.responsavel.nome,
-                email: tratativa.responsavel.email,
-                cargo: tratativa.responsavel.cargo,
-                setor: tratativa.responsavel.setor,
-              }
-            : null,
 
           criadoPorUsuarioId: tratativa.criadoPorUsuarioId,
           criadoPorNome: tratativa.criadoPorNome,
@@ -377,6 +384,7 @@ async function calcularGravidadeAutomatica(dados: {
 const includeDetalhadaMundial = {
   cliente: true,
   categoria: true,
+  colaboradorResponsavel: true,
 
   anexos: {
     orderBy: {
@@ -385,9 +393,6 @@ const includeDetalhadaMundial = {
   },
 
   tratativas: {
-    include: {
-      responsavel: true,
-    },
     orderBy: {
       criadoEm: "desc" as const,
     },
@@ -733,6 +738,29 @@ export default class RepositorioDenuncia {
         ? denunciaAtual.respostaPublica
         : textoOpcional(denuncia.respostaPublica);
 
+    const quantidadeTratativas =
+      await prisma.tratativaDenuncia.count({
+        where: { denunciaId: denuncia.id },
+      });
+
+    if (
+      ator.origem !== "MUNDIAL" &&
+      denunciaAtual.respostaPublica !== respostaPublica
+    ) {
+      throw new Error(
+        "Somente a Mundial pode publicar a resposta final da denúncia."
+      );
+    }
+
+    if (
+      (respostaPublica || status === "CONCLUIDA") &&
+      quantidadeTratativas < 1
+    ) {
+      throw new Error(
+        "A resposta final e a conclusão somente podem ser liberadas após o registro de pelo menos uma tratativa."
+      );
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.denuncia.update({
         where: {
@@ -835,28 +863,201 @@ export default class RepositorioDenuncia {
     return this.obterPorId(denuncia.id);
   }
 
-  static async adicionarTratativa(
-    denunciaId: string,
-    tratativa: NovaTratativa,
+  static async liberarTratativa(
+    dados: LiberarTratativaInput,
     ator: AtorDenuncia
   ): Promise<DenunciaDetalhada> {
-    if (!denunciaId?.trim()) {
+    if (ator.origem !== "MUNDIAL") {
+      throw new Error(
+        "Somente a Mundial pode liberar e direcionar a tratativa."
+      );
+    }
+
+    if (!dados.denunciaId?.trim()) {
       throw new Error("Denúncia não encontrada.");
     }
 
+    if (
+      dados.destino !== "MUNDIAL" &&
+      dados.destino !== "COLABORADOR"
+    ) {
+      throw new Error("Destino da tratativa inválido.");
+    }
+
     const denuncia = await prisma.denuncia.findUnique({
-      where: {
-        id: denunciaId,
-      },
+      where: { id: dados.denunciaId },
       select: {
         id: true,
         clienteId: true,
+        tratativaLiberada: true,
+        tratativas: {
+          select: { id: true },
+          take: 1,
+        },
       },
     });
 
     if (!denuncia) {
       throw new Error("Denúncia não encontrada.");
     }
+
+    if (denuncia.tratativaLiberada) {
+      throw new Error(
+        "A tratativa desta denúncia já foi liberada e direcionada."
+      );
+    }
+
+    if (denuncia.tratativas.length > 0) {
+      throw new Error(
+        "Não é possível alterar o direcionamento porque já existem tratativas registradas."
+      );
+    }
+
+    let colaboradorId: string | null = null;
+    let colaboradorNome: string | null = null;
+
+    if (dados.destino === "COLABORADOR") {
+      if (!dados.colaboradorId?.trim()) {
+        throw new Error(
+          "Selecione o colaborador responsável pela tratativa."
+        );
+      }
+
+      const colaborador =
+        await prisma.colaboradorCliente.findFirst({
+          where: {
+            id: dados.colaboradorId,
+            clienteId: denuncia.clienteId,
+            ativo: true,
+            podeTratarDenuncias: true,
+          },
+          select: {
+            id: true,
+            nome: true,
+          },
+        });
+
+      if (!colaborador) {
+        throw new Error(
+          "O colaborador selecionado não pertence ao cliente ou não possui permissão para tratar denúncias."
+        );
+      }
+
+      colaboradorId = colaborador.id;
+      colaboradorNome = colaborador.nome;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.denuncia.update({
+        where: { id: denuncia.id },
+        data: {
+          tratativaLiberada: true,
+          destinoTratativa: dados.destino,
+          colaboradorResponsavelId: colaboradorId,
+          tratativaLiberadaEm: new Date(),
+          tratativaLiberadaPorUsuarioId:
+            ator.usuarioId || null,
+          status: "EM_TRATATIVA",
+        },
+      });
+
+      await tx.historicoDenuncia.create({
+        data: {
+          denunciaId: denuncia.id,
+          tipo: "RESPONSAVEL_ATRIBUIDO",
+          titulo:
+            dados.destino === "MUNDIAL"
+              ? "Tratativa liberada para a Mundial"
+              : "Tratativa direcionada para colaborador",
+          descricao:
+            dados.destino === "MUNDIAL"
+              ? "A Mundial será a responsável exclusiva pelas tratativas desta denúncia."
+              : `${colaboradorNome} será o responsável exclusivo pelas tratativas desta denúncia.`,
+          statusNovo: "EM_TRATATIVA",
+          origemAtor: ator.origem,
+          atorId: ator.usuarioId,
+          atorNome: ator.nome,
+          visivelPublicamente: false,
+        },
+      });
+    });
+
+    return this.obterPorId(denuncia.id);
+  }
+
+  private static validarPermissaoTratativa(
+    denuncia: {
+      tratativaLiberada: boolean;
+      destinoTratativa: "MUNDIAL" | "COLABORADOR" | null;
+      colaboradorResponsavelId: string | null;
+    },
+    ator: AtorDenuncia,
+    colaboradorId?: string | null
+  ) {
+    if (!denuncia.tratativaLiberada) {
+      throw new Error(
+        "A tratativa ainda não foi liberada pela Mundial."
+      );
+    }
+
+    if (denuncia.destinoTratativa === "MUNDIAL") {
+      if (ator.origem !== "MUNDIAL") {
+        throw new Error(
+          "Esta denúncia está sob responsabilidade exclusiva da Mundial."
+        );
+      }
+
+      return;
+    }
+
+    if (denuncia.destinoTratativa === "COLABORADOR") {
+      if (
+        ator.origem === "MUNDIAL" ||
+        !colaboradorId ||
+        colaboradorId !== denuncia.colaboradorResponsavelId
+      ) {
+        throw new Error(
+          "Esta denúncia está sob responsabilidade exclusiva do colaborador designado."
+        );
+      }
+
+      return;
+    }
+
+    throw new Error(
+      "O direcionamento da tratativa está inconsistente."
+    );
+  }
+
+  static async adicionarTratativa(
+    denunciaId: string,
+    tratativa: NovaTratativa,
+    ator: AtorDenuncia,
+    colaboradorId?: string | null
+  ): Promise<DenunciaDetalhada> {
+    if (!denunciaId?.trim()) {
+      throw new Error("Denúncia não encontrada.");
+    }
+
+    const denuncia = await prisma.denuncia.findUnique({
+      where: { id: denunciaId },
+      select: {
+        id: true,
+        tratativaLiberada: true,
+        destinoTratativa: true,
+        colaboradorResponsavelId: true,
+      },
+    });
+
+    if (!denuncia) {
+      throw new Error("Denúncia não encontrada.");
+    }
+
+    this.validarPermissaoTratativa(
+      denuncia,
+      ator,
+      colaboradorId
+    );
 
     const titulo = tratativa.titulo?.trim();
     const descricao = tratativa.descricao?.trim();
@@ -873,27 +1074,6 @@ export default class RepositorioDenuncia {
       );
     }
 
-    if (tratativa.responsavelId) {
-      const responsavel =
-        await prisma.colaboradorCliente.findFirst({
-          where: {
-            id: tratativa.responsavelId,
-            clienteId: denuncia.clienteId,
-            ativo: true,
-            podeTratarDenuncias: true,
-          },
-          select: {
-            id: true,
-          },
-        });
-
-      if (!responsavel) {
-        throw new Error(
-          "O responsável não pertence ao cliente ou não possui permissão para tratar denúncias."
-        );
-      }
-    }
-
     await prisma.$transaction(async (tx) => {
       await tx.tratativaDenuncia.create({
         data: {
@@ -901,52 +1081,31 @@ export default class RepositorioDenuncia {
           titulo,
           descricao,
           responsavelId:
-            tratativa.responsavelId || null,
-
-          criadoPorUsuarioId:
-            ator.usuarioId || null,
+            denuncia.destinoTratativa === "COLABORADOR"
+              ? denuncia.colaboradorResponsavelId
+              : null,
+          criadoPorUsuarioId: ator.usuarioId || null,
           criadoPorNome: ator.nome,
           criadoPorPerfil: ator.perfil || null,
-
-          atualizadoPorUsuarioId:
-            ator.usuarioId || null,
+          atualizadoPorUsuarioId: ator.usuarioId || null,
           atualizadoPorNome: ator.nome,
         },
       });
 
       await tx.denuncia.update({
-        where: {
-          id: denunciaId,
-        },
-        data: {
-          status: "EM_TRATATIVA",
-        },
+        where: { id: denunciaId },
+        data: { status: "EM_TRATATIVA" },
       });
 
       await tx.historicoDenuncia.create({
         data: {
           denunciaId,
           tipo: "TRATATIVA_CRIADA",
-          titulo: "Tratativa interna iniciada",
+          titulo: "Tratativa interna registrada",
           origemAtor: ator.origem,
           atorId: ator.usuarioId,
           atorNome: ator.nome,
           visivelPublicamente: false,
-        },
-      });
-
-      await tx.historicoDenuncia.create({
-        data: {
-          denunciaId,
-          tipo: "STATUS_ALTERADO",
-          titulo: "Denúncia em tratativa",
-          descricao:
-            "A denúncia está em processo de tratativa.",
-          statusNovo: "EM_TRATATIVA",
-          origemAtor: ator.origem,
-          atorId: ator.usuarioId,
-          atorNome: ator.nome,
-          visivelPublicamente: true,
         },
       });
     });
@@ -968,7 +1127,9 @@ export default class RepositorioDenuncia {
         include: {
           denuncia: {
             select: {
-              clienteId: true,
+              tratativaLiberada: true,
+              destinoTratativa: true,
+              colaboradorResponsavelId: true,
             },
           },
         },
@@ -978,18 +1139,11 @@ export default class RepositorioDenuncia {
       throw new Error("Tratativa não encontrada.");
     }
 
-    const usuarioMundial =
-      ator.origem === "MUNDIAL";
-
-    const responsavelPodeEditar =
-      colaboradorId &&
-      tratativaAtual.responsavelId === colaboradorId;
-
-    if (!usuarioMundial && !responsavelPodeEditar) {
-      throw new Error(
-        "Você não possui permissão para editar esta tratativa."
-      );
-    }
+    this.validarPermissaoTratativa(
+      tratativaAtual.denuncia,
+      ator,
+      colaboradorId
+    );
 
     const titulo = dados.titulo?.trim();
     const descricao = dados.descricao?.trim();
@@ -1000,41 +1154,12 @@ export default class RepositorioDenuncia {
       );
     }
 
-    if (dados.responsavelId) {
-      const responsavel =
-        await prisma.colaboradorCliente.findFirst({
-          where: {
-            id: dados.responsavelId,
-            clienteId:
-              tratativaAtual.denuncia.clienteId,
-            ativo: true,
-            podeTratarDenuncias: true,
-          },
-          select: {
-            id: true,
-          },
-        });
-
-      if (!responsavel) {
-        throw new Error(
-          "Responsável inválido para esta denúncia."
-        );
-      }
-    }
-
     await prisma.$transaction(async (tx) => {
       await tx.tratativaDenuncia.update({
-        where: {
-          id: dados.id,
-        },
+        where: { id: dados.id },
         data: {
           titulo,
           descricao,
-
-          responsavelId: usuarioMundial
-            ? dados.responsavelId || null
-            : tratativaAtual.responsavelId,
-
           atualizadoPorUsuarioId:
             ator.usuarioId || null,
           atualizadoPorNome: ator.nome,
@@ -1072,6 +1197,7 @@ export default class RepositorioDenuncia {
       include: {
         cliente: true,
         categoria: true,
+        colaboradorResponsavel: true,
 
         _count: {
           select: {
@@ -1106,6 +1232,7 @@ export default class RepositorioDenuncia {
       include: {
         cliente: true,
         categoria: true,
+        colaboradorResponsavel: true,
 
         _count: {
           select: {
@@ -1248,11 +1375,9 @@ export default class RepositorioDenuncia {
       where: {
         clienteId,
 
-        tratativas: {
-          some: {
-            responsavelId: colaboradorId,
-          },
-        },
+        tratativaLiberada: true,
+        destinoTratativa: "COLABORADOR",
+        colaboradorResponsavelId: colaboradorId,
       },
 
       orderBy: [
@@ -1267,6 +1392,7 @@ export default class RepositorioDenuncia {
       include: {
         cliente: true,
         categoria: true,
+        colaboradorResponsavel: true,
 
         _count: {
           select: {
@@ -1358,11 +1484,9 @@ export default class RepositorioDenuncia {
 
         ...(colaboradorId
           ? {
-              tratativas: {
-                some: {
-                  responsavelId: colaboradorId,
-                },
-              },
+              tratativaLiberada: true,
+              destinoTratativa: "COLABORADOR",
+              colaboradorResponsavelId: colaboradorId,
             }
           : {}),
       },
@@ -1370,6 +1494,7 @@ export default class RepositorioDenuncia {
       include: {
         cliente: true,
         categoria: true,
+        colaboradorResponsavel: true,
 
         anexos: {
           where: {
@@ -1384,12 +1509,6 @@ export default class RepositorioDenuncia {
         tratativas:
           colaboradorId && podeVerTratativas
             ? {
-                where: {
-                  responsavelId: colaboradorId,
-                },
-                include: {
-                  responsavel: true,
-                },
                 orderBy: {
                   criadoEm: "desc",
                 },
@@ -1397,9 +1516,6 @@ export default class RepositorioDenuncia {
             : {
                 where: {
                   id: "__SEM_TRATATIVAS__",
-                },
-                include: {
-                  responsavel: true,
                 },
               },
 

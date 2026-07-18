@@ -1,18 +1,10 @@
 import { auth } from "@/src/auth";
-
-import {
-  notFound,
-  redirect,
-} from "next/navigation";
-
+import { notFound, redirect } from "next/navigation";
 import Backend from "@/src/backend";
-
 import DenunciaDetalheTela from "@/src/app/components/denuncias/DenunciaDetalheTela";
 
 type PageProps = {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
 };
 
 export default async function DenunciaDetalhePage({
@@ -47,10 +39,6 @@ export default async function DenunciaDetalhePage({
     const denuncia =
       await Backend.denuncias.obterPorId(id);
 
-    if (!denuncia) {
-      notFound();
-    }
-
     const colaboradores =
       await Backend.colaboradoresCliente.obterPorCliente(
         denuncia.clienteId
@@ -79,7 +67,7 @@ export default async function DenunciaDetalhePage({
         podeTratar
         podeVerTratativas
         podeEditarTratativas
-        podeAtribuirResponsavel
+        podeLiberarTratativa
         colaboradoresDisponiveis={
           colaboradoresDisponiveis
         }
@@ -90,7 +78,6 @@ export default async function DenunciaDetalhePage({
       "Erro ao carregar os dados da denúncia:",
       error
     );
-
     notFound();
   }
 }

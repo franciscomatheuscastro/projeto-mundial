@@ -2,11 +2,16 @@
 
 import { auth } from "@/src/auth";
 
+import RepositorioDenuncia from "./RepositorioDenuncia";
+
 import type {
   EditarTratativaInput,
 } from "@/src/core/model/Denuncia";
 
-import RepositorioDenuncia from "./RepositorioDenuncia";
+const PERFIS_CLIENTE_PERMITIDOS = [
+  "CLIENTE",
+  "COMITE_CLIENTE",
+];
 
 export default async function editarMinhaTratativa(
   dados: EditarTratativaInput
@@ -14,113 +19,74 @@ export default async function editarMinhaTratativa(
   const session = await auth();
 
   if (!session?.user) {
-    throw new Error(
-      "Usuário não autenticado."
-    );
+    throw new Error("Usuário não autenticado.");
   }
 
-  const usuario = session.user as any;
-
-  const perfil = usuario.perfil as
-    | "ADMIN"
-    | "GESTOR"
-    | "PSICOLOGO"
-    | "ASSISTENTE_SOCIAL"
-    | "RECEPCAO"
-    | "CLIENTE"
-    | "COMITE_CLIENTE";
+  const usuario = session.user as {
+    id?: string;
+    name?: string | null;
+    nome?: string | null;
+    perfil?: string;
+    clienteId?: string | null;
+  };
 
   if (
-    perfil !== "COMITE_CLIENTE" &&
-    perfil !== "CLIENTE"
+    !usuario.perfil ||
+    !PERFIS_CLIENTE_PERMITIDOS.includes(
+      usuario.perfil
+    )
   ) {
+    throw new Error("Acesso não autorizado.");
+  }
+
+  if (!usuario.id) {
     throw new Error(
-      "Acesso não autorizado."
+      "Usuário autenticado sem identificador."
     );
   }
 
-  const clienteId =
-    usuario.clienteId as string | undefined;
-
-  if (!clienteId?.trim()) {
+  if (!usuario.clienteId) {
     throw new Error(
       "Usuário sem cliente vinculado."
-    );
-  }
-
-  if (!dados?.id?.trim()) {
-    throw new Error(
-      "Tratativa não informada."
-    );
-  }
-
-  if (!dados?.denunciaId?.trim()) {
-    throw new Error(
-      "Denúncia não informada."
-    );
-  }
-
-  if (!dados?.titulo?.trim()) {
-    throw new Error(
-      "O título da tratativa é obrigatório."
-    );
-  }
-
-  if (!dados?.descricao?.trim()) {
-    throw new Error(
-      "A descrição da tratativa é obrigatória."
     );
   }
 
   const colaborador =
     await RepositorioDenuncia.obterColaboradorPorUsuario(
       usuario.id,
-      clienteId
+      usuario.clienteId
     );
 
   if (!colaborador) {
     throw new Error(
-      "Colaborador vinculado ao usuário não encontrado."
+      "O usuário não está vinculado a um colaborador deste cliente."
     );
   }
 
   if (!colaborador.ativo) {
     throw new Error(
-      "Seu acesso como colaborador está desativado."
+      "O cadastro do colaborador está inativo."
     );
   }
 
   if (!colaborador.podeTratarDenuncias) {
     throw new Error(
-      "Você não possui permissão para tratar denúncias."
+      "O colaborador não possui permissão para editar tratativas."
     );
   }
 
   return RepositorioDenuncia.editarTratativa(
+    dados,
     {
-      ...dados,
+      usuarioId: usuario.id,
 
-      id: dados.id.trim(),
-      denunciaId: dados.denunciaId.trim(),
-      titulo: dados.titulo.trim(),
-      descricao: dados.descricao.trim(),
-
-      /*
-       * O colaborador não pode trocar o responsável
-       * da tratativa. O repositório preservará o
-       * responsável atual.
-       */
-      responsavelId:
-        dados.responsavelId?.trim() ||
-        null,
-    },
-    {
-      usuarioId: usuario.id || null,
       nome:
-        usuario.nome ||
-        usuario.name ||
+        usuario.name?.trim() ||
+        usuario.nome?.trim() ||
         colaborador.nome,
-      perfil,
+
+      perfil: usuario.perfil as any,
+
       origem: "COMITE_CLIENTE",
     },
     colaborador.id

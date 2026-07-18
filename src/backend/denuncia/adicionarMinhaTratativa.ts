@@ -2,11 +2,14 @@
 
 import { auth } from "@/src/auth";
 
-import type {
-  NovaTratativa,
-} from "@/src/core/model/Denuncia";
-
 import RepositorioDenuncia from "./RepositorioDenuncia";
+
+import type { NovaTratativa } from "@/src/core/model/Denuncia";
+
+const PERFIS_CLIENTE_PERMITIDOS = [
+  "CLIENTE",
+  "COMITE_CLIENTE",
+];
 
 export default async function adicionarMinhaTratativa(
   denunciaId: string,
@@ -15,115 +18,77 @@ export default async function adicionarMinhaTratativa(
   const session = await auth();
 
   if (!session?.user) {
+    throw new Error("Usuário não autenticado.");
+  }
+
+  const usuario = session.user as {
+    id?: string;
+    name?: string | null;
+    nome?: string | null;
+    perfil?: string;
+    clienteId?: string | null;
+  };
+
+  if (
+    !usuario.perfil ||
+    !PERFIS_CLIENTE_PERMITIDOS.includes(
+      usuario.perfil
+    )
+  ) {
+    throw new Error("Acesso não autorizado.");
+  }
+
+  if (!usuario.id) {
     throw new Error(
-      "Usuário não autenticado."
+      "Usuário autenticado sem identificador."
     );
   }
 
-  const usuario = session.user as any;
-
-  const perfil = usuario.perfil as
-    | "CLIENTE"
-    | "COMITE_CLIENTE"
-    | string;
-
-  if (perfil !== "COMITE_CLIENTE") {
-    throw new Error(
-      "Apenas integrantes do comitê podem adicionar tratativas."
-    );
-  }
-
-  const clienteId =
-    usuario.clienteId as string | undefined;
-
-  if (!clienteId?.trim()) {
+  if (!usuario.clienteId) {
     throw new Error(
       "Usuário sem cliente vinculado."
-    );
-  }
-
-  if (!usuario.id?.trim()) {
-    throw new Error(
-      "Usuário não identificado."
-    );
-  }
-
-  if (!denunciaId?.trim()) {
-    throw new Error(
-      "Denúncia não informada."
-    );
-  }
-
-  if (!tratativa?.titulo?.trim()) {
-    throw new Error(
-      "O título da tratativa é obrigatório."
-    );
-  }
-
-  if (!tratativa?.descricao?.trim()) {
-    throw new Error(
-      "A descrição da tratativa é obrigatória."
     );
   }
 
   const colaborador =
     await RepositorioDenuncia.obterColaboradorPorUsuario(
       usuario.id,
-      clienteId
+      usuario.clienteId
     );
 
   if (!colaborador) {
     throw new Error(
-      "Colaborador vinculado ao usuário não encontrado."
+      "O usuário não está vinculado a um colaborador deste cliente."
     );
   }
 
   if (!colaborador.ativo) {
     throw new Error(
-      "Seu acesso ao comitê está desativado."
+      "O cadastro do colaborador está inativo."
     );
   }
 
   if (!colaborador.podeTratarDenuncias) {
     throw new Error(
-      "Você não possui permissão para tratar denúncias."
-    );
-  }
-
-  /*
-   * O comitê somente pode adicionar uma tratativa
-   * quando a denúncia estiver direcionada a ele.
-   */
-  if (
-    tratativa.responsavelId &&
-    tratativa.responsavelId !==
-      colaborador.id
-  ) {
-    throw new Error(
-      "Você não pode atribuir a tratativa a outro colaborador."
+      "O colaborador não possui permissão para tratar denúncias."
     );
   }
 
   return RepositorioDenuncia.adicionarTratativa(
-    denunciaId.trim(),
-    {
-      titulo: tratativa.titulo.trim(),
-      descricao:
-        tratativa.descricao.trim(),
-
-      responsavelId: colaborador.id,
-    },
+    denunciaId,
+    tratativa,
     {
       usuarioId: usuario.id,
 
       nome:
-        usuario.nome ||
-        usuario.name ||
+        usuario.name?.trim() ||
+        usuario.nome?.trim() ||
         colaborador.nome,
 
-      perfil: "COMITE_CLIENTE",
+      perfil: usuario.perfil as any,
 
       origem: "COMITE_CLIENTE",
-    }
+    },
+    colaborador.id
   );
 }

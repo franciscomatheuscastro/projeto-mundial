@@ -1,89 +1,39 @@
 "use server";
 
 import { auth } from "@/src/auth";
-
-import type {
-  NovaTratativa,
-} from "@/src/core/model/Denuncia";
-
 import RepositorioDenuncia from "./RepositorioDenuncia";
+import type { NovaTratativa } from "@/src/core/model/Denuncia";
 
-export default async function adicionarTratativa(
+const PERFIS_MUNDIAL = [
+  "ADMIN",
+  "GESTOR",
+  "PSICOLOGO",
+  "ASSISTENTE_SOCIAL",
+];
+
+export default async function adicionarTratativaDenuncia(
   denunciaId: string,
   tratativa: NovaTratativa
 ) {
   const session = await auth();
 
   if (!session?.user) {
-    throw new Error(
-      "Usuário não autenticado."
-    );
+    throw new Error("Usuário não autenticado.");
   }
 
   const usuario = session.user as any;
 
-  const perfil = usuario.perfil as
-    | "ADMIN"
-    | "GESTOR"
-    | "PSICOLOGO"
-    | "ASSISTENTE_SOCIAL"
-    | "RECEPCAO"
-    | "CLIENTE"
-    | "COMITE_CLIENTE";
-
-  const perfisPermitidos = [
-    "ADMIN",
-    "GESTOR",
-    "PSICOLOGO",
-    "ASSISTENTE_SOCIAL",
-  ];
-
-  if (!perfisPermitidos.includes(perfil)) {
-    throw new Error(
-      "Você não possui permissão para adicionar tratativas."
-    );
-  }
-
-  if (!denunciaId?.trim()) {
-    throw new Error(
-      "Denúncia não informada."
-    );
-  }
-
-  if (!tratativa?.titulo?.trim()) {
-    throw new Error(
-      "O título da tratativa é obrigatório."
-    );
-  }
-
-  if (!tratativa?.descricao?.trim()) {
-    throw new Error(
-      "A descrição da tratativa é obrigatória."
-    );
+  if (!PERFIS_MUNDIAL.includes(usuario.perfil)) {
+    throw new Error("Acesso não autorizado.");
   }
 
   return RepositorioDenuncia.adicionarTratativa(
-    denunciaId.trim(),
+    denunciaId,
+    tratativa,
     {
-      titulo: tratativa.titulo.trim(),
-      descricao:
-        tratativa.descricao.trim(),
-
-      responsavelId:
-        tratativa.responsavelId?.trim() ||
-        null,
-    },
-    {
-      usuarioId: usuario.id || null,
-
-      nome:
-        usuario.nome ||
-        usuario.name ||
-        usuario.email ||
-        "Usuário Mundial",
-
-      perfil,
-
+      usuarioId: usuario.id,
+      nome: usuario.name || usuario.nome || "Mundial",
+      perfil: usuario.perfil,
       origem: "MUNDIAL",
     }
   );

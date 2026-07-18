@@ -2,7 +2,7 @@
 
 import { auth } from "@/src/auth";
 import RepositorioDenuncia from "./RepositorioDenuncia";
-import type { EditarTratativaInput } from "@/src/core/model/Denuncia";
+import type { LiberarTratativaInput } from "@/src/core/model/Denuncia";
 
 const PERFIS_MUNDIAL = [
   "ADMIN",
@@ -11,8 +11,8 @@ const PERFIS_MUNDIAL = [
   "ASSISTENTE_SOCIAL",
 ];
 
-export default async function editarTratativaDenuncia(
-  dados: EditarTratativaInput
+export default async function liberarTratativaDenuncia(
+  dados: LiberarTratativaInput
 ) {
   const session = await auth();
 
@@ -23,10 +23,12 @@ export default async function editarTratativaDenuncia(
   const usuario = session.user as any;
 
   if (!PERFIS_MUNDIAL.includes(usuario.perfil)) {
-    throw new Error("Acesso não autorizado.");
+    throw new Error(
+      "Somente a Mundial pode liberar e direcionar tratativas."
+    );
   }
 
-  return RepositorioDenuncia.editarTratativa(dados, {
+  return RepositorioDenuncia.liberarTratativa(dados, {
     usuarioId: usuario.id,
     nome: usuario.name || usuario.nome || "Mundial",
     perfil: usuario.perfil,

@@ -75,6 +75,7 @@ model Usuario {
 
   tratativasCriadas     TratativaDenuncia[] @relation("TratativaCriadaPor")
   tratativasAtualizadas TratativaDenuncia[] @relation("TratativaAtualizadaPor")
+  denunciasLiberadas    Denuncia[]           @relation("DenunciaLiberadaPor")
 
   @@index([clienteId])
   @@index([perfil])
@@ -251,6 +252,11 @@ enum GravidadeDenuncia {
   CRITICA
 }
 
+enum DestinoTratativaDenuncia {
+  MUNDIAL
+  COLABORADOR
+}
+
 model ColaboradorCliente {
   id        String  @id @default(cuid())
   clienteId String
@@ -272,7 +278,8 @@ model ColaboradorCliente {
   cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
 
-  tratativasResponsavel TratativaDenuncia[] @relation("ResponsavelTratativa")
+  tratativasResponsavel       TratativaDenuncia[] @relation("ResponsavelTratativa")
+  denunciasResponsavelTratativa Denuncia[]          @relation("ResponsavelTratativaDenuncia")
 
   @@index([clienteId])
   @@index([ativo])
@@ -302,6 +309,15 @@ model Denuncia {
 
   respostaPublica String?
 
+  tratativaLiberada Boolean @default(false)
+  destinoTratativa DestinoTratativaDenuncia?
+  colaboradorResponsavelId String?
+  colaboradorResponsavel ColaboradorCliente? @relation("ResponsavelTratativaDenuncia", fields: [colaboradorResponsavelId], references: [id], onDelete: SetNull)
+
+  tratativaLiberadaEm DateTime?
+  tratativaLiberadaPorUsuarioId String?
+  tratativaLiberadaPorUsuario Usuario? @relation("DenunciaLiberadaPor", fields: [tratativaLiberadaPorUsuarioId], references: [id], onDelete: SetNull)
+
   aceiteTermosEm      DateTime?
   versaoTermosAceitos String?
   ipAceiteHash        String?
@@ -320,6 +336,9 @@ model Denuncia {
   @@index([categoriaId])
   @@index([status])
   @@index([gravidade])
+  @@index([tratativaLiberada])
+  @@index([destinoTratativa])
+  @@index([colaboradorResponsavelId])
   @@index([criadoEm])
 }
 
@@ -399,7 +418,6 @@ model HistoricoDenuncia {
   @@index([denunciaId, criadoEm])
   @@index([visivelPublicamente])
 }
-
 
 
 

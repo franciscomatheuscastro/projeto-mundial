@@ -17,6 +17,7 @@ import type {
   DenunciaDetalhada,
   DenunciaResumo,
   EditarTratativaInput,
+  LiberarTratativaInput,
   NovaTratativa,
 } from "@/src/core/model/Denuncia";
 
@@ -577,6 +578,54 @@ export function useDenuncias(
       ]
     );
 
+  const liberarTratativa =
+    useCallback(
+      async (
+        dados: LiberarTratativaInput
+      ) => {
+        return new Promise<DenunciaDetalhada>(
+          (resolve, reject) => {
+            startTransition(async () => {
+              try {
+                setErro(null);
+
+                if (contexto !== "mundial") {
+                  throw new Error(
+                    "Somente a Mundial pode liberar tratativas."
+                  );
+                }
+
+                const resultado =
+                  await Backend.denuncias.liberarTratativa(
+                    dados
+                  );
+
+                setDenunciaSelecionada(resultado);
+
+                if (carregarInicial) {
+                  await carregarDenuncias();
+                }
+
+                resolve(resultado);
+              } catch (error) {
+                registrarErro(
+                  error,
+                  "Erro ao liberar tratativa."
+                );
+                reject(error);
+              }
+            });
+          }
+        );
+      },
+      [
+        contexto,
+        carregarDenuncias,
+        carregarInicial,
+        registrarErro,
+      ]
+    );
+
   const adicionarTratativa =
     useCallback(
       async (
@@ -711,6 +760,7 @@ export function useDenuncias(
     consultarDenunciaPublica,
 
     salvarDenuncia,
+    liberarTratativa,
 
     adicionarTratativa,
     editarTratativa,

@@ -56,6 +56,7 @@ import salvarDenuncia from "./denuncia/salvarDenuncia";
 
 import adicionarTratativaDenuncia from "./denuncia/adicionarTratativa";
 import editarTratativaDenuncia from "./denuncia/editarTratativa";
+import liberarTratativaDenuncia from "./denuncia/liberarTratativa";
 
 import obterMinhasDenuncias from "./denuncia/obterMinhasDenuncias";
 import obterMinhaDenunciaPorId from "./denuncia/obterMinhaDenunciaPorId";
@@ -178,6 +179,8 @@ export default class Backend {
 
     editarTratativa:
       editarTratativaDenuncia,
+
+      liberarTratativa: liberarTratativaDenuncia,
 
     obterMinhas:
       obterMinhasDenuncias,
