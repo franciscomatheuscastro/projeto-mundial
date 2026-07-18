@@ -30,6 +30,12 @@ export default async function CanalDenunciasPublicoPage({
       notFound();
     }
 
+    const perguntasPersonalizadas =
+      await Backend.perguntasCanalDenuncia.obterAtivasPorCliente(
+        clienteId
+      );
+
+
     const categorias = categoriasBanco
       .filter(
         (
@@ -49,6 +55,7 @@ export default async function CanalDenunciasPublicoPage({
       <CanalDenunciasPublicoTela
         clienteId={clienteId}
         categorias={categorias}
+        perguntasPersonalizadas={perguntasPersonalizadas}
       />
     );
   } catch (error) {

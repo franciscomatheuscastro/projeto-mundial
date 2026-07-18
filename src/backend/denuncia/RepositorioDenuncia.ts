@@ -215,6 +215,245 @@ function validarDadosObrigatorios(dados: {
   }
 }
 
+
+function converterOpcoesJson(valor: Prisma.JsonValue): string[] {
+  if (!Array.isArray(valor)) {
+    return [];
+  }
+
+  return valor.filter(
+    (item): item is string => typeof item === "string"
+  );
+}
+
+function respostaVazia(
+  resposta: string | boolean | null | undefined
+) {
+  return (
+    resposta === null ||
+    resposta === undefined ||
+    (typeof resposta === "string" &&
+      !resposta.trim())
+  );
+}
+
+type RespostaPersonalizadaValidada = {
+  perguntaId: string;
+  perguntaEnunciado: string;
+  perguntaTipo:
+    | "TEXTO"
+    | "TEXTO_LONGO"
+    | "SIM_NAO"
+    | "MULTIPLA_ESCOLHA";
+  resposta: string | boolean;
+};
+
+async function validarRespostasPersonalizadas(
+  clienteId: string,
+  respostasRecebidas: Array<{
+    perguntaId: string;
+    resposta: string | boolean | null;
+  }> = []
+): Promise<RespostaPersonalizadaValidada[]> {
+  const perguntas =
+    await prisma.perguntaCanalDenuncia.findMany({
+      where: {
+        ativo: true,
+
+        clientes: {
+          some: {
+            clienteId,
+          },
+        },
+      },
+
+      orderBy: [
+        {
+          ordem: "asc",
+        },
+        {
+          criadoEm: "asc",
+        },
+      ],
+
+      select: {
+        id: true,
+        enunciado: true,
+        tipo: true,
+        obrigatoria: true,
+        opcoes: true,
+      },
+    });
+
+  const idsPermitidos = new Set(
+    perguntas.map(
+      (pergunta) => pergunta.id
+    )
+  );
+
+  const mapaRespostas = new Map<
+    string,
+    string | boolean | null
+  >();
+
+  for (const item of respostasRecebidas) {
+    if (!item.perguntaId?.trim()) {
+      throw new Error(
+        "Foi enviada uma resposta sem identificação da pergunta."
+      );
+    }
+
+    if (
+      !idsPermitidos.has(
+        item.perguntaId
+      )
+    ) {
+      throw new Error(
+        "Uma das perguntas enviadas não pertence ao canal deste cliente ou está inativa."
+      );
+    }
+
+    if (
+      mapaRespostas.has(
+        item.perguntaId
+      )
+    ) {
+      throw new Error(
+        "Foi enviada mais de uma resposta para a mesma pergunta."
+      );
+    }
+
+    mapaRespostas.set(
+      item.perguntaId,
+      item.resposta
+    );
+  }
+
+  const respostasValidadas:
+    RespostaPersonalizadaValidada[] = [];
+
+  for (const pergunta of perguntas) {
+    const resposta =
+      mapaRespostas.get(
+        pergunta.id
+      ) ?? null;
+
+    const vazia =
+      respostaVazia(resposta);
+
+    if (
+      pergunta.obrigatoria &&
+      vazia
+    ) {
+      throw new Error(
+        `Responda à pergunta obrigatória: ${pergunta.enunciado}`
+      );
+    }
+
+    if (vazia) {
+      continue;
+    }
+
+    if (
+      pergunta.tipo === "TEXTO" ||
+      pergunta.tipo ===
+        "TEXTO_LONGO"
+    ) {
+      if (
+        typeof resposta !== "string" ||
+        !resposta.trim()
+      ) {
+        throw new Error(
+          `Resposta inválida para: ${pergunta.enunciado}`
+        );
+      }
+
+      respostasValidadas.push({
+        perguntaId:
+          pergunta.id,
+
+        perguntaEnunciado:
+          pergunta.enunciado,
+
+        perguntaTipo:
+          pergunta.tipo,
+
+        resposta:
+          resposta.trim(),
+      });
+
+      continue;
+    }
+
+    if (
+      pergunta.tipo === "SIM_NAO"
+    ) {
+      if (
+        typeof resposta !== "boolean"
+      ) {
+        throw new Error(
+          `Resposta inválida para: ${pergunta.enunciado}`
+        );
+      }
+
+      respostasValidadas.push({
+        perguntaId:
+          pergunta.id,
+
+        perguntaEnunciado:
+          pergunta.enunciado,
+
+        perguntaTipo:
+          pergunta.tipo,
+
+        resposta,
+      });
+
+      continue;
+    }
+
+    if (
+      pergunta.tipo ===
+        "MULTIPLA_ESCOLHA"
+    ) {
+      const opcoes =
+        converterOpcoesJson(
+          pergunta.opcoes
+        );
+
+      if (
+        typeof resposta !== "string" ||
+        !opcoes.includes(resposta)
+      ) {
+        throw new Error(
+          `Resposta inválida para: ${pergunta.enunciado}`
+        );
+      }
+
+      respostasValidadas.push({
+        perguntaId:
+          pergunta.id,
+
+        perguntaEnunciado:
+          pergunta.enunciado,
+
+        perguntaTipo:
+          pergunta.tipo,
+
+        resposta,
+      });
+
+      continue;
+    }
+
+    throw new Error(
+      `Tipo de pergunta inválido: ${pergunta.enunciado}`
+    );
+  }
+
+  return respostasValidadas;
+}
+
 function montarResumo(
   denuncia: any
 ): DenunciaResumo {
@@ -320,7 +559,7 @@ async function montarDetalhada(
       : []
   );
 
-  return {
+  const detalhada = {
     ...montarResumo(denuncia),
 
     descricao: denuncia.descricao,
@@ -361,7 +600,28 @@ async function montarDetalhada(
       : [],
 
     anexos,
+
+    respostasPerguntasCanal:
+      Array.isArray(
+        denuncia.respostasPerguntasCanal
+      )
+        ? denuncia.respostasPerguntasCanal.map(
+            (resposta: any) => ({
+              id: resposta.id,
+              perguntaId:
+                resposta.perguntaId,
+              perguntaEnunciado:
+                resposta.perguntaEnunciado,
+              perguntaTipo:
+                resposta.perguntaTipo,
+              resposta: resposta.resposta,
+              criadoEm: resposta.criadoEm,
+            })
+          )
+        : [],
   };
+
+  return detalhada;
 }
 
 async function calcularGravidadeAutomatica(dados: {
@@ -399,6 +659,12 @@ const includeDetalhadaMundial = {
   },
 
   historico: {
+    orderBy: {
+      criadoEm: "asc" as const,
+    },
+  },
+
+  respostasPerguntasCanal: {
     orderBy: {
       criadoEm: "asc" as const,
     },
@@ -448,6 +714,12 @@ export default class RepositorioDenuncia {
       categoria: categoria.nome,
     });
 
+    const respostasPersonalizadas =
+      await validarRespostasPersonalizadas(
+        dados.clienteId,
+        dados.respostasPersonalizadas || []
+      );
+
     const denuncia = await prisma.denuncia.create({
       data: {
         clienteId: dados.clienteId,
@@ -468,7 +740,9 @@ export default class RepositorioDenuncia {
 
         nomeDenunciante: dados.anonima
           ? null
-          : textoOpcional(dados.nomeDenunciante),
+          : textoOpcional(
+              dados.nomeDenunciante
+            ),
 
         emailDenunciante: dados.anonima
           ? null
@@ -478,12 +752,18 @@ export default class RepositorioDenuncia {
 
         telefoneDenunciante: dados.anonima
           ? null
-          : textoOpcional(dados.telefoneDenunciante),
+          : textoOpcional(
+              dados.telefoneDenunciante
+            ),
 
         gravidade,
         status: "RECEBIDA",
 
         respostaPublica: null,
+
+        respostasPerguntasCanal: {
+          create: respostasPersonalizadas,
+        },
 
         aceiteTermosEm: new Date(),
         versaoTermosAceitos:
@@ -541,6 +821,8 @@ export default class RepositorioDenuncia {
       gravidade: dados.gravidade || null,
     });
 
+    const anonima = dados.anonima ?? true;
+
     const denuncia = await prisma.denuncia.create({
       data: {
         clienteId: dados.clienteId,
@@ -557,9 +839,9 @@ export default class RepositorioDenuncia {
           dados.dataOcorrido
         ),
 
-        anonima: dados.anonima ?? true,
+        anonima,
 
-        nomeDenunciante: dados.anonima
+        nomeDenunciante: anonima
           ? null
           : textoOpcional(dados.nomeDenunciante),
 
@@ -1324,12 +1606,11 @@ export default class RepositorioDenuncia {
 
           ...(filtro.colaboradorId
             ? {
-                tratativas: {
-                  some: {
-                    responsavelId:
-                      filtro.colaboradorId,
-                  },
-                },
+                tratativaLiberada: true,
+                destinoTratativa:
+                  "COLABORADOR",
+                colaboradorResponsavelId:
+                  filtro.colaboradorId,
               }
             : {}),
         },
@@ -1346,6 +1627,7 @@ export default class RepositorioDenuncia {
         include: {
           cliente: true,
           categoria: true,
+          colaboradorResponsavel: true,
 
           _count: {
             select: {
@@ -1523,6 +1805,12 @@ export default class RepositorioDenuncia {
           where: {
             visivelPublicamente: true,
           },
+          orderBy: {
+            criadoEm: "asc",
+          },
+        },
+
+        respostasPerguntasCanal: {
           orderBy: {
             criadoEm: "asc",
           },

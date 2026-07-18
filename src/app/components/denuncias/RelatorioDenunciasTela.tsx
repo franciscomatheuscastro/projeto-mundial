@@ -71,7 +71,7 @@ export default function RelatorioDenunciasTela({
 
         <header className="border-b-2 border-slate-900 pb-5">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
-            MundialSafe
+            Mundial Connect
           </p>
 
           <h1 className="mt-2 text-3xl font-black">

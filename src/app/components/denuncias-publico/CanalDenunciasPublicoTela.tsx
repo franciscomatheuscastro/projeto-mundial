@@ -1,12 +1,20 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type {
+  FormEvent,
+  ReactNode,
+} from "react";
 
 import { useState } from "react";
 
 import { useDenuncias } from "@/src/app/data/hooks/useDenuncias";
 
 import CampoAnexos from "@/src/app/components/denuncias/CampoAnexos";
+
+import type {
+  PerguntaCanalPublica,
+  RespostaPerguntaCanalInput,
+} from "@/src/core/model/PerguntaCanalDenuncia";
 
 type CategoriaDisponivel = {
   id: string;
@@ -17,6 +25,7 @@ type CategoriaDisponivel = {
 type Props = {
   clienteId: string;
   categorias: CategoriaDisponivel[];
+  perguntasPersonalizadas?: PerguntaCanalPublica[];
 };
 
 const VERSAO_TERMOS = "2026-07-01";
@@ -24,6 +33,7 @@ const VERSAO_TERMOS = "2026-07-01";
 export default function CanalDenunciasPublicoTela({
   clienteId,
   categorias,
+  perguntasPersonalizadas = [],
 }: Props) {
   const {
     criarDenunciaPublica,
@@ -66,6 +76,70 @@ export default function CanalDenunciasPublicoTela({
   const enviando =
     processando || enviandoArquivos;
 
+  function montarRespostasPersonalizadas(
+    formData: FormData
+  ): RespostaPerguntaCanalInput[] {
+    return perguntasPersonalizadas.map(
+      (pergunta) => {
+        const valor = formData.get(
+          `pergunta_${pergunta.id}`
+        );
+
+        if (pergunta.tipo === "SIM_NAO") {
+          return {
+            perguntaId: pergunta.id,
+            resposta:
+              valor === "SIM"
+                ? true
+                : valor === "NAO"
+                  ? false
+                  : null,
+          };
+        }
+
+        return {
+          perguntaId: pergunta.id,
+          resposta:
+            typeof valor === "string"
+              ? valor.trim() || null
+              : null,
+        };
+      }
+    );
+  }
+
+  function validarRespostasPersonalizadas(
+    respostas: RespostaPerguntaCanalInput[]
+  ) {
+    const mapaRespostas = new Map(
+      respostas.map((item) => [
+        item.perguntaId,
+        item.resposta,
+      ])
+    );
+
+    for (const pergunta of perguntasPersonalizadas) {
+      if (!pergunta.obrigatoria) {
+        continue;
+      }
+
+      const resposta =
+        mapaRespostas.get(pergunta.id);
+
+      const respostaVazia =
+        resposta === null ||
+        resposta === undefined ||
+        (typeof resposta === "string" &&
+          !resposta.trim());
+
+      if (respostaVazia) {
+        throw new Error(
+          `Responda à pergunta obrigatória: ${pergunta.enunciado}`
+        );
+      }
+    }
+  }
+
   async function enviar(
     event: FormEvent<HTMLFormElement>
   ) {
@@ -97,6 +171,15 @@ export default function CanalDenunciasPublicoTela({
     setErroLocal(null);
 
     try {
+      const respostasPersonalizadas =
+        montarRespostasPersonalizadas(
+          formData
+        );
+
+      validarRespostasPersonalizadas(
+        respostasPersonalizadas
+      );
+
       const resultado =
         await criarDenunciaPublica({
           clienteId,
@@ -151,7 +234,10 @@ export default function CanalDenunciasPublicoTela({
                 ) || ""
               ).trim() || null,
 
+          respostasPersonalizadas,
+
           aceitouTermos,
+
           versaoTermosAceitos:
             VERSAO_TERMOS,
         });
@@ -191,6 +277,7 @@ export default function CanalDenunciasPublicoTela({
       setAceitouTermos(false);
 
       form.reset();
+
       setAnonima(true);
     } catch (error) {
       setErroLocal(
@@ -199,6 +286,17 @@ export default function CanalDenunciasPublicoTela({
           : "Não foi possível registrar a denúncia."
       );
     }
+  }
+
+  function reiniciarFormulario() {
+    setProtocolo(null);
+    setErroLocal(null);
+    setOrientacoesConfirmadas(false);
+    setLeuOrientacoes(false);
+    setAceitouTermos(false);
+    setCategoriaId("");
+    setArquivos([]);
+    setAnonima(true);
   }
 
   if (!orientacoesConfirmadas) {
@@ -215,24 +313,23 @@ export default function CanalDenunciasPublicoTela({
 
           <div className="mt-6 space-y-4 text-sm leading-7 text-slate-600">
             <p>
-              O Canal de Denúncias é um
-              ambiente seguro destinado ao
-              relato de comportamentos,
-              práticas ou situações que possam
-              violar normas internas,
-              princípios éticos, direitos,
-              legislações ou comprometer a
-              integridade das pessoas e da
-              organização.
+              O Canal de Denúncias é um ambiente
+              seguro destinado ao relato de
+              comportamentos, práticas ou
+              situações que possam violar
+              normas internas, princípios
+              éticos, direitos, legislações ou
+              comprometer a integridade das
+              pessoas e da organização.
             </p>
 
             <p>
               Utilize este canal com
               responsabilidade, fornecendo
-              informações verdadeiras e, sempre
-              que possível, detalhes que
-              permitam a análise adequada do
-              ocorrido.
+              informações verdadeiras e,
+              sempre que possível, detalhes
+              que permitam a análise adequada
+              do ocorrido.
             </p>
 
             <p>
@@ -255,12 +352,12 @@ export default function CanalDenunciasPublicoTela({
             <p>
               Não utilize este canal para
               solicitações administrativas,
-              dúvidas operacionais, reclamações
-              comerciais ou emergências. Em
-              caso de risco imediato à
-              integridade física de alguém,
-              procure os serviços públicos de
-              emergência.
+              dúvidas operacionais,
+              reclamações comerciais ou
+              emergências. Em caso de risco
+              imediato à integridade física
+              de alguém, procure os serviços
+              públicos de emergência.
             </p>
 
             <p>
@@ -328,12 +425,7 @@ export default function CanalDenunciasPublicoTela({
 
           <button
             type="button"
-            onClick={() => {
-              setProtocolo(null);
-              setErroLocal(null);
-              setOrientacoesConfirmadas(false);
-              setLeuOrientacoes(false);
-            }}
+            onClick={reiniciarFormulario}
             className="mt-6 w-full rounded-2xl border border-slate-300 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
           >
             Registrar nova denúncia
@@ -454,6 +546,25 @@ export default function CanalDenunciasPublicoTela({
             </div>
           </Card>
 
+          {perguntasPersonalizadas.length > 0 && (
+            <Card
+              titulo="Informações complementares"
+              descricao="Responda às perguntas adicionais configuradas para este canal."
+            >
+              <div className="grid gap-5">
+                {perguntasPersonalizadas.map(
+                  (pergunta) => (
+                    <CampoPerguntaPersonalizada
+                      key={pergunta.id}
+                      pergunta={pergunta}
+                      disabled={enviando}
+                    />
+                  )
+                )}
+              </div>
+            </Card>
+          )}
+
           <Card
             titulo="Identificação"
             descricao="Você pode optar por não informar seus dados pessoais."
@@ -542,6 +653,112 @@ export default function CanalDenunciasPublicoTela({
   );
 }
 
+function CampoPerguntaPersonalizada({
+  pergunta,
+  disabled,
+}: {
+  pergunta: PerguntaCanalPublica;
+  disabled: boolean;
+}) {
+  const nomeCampo =
+    `pergunta_${pergunta.id}`;
+
+  return (
+    <div>
+      <label
+        htmlFor={nomeCampo}
+        className="mb-2 block text-sm font-semibold text-slate-700"
+      >
+        {pergunta.enunciado}
+
+        {pergunta.obrigatoria && (
+          <span
+            className="ml-1 text-red-600"
+            aria-label="Campo obrigatório"
+          >
+            *
+          </span>
+        )}
+      </label>
+
+      {pergunta.descricao && (
+        <p className="mb-2 text-xs leading-5 text-slate-500">
+          {pergunta.descricao}
+        </p>
+      )}
+
+      {pergunta.tipo === "TEXTO" && (
+        <input
+          id={nomeCampo}
+          name={nomeCampo}
+          required={pergunta.obrigatoria}
+          disabled={disabled}
+          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+        />
+      )}
+
+      {pergunta.tipo === "TEXTO_LONGO" && (
+        <textarea
+          id={nomeCampo}
+          name={nomeCampo}
+          required={pergunta.obrigatoria}
+          disabled={disabled}
+          rows={4}
+          className="w-full resize-y rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+        />
+      )}
+
+      {pergunta.tipo === "SIM_NAO" && (
+        <select
+          id={nomeCampo}
+          name={nomeCampo}
+          required={pergunta.obrigatoria}
+          disabled={disabled}
+          defaultValue=""
+          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+        >
+          <option value="">
+            Selecione
+          </option>
+
+          <option value="SIM">
+            Sim
+          </option>
+
+          <option value="NAO">
+            Não
+          </option>
+        </select>
+      )}
+
+      {pergunta.tipo ===
+        "MULTIPLA_ESCOLHA" && (
+        <select
+          id={nomeCampo}
+          name={nomeCampo}
+          required={pergunta.obrigatoria}
+          disabled={disabled}
+          defaultValue=""
+          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+        >
+          <option value="">
+            Selecione
+          </option>
+
+          {pergunta.opcoes.map((opcao) => (
+            <option
+              key={opcao}
+              value={opcao}
+            >
+              {opcao}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
+
 function Card({
   titulo,
   descricao,
@@ -549,7 +766,7 @@ function Card({
 }: {
   titulo: string;
   descricao?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">

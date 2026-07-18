@@ -87,6 +87,14 @@ import obterCategoriasDenunciaAtivas from "./categoriaDenuncia/obterAtivas";
 import salvarCategoriaDenuncia from "./categoriaDenuncia/salvar";
 import alterarStatusCategoriaDenuncia from "./categoriaDenuncia/alterarStatus";
 
+import {
+  obterTodasPerguntasCanal,
+  obterPerguntaCanalPorId,
+  obterPerguntasCanalAtivasPorCliente,
+  salvarPerguntaCanal,
+  excluirPerguntaCanal,
+} from "./perguntaCanalDenuncia/BackendPerguntasCanal";
+
 export default class Backend {
   static readonly usuarios = {
     salvar: salvarUsuario,
@@ -156,59 +164,33 @@ export default class Backend {
   };
 
   static readonly denuncias = {
-    criarPublica:
-      criarDenunciaPublica,
-
-    consultarPublica:
-      consultarDenunciaPublica,
-
-    obterTodos:
-      obterTodosDenuncias,
-
-    obterPorId:
-      obterDenunciaPorId,
-
-    obterPorCliente:
-      obterDenunciasPorCliente,
-
-    salvar:
-      salvarDenuncia,
-
-    adicionarTratativa:
-      adicionarTratativaDenuncia,
-
-    editarTratativa:
-      editarTratativaDenuncia,
-
-      liberarTratativa: liberarTratativaDenuncia,
-
-    obterMinhas:
-      obterMinhasDenuncias,
-
-    obterMinhaPorId:
-      obterMinhaDenunciaPorId,
-
-    salvarMinha:
-      salvarMinhaDenuncia,
-
+    criarPublica: criarDenunciaPublica,
+    consultarPublica: consultarDenunciaPublica,
+    obterTodos: obterTodosDenuncias,
+    obterPorId: obterDenunciaPorId,
+    obterPorCliente: obterDenunciasPorCliente,
+    salvar: salvarDenuncia,
+    adicionarTratativa: adicionarTratativaDenuncia,
+    editarTratativa: editarTratativaDenuncia,
+    liberarTratativa: liberarTratativaDenuncia,
+    obterMinhas: obterMinhasDenuncias,
+    obterMinhaPorId: obterMinhaDenunciaPorId,
+    salvarMinha: salvarMinhaDenuncia,
     adicionarMinhaTratativa,
-
     editarMinhaTratativa,
+    criarManual: criarDenunciaManual,
+    criarMinhaManual: criarMinhaDenunciaManual,
+    prepararUpload: prepararUploadDenuncia,
+    confirmarUpload: confirmarUploadDenuncia,
+    obterDadosRelatorio: obterDadosRelatorioDenuncias,
+  };
 
-    criarManual:
-      criarDenunciaManual,
-
-    criarMinhaManual:
-      criarMinhaDenunciaManual,
-
-    prepararUpload:
-      prepararUploadDenuncia,
-
-    confirmarUpload:
-      confirmarUploadDenuncia,
-
-    obterDadosRelatorio:
-      obterDadosRelatorioDenuncias,
+  static readonly perguntasCanalDenuncia = {
+    obterTodas: obterTodasPerguntasCanal,
+    obterPorId: obterPerguntaCanalPorId,
+    obterAtivasPorCliente: obterPerguntasCanalAtivasPorCliente,
+    salvar: salvarPerguntaCanal,
+    excluir: excluirPerguntaCanal,
   };
 
   static readonly categoriasDenuncia = {

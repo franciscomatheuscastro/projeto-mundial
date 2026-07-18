@@ -49,6 +49,37 @@ function formatarTamanho(tamanho: number) {
   return `${(tamanho / 1024 / 1024).toFixed(2)} MB`;
 }
 
+function formatarRespostaPersonalizada(
+  resposta: unknown
+) {
+  if (typeof resposta === "boolean") {
+    return resposta ? "Sim" : "Não";
+  }
+
+  if (typeof resposta === "string") {
+    return resposta.trim() || "-";
+  }
+
+  if (
+    typeof resposta === "number"
+  ) {
+    return String(resposta);
+  }
+
+  if (
+    resposta &&
+    typeof resposta === "object"
+  ) {
+    try {
+      return JSON.stringify(resposta);
+    } catch {
+      return "-";
+    }
+  }
+
+  return "-";
+}
+
 export default function DenunciaDetalheTela({
   id,
   contexto = "mundial",
@@ -322,6 +353,9 @@ export default function DenunciaDetalheTela({
 
   const anexos = denunciaSelecionada.anexos ?? [];
 
+  const respostasPerguntasCanal =
+    denunciaSelecionada.respostasPerguntasCanal ?? [];
+
   return (
     <main className="min-h-screen bg-slate-100">
       <header className="border-b bg-white px-4 py-5 sm:px-6 lg:px-8">
@@ -387,6 +421,48 @@ export default function DenunciaDetalheTela({
             {denunciaSelecionada.descricao}
           </p>
         </section>
+
+        {respostasPerguntasCanal.length > 0 && (
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">
+                Informações complementares
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Respostas fornecidas às perguntas
+                personalizadas deste canal.
+              </p>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              {respostasPerguntasCanal.map(
+                (item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {item.perguntaEnunciado}
+                    </p>
+
+                    <p className="mt-2 whitespace-pre-wrap break-words text-sm font-medium leading-6 text-slate-900">
+                      {formatarRespostaPersonalizada(
+                        item.resposta
+                      )}
+                    </p>
+
+                    <p className="mt-3 text-xs text-slate-400">
+                      {formatarTexto(
+                        item.perguntaTipo
+                      )}
+                    </p>
+                  </div>
+                )
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div>
