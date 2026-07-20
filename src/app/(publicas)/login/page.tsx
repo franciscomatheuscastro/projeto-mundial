@@ -3,6 +3,8 @@ import { PerfilUsuario } from "@prisma/client";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 
+import Image from "next/image";
+
 type LoginPageProps = {
   searchParams: Promise<{
     erro?: string;
@@ -80,7 +82,7 @@ export default async function LoginPage({
             </h2>
           </div>
 
-          <div className="text-center">
+          <div className="-translate-y-10 text-center">
             <h1 className="text-6xl font-black tracking-tight">
               Mundial
             </h1>
@@ -92,9 +94,20 @@ export default async function LoginPage({
             </p>
           </div>
 
-          <div className="absolute bottom-24 h-36 w-36 rounded-[32px] border border-white/20 bg-white/10 blur-[1px]" />
+          <div className="absolute bottom-20 left-1/2 flex h-32 w-32 -translate-x-1/2 items-center justify-center">
+            <div className="absolute inset-0 rounded-[30px] border border-white/15 bg-white/10 shadow-[0_0_40px_rgba(255,255,255,0.12)] backdrop-blur-sm" />
 
-          <div className="absolute bottom-24 right-28 h-28 w-28 rounded-full bg-cyan-400/70 blur-sm" />
+            <div className="absolute  h-20 w-20 rounded-full bg-cyan-300/35 blur-xl" />
+
+            <Image
+              src="/logo-pessoas.png"
+              alt="Logo Mundial"
+              width={150}
+              height={150}
+              priority
+              className="relative z-10 h-auto w-[150px] object-contain drop-shadow-lg"
+            />
+          </div>
         </div>
 
         <div className="rounded-[28px] bg-white p-6 sm:p-8 md:rounded-[32px] md:p-14">
