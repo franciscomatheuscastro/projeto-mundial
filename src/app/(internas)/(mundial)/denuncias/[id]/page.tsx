@@ -1,11 +1,26 @@
 import { auth } from "@/src/auth";
-import { notFound, redirect } from "next/navigation";
+
+import {
+  notFound,
+  redirect,
+} from "next/navigation";
+
 import Backend from "@/src/backend";
+
 import DenunciaDetalheTela from "@/src/app/components/denuncias/DenunciaDetalheTela";
 
 type PageProps = {
-  params: Promise<{ id: string }>;
+  params: Promise<{
+    id: string;
+  }>;
 };
+
+const PERFIS_PERMITIDOS = [
+  "ADMIN",
+  "GESTOR",
+  "PSICOLOGO",
+  "ASSISTENTE_SOCIAL",
+];
 
 export default async function DenunciaDetalhePage({
   params,
@@ -16,16 +31,16 @@ export default async function DenunciaDetalhePage({
     redirect("/login");
   }
 
-  const usuario = session.user as any;
+  const usuario = session.user as {
+    perfil?: string;
+  };
 
-  const perfisPermitidos = [
-    "ADMIN",
-    "GESTOR",
-    "PSICOLOGO",
-    "ASSISTENTE_SOCIAL",
-  ];
-
-  if (!perfisPermitidos.includes(usuario.perfil)) {
+  if (
+    !usuario.perfil ||
+    !PERFIS_PERMITIDOS.includes(
+      usuario.perfil
+    )
+  ) {
     redirect("/painel-controle");
   }
 
@@ -35,49 +50,69 @@ export default async function DenunciaDetalhePage({
     notFound();
   }
 
-  try {
-    const denuncia =
-      await Backend.denuncias.obterPorId(id);
+  const denuncia =
+    await Backend.denuncias.obterPorId(id);
 
+  if (!denuncia) {
+    notFound();
+  }
+
+  let colaboradoresDisponiveis: Array<{
+    id: string;
+    nome: string;
+    email?: string | null;
+    cargo?: string | null;
+    setor?: string | null;
+  }> = [];
+
+  try {
     const colaboradores =
       await Backend.colaboradoresCliente.obterPorCliente(
         denuncia.clienteId
       );
 
-    const colaboradoresDisponiveis =
+    colaboradoresDisponiveis =
       colaboradores
         .filter(
           (colaborador) =>
-            colaborador.ativo &&
-            colaborador.podeTratarDenuncias
+            colaborador.ativo === true &&
+            colaborador.podeTratarDenuncias ===
+              true
         )
         .map((colaborador) => ({
           id: colaborador.id,
           nome: colaborador.nome,
-          email: colaborador.email,
-          cargo: colaborador.cargo,
-          setor: colaborador.setor,
+          email:
+            colaborador.email ?? null,
+          cargo:
+            colaborador.cargo ?? null,
+          setor:
+            colaborador.setor ?? null,
         }));
-
-    return (
-      <DenunciaDetalheTela
-        id={id}
-        contexto="mundial"
-        podeGerenciar
-        podeTratar
-        podeVerTratativas
-        podeEditarTratativas
-        podeLiberarTratativa
-        colaboradoresDisponiveis={
-          colaboradoresDisponiveis
-        }
-      />
-    );
   } catch (error) {
     console.error(
-      "Erro ao carregar os dados da denúncia:",
+      "Erro ao carregar colaboradores da denúncia:",
       error
     );
-    notFound();
+
+    /*
+     * A denúncia continua sendo exibida.
+     * Somente a lista de colaboradores fica vazia.
+     */
   }
+
+  return (
+    <DenunciaDetalheTela
+      id={id}
+      contexto="mundial"
+      podeGerenciar
+      podeLiberarTratativa
+      podeTratar
+      podeVerTratativas
+      podeEditarTratativas
+      colaboradoresDisponiveis={
+        colaboradoresDisponiveis
+      }
+    />
+  );
 }

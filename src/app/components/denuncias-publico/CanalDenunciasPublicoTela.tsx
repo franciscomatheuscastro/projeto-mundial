@@ -53,6 +53,11 @@ export default function CanalDenunciasPublicoTela({
   const [aceitouTermos, setAceitouTermos] =
     useState(false);
 
+  const [modalAberto, setModalAberto] =
+    useState<"TERMOS" | "PRIVACIDADE" | null>(
+      null
+    );
+
   const [anonima, setAnonima] =
     useState(true);
 
@@ -294,6 +299,7 @@ export default function CanalDenunciasPublicoTela({
     setOrientacoesConfirmadas(false);
     setLeuOrientacoes(false);
     setAceitouTermos(false);
+    setModalAberto(null);
     setCategoriaId("");
     setArquivos([]);
     setAnonima(true);
@@ -609,28 +615,84 @@ export default function CanalDenunciasPublicoTela({
             )}
           </Card>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <input
-              type="checkbox"
-              checked={aceitouTermos}
-              disabled={enviando}
-              onChange={(event) =>
-                setAceitouTermos(
-                  event.target.checked
-                )
-              }
-              className="mt-1"
-            />
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <input
+                id="aceitouTermos"
+                type="checkbox"
+                checked={aceitouTermos}
+                disabled={enviando}
+                onChange={(event) =>
+                  setAceitouTermos(
+                    event.target.checked
+                  )
+                }
+                className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-blue-600"
+              />
 
-            <span className="text-sm leading-6 text-slate-700">
-              Declaro que li e aceito os
-              Termos de Uso e o Aviso de
-              Privacidade, e confirmo que as
-              informações fornecidas são
-              verdadeiras segundo o meu
-              conhecimento.
-            </span>
-          </label>
+              <div className="min-w-0">
+                <label
+                  htmlFor="aceitouTermos"
+                  className="cursor-pointer text-sm leading-6 text-slate-700"
+                >
+                  Declaro que li e aceito os{" "}
+                </label>
+
+                <button
+                  type="button"
+                  disabled={enviando}
+                  onClick={() =>
+                    setModalAberto("TERMOS")
+                  }
+                  className="text-sm font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 transition hover:text-blue-900 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Termos de Uso
+                </button>
+
+                <span className="text-sm leading-6 text-slate-700">
+                  {" "}e o{" "}
+                </span>
+
+                <button
+                  type="button"
+                  disabled={enviando}
+                  onClick={() =>
+                    setModalAberto(
+                      "PRIVACIDADE"
+                    )
+                  }
+                  className="text-sm font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 transition hover:text-blue-900 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Aviso de Privacidade
+                </button>
+
+                <button
+                  type="button"
+                  disabled={enviando}
+                  onClick={() =>
+                    setModalAberto(
+                      "PRIVACIDADE"
+                    )
+                  }
+                  aria-label="Saiba como seus dados pessoais são tratados"
+                  title="Saiba como seus dados pessoais são tratados"
+                  className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 align-middle text-xs font-bold text-blue-700 transition hover:bg-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  ?
+                </button>
+
+                <label
+                  htmlFor="aceitouTermos"
+                  className="cursor-pointer text-sm leading-6 text-slate-700"
+                >
+                  , e confirmo que as informações
+                  fornecidas são verdadeiras
+                  segundo o meu conhecimento.
+                </label>
+              </div>
+            </div>
+
+          </div>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <button
@@ -649,7 +711,280 @@ export default function CanalDenunciasPublicoTela({
           </div>
         </form>
       </section>
+
+      {modalAberto === "TERMOS" && (
+        <ModalDocumento
+          titulo="Termos de Uso do Canal de Denúncias"
+          subtitulo={`Versão ${VERSAO_TERMOS}`}
+          onClose={() =>
+            setModalAberto(null)
+          }
+        >
+          <TermosUsoConteudo />
+        </ModalDocumento>
+      )}
+
+      {modalAberto === "PRIVACIDADE" && (
+        <ModalDocumento
+          titulo="Aviso de Privacidade"
+          subtitulo={`Tratamento de dados pessoais — LGPD — versão ${VERSAO_TERMOS}`}
+          onClose={() =>
+            setModalAberto(null)
+          }
+        >
+          <AvisoPrivacidadeConteudo />
+        </ModalDocumento>
+      )}
     </main>
+  );
+}
+
+
+function ModalDocumento({
+  titulo,
+  subtitulo,
+  onClose,
+  children,
+}: {
+  titulo: string;
+  subtitulo?: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="titulo-modal-documento"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 sm:px-6">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
+              Canal de denúncias
+            </p>
+
+            <h2
+              id="titulo-modal-documento"
+              className="mt-1 text-xl font-black text-slate-900 sm:text-2xl"
+            >
+              {titulo}
+            </h2>
+
+            {subtitulo && (
+              <p className="mt-1 text-xs text-slate-500">
+                {subtitulo}
+              </p>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xl font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+          >
+            ×
+          </button>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+          {children}
+        </div>
+
+        <footer className="shrink-0 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
+          >
+            Li e compreendi
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+function TermosUsoConteudo() {
+  return (
+    <div className="space-y-5 text-sm leading-7 text-slate-700">
+      <SecaoDocumento titulo="1. Finalidade do canal">
+        <p>
+          Este Canal de Denúncias é destinado ao relato, de boa-fé,
+          de condutas, fatos ou situações que possam violar leis,
+          normas internas, princípios éticos, direitos ou comprometer
+          a integridade das pessoas e da organização.
+        </p>
+      </SecaoDocumento>
+
+      <SecaoDocumento titulo="2. Uso responsável">
+        <p>
+          O usuário deve fornecer informações verdadeiras segundo o
+          seu conhecimento e descrever os fatos com clareza, evitando
+          acusações deliberadamente falsas, conteúdo ofensivo sem
+          relação com a denúncia ou uso do canal para finalidades
+          indevidas.
+        </p>
+      </SecaoDocumento>
+
+      <SecaoDocumento titulo="3. Denúncia anônima ou identificada">
+        <p>
+          A denúncia pode ser realizada de forma anônima. Quando o
+          usuário optar por se identificar, os dados serão tratados de
+          forma restrita e utilizados somente nas atividades
+          necessárias ao recebimento, análise, investigação e
+          tratamento da denúncia.
+        </p>
+      </SecaoDocumento>
+
+      <SecaoDocumento titulo="4. Apuração e encaminhamento">
+        <p>
+          O envio da denúncia não garante uma conclusão específica.
+          Os fatos serão analisados conforme as informações disponíveis,
+          as regras internas e a legislação aplicável.
+        </p>
+      </SecaoDocumento>
+
+      <SecaoDocumento titulo="5. Anexos e evidências">
+        <p>
+          Documentos e imagens poderão ser disponibilizados à equipe
+          responsável e ao comitê autorizado. Áudios e vídeos
+          permanecerão restritos à equipe da Mundial.
+        </p>
+      </SecaoDocumento>
+
+      <SecaoDocumento titulo="6. Protocolo e acompanhamento">
+        <p>
+          Após o envio, será gerado um protocolo. O usuário é
+          responsável por guardá-lo para acompanhar o andamento.
+        </p>
+      </SecaoDocumento>
+
+      <SecaoDocumento titulo="7. Emergências">
+        <p>
+          Este canal não substitui serviços públicos de emergência.
+          Em situações de risco imediato à vida ou à integridade física,
+          procure os órgãos públicos competentes.
+        </p>
+      </SecaoDocumento>
+    </div>
+  );
+}
+
+function AvisoPrivacidadeConteudo() {
+  return (
+    <div className="space-y-5 text-sm leading-7 text-slate-700">
+      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-blue-900">
+        <p className="font-semibold">
+          Este aviso apresenta, de forma resumida, como os dados
+          pessoais informados no Canal de Denúncias são tratados em
+          conformidade com a Lei nº 13.709/2018 — LGPD.
+        </p>
+      </div>
+
+      <SecaoDocumento titulo="1. Dados que podem ser tratados">
+        <p>
+          Quando a denúncia for identificada, poderão ser tratados
+          nome, e-mail, telefone e outras informações pessoais
+          fornecidas pelo denunciante. O conteúdo da denúncia e os
+          anexos também podem conter dados pessoais de terceiros.
+        </p>
+      </SecaoDocumento>
+
+      <SecaoDocumento titulo="2. Finalidades">
+        <p>
+          Os dados serão utilizados para receber, registrar, analisar,
+          investigar, encaminhar, responder e manter o histórico da
+          denúncia, bem como para cumprir obrigações legais e proteger
+          direitos.
+        </p>
+      </SecaoDocumento>
+
+      <SecaoDocumento titulo="3. Acesso restrito">
+        <p>
+          O acesso será limitado às pessoas autorizadas e necessárias
+          para a gestão e apuração do caso, conforme seus perfis e
+          responsabilidades.
+        </p>
+      </SecaoDocumento>
+
+      <SecaoDocumento titulo="4. Compartilhamento">
+        <p>
+          Os dados poderão ser compartilhados com prestadores de
+          serviços essenciais, profissionais autorizados, autoridades
+          públicas ou terceiros quando houver fundamento legal.
+        </p>
+      </SecaoDocumento>
+
+      <SecaoDocumento titulo="5. Segurança e confidencialidade">
+        <p>
+          São adotadas medidas técnicas e administrativas para reduzir
+          riscos de acesso não autorizado, perda, alteração, divulgação
+          ou tratamento inadequado.
+        </p>
+      </SecaoDocumento>
+
+      <SecaoDocumento titulo="6. Conservação">
+        <p>
+          Os dados serão mantidos pelo período necessário para cumprir
+          as finalidades do canal, atender obrigações legais, preservar
+          evidências e exercer ou defender direitos.
+        </p>
+      </SecaoDocumento>
+
+      <SecaoDocumento titulo="7. Denúncia anônima">
+        <p>
+          Quando a denúncia for anônima, não será exigido nome, e-mail
+          ou telefone. O usuário deve evitar inserir informações que
+          permitam sua identificação caso deseje preservar o anonimato.
+        </p>
+      </SecaoDocumento>
+
+      <SecaoDocumento titulo="8. Direitos do titular">
+        <p>
+          Nos casos aplicáveis, o titular pode solicitar confirmação
+          do tratamento, acesso, correção e outras medidas previstas
+          na LGPD, observadas as limitações necessárias para preservar
+          o sigilo da apuração e direitos de terceiros.
+        </p>
+      </SecaoDocumento>
+
+      <SecaoDocumento titulo="9. Bases legais">
+        <p>
+          O tratamento poderá ocorrer com fundamento nas bases legais
+          previstas na LGPD, incluindo cumprimento de obrigação legal,
+          exercício regular de direitos, legítimo interesse e proteção
+          da vida ou da integridade física.
+        </p>
+      </SecaoDocumento>
+    </div>
+  );
+}
+
+function SecaoDocumento({
+  titulo,
+  children,
+}: {
+  titulo: string;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <h3 className="font-bold text-slate-900">
+        {titulo}
+      </h3>
+
+      <div className="mt-1">
+        {children}
+      </div>
+    </section>
   );
 }
 
