@@ -900,49 +900,52 @@ export default class RepositorioDenuncia {
   }
 
   static async consultarPublica(dados: {
-    clienteId: string;
     protocolo: string;
   }) {
-    if (!dados.clienteId?.trim()) {
-      throw new Error("Cliente é obrigatório.");
-    }
+    const protocolo =
+      dados.protocolo?.trim().toUpperCase();
 
-    if (!dados.protocolo?.trim()) {
+    if (!protocolo) {
       throw new Error("Protocolo é obrigatório.");
     }
 
-    const denuncia = await prisma.denuncia.findFirst({
-      where: {
-        clienteId: dados.clienteId,
-        protocolo: dados.protocolo.trim(),
-      },
-      select: {
-        protocolo: true,
-        status: true,
-        respostaPublica: true,
-        criadoEm: true,
-        atualizadoEm: true,
+    const denuncia =
+      await prisma.denuncia.findUnique({
+        where: {
+          protocolo,
+        },
 
-        historico: {
-          where: {
-            visivelPublicamente: true,
-          },
-          orderBy: {
-            criadoEm: "asc",
-          },
-          select: {
-            id: true,
-            titulo: true,
-            descricao: true,
-            statusNovo: true,
-            criadoEm: true,
+        select: {
+          protocolo: true,
+          status: true,
+          respostaPublica: true,
+          criadoEm: true,
+          atualizadoEm: true,
+
+          historico: {
+            where: {
+              visivelPublicamente: true,
+            },
+
+            orderBy: {
+              criadoEm: "asc",
+            },
+
+            select: {
+              id: true,
+              titulo: true,
+              descricao: true,
+              statusNovo: true,
+              criadoEm: true,
+            },
           },
         },
-      },
-    });
+      });
 
     if (!denuncia) {
-      throw new Error("Denúncia não encontrada.");
+      throw new Error(
+        "Denúncia não encontrada. Verifique o protocolo informado."
+      );
     }
 
     return denuncia;

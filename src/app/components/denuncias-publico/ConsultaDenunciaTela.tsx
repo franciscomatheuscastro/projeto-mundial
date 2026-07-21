@@ -10,13 +10,7 @@ import type {
   ConsultaDenunciaPublica,
 } from "@/src/core/model/Denuncia";
 
-type Props = {
-  clienteId: string;
-};
-
-export default function ConsultaDenunciaTela({
-  clienteId,
-}: Props) {
+export default function ConsultaDenunciaTela() {
   const {
     consultarDenunciaPublica,
     carregando,
@@ -24,9 +18,7 @@ export default function ConsultaDenunciaTela({
   } = useDenuncias(false);
 
   const [resultado, setResultado] =
-    useState<ConsultaDenunciaPublica | null>(
-      null
-    );
+    useState<ConsultaDenunciaPublica | null>(null);
 
   async function consultar(
     event: FormEvent<HTMLFormElement>
@@ -37,9 +29,7 @@ export default function ConsultaDenunciaTela({
       return;
     }
 
-    const formData = new FormData(
-      event.currentTarget
-    );
+    const formData = new FormData(event.currentTarget);
 
     const protocolo = String(
       formData.get("protocolo") || ""
@@ -55,10 +45,7 @@ export default function ConsultaDenunciaTela({
 
     try {
       const dados =
-        await consultarDenunciaPublica(
-          clienteId,
-          protocolo
-        );
+        await consultarDenunciaPublica(protocolo);
 
       setResultado(dados);
     } catch {
@@ -79,11 +66,9 @@ export default function ConsultaDenunciaTela({
           </h1>
 
           <p className="mt-3 text-sm leading-6 text-slate-500">
-            Informe o protocolo recebido para
-            acompanhar o andamento da denúncia.
-            As tratativas internas e os dados
-            confidenciais não são exibidos nesta
-            consulta.
+            Informe o protocolo recebido para acompanhar o andamento da
+            denúncia. As tratativas internas e os dados confidenciais não
+            são exibidos nesta consulta.
           </p>
         </div>
 
@@ -139,9 +124,7 @@ export default function ConsultaDenunciaTela({
                   </h2>
                 </div>
 
-                <Badge
-                  texto={resultado.status}
-                />
+                <Badge texto={resultado.status} />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -152,23 +135,17 @@ export default function ConsultaDenunciaTela({
 
                 <Info
                   label="Status atual"
-                  valor={formatarTexto(
-                    resultado.status
-                  )}
+                  valor={formatarTexto(resultado.status)}
                 />
 
                 <Info
                   label="Registrada em"
-                  valor={formatarDataHora(
-                    resultado.criadoEm
-                  )}
+                  valor={formatarDataHora(resultado.criadoEm)}
                 />
 
                 <Info
                   label="Última atualização"
-                  valor={formatarDataHora(
-                    resultado.atualizadoEm
-                  )}
+                  valor={formatarDataHora(resultado.atualizadoEm)}
                 />
               </div>
 
@@ -185,78 +162,44 @@ export default function ConsultaDenunciaTela({
             </section>
 
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
-                  Histórico
-                </p>
+              <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
+                Histórico
+              </p>
 
-                <h2 className="mt-1 text-lg font-bold text-slate-900">
-                  Linha do tempo
-                </h2>
-
-                <p className="mt-1 text-sm leading-6 text-slate-500">
-                  Acompanhe as atualizações
-                  públicas realizadas durante a
-                  análise da denúncia.
-                </p>
-              </div>
+              <h2 className="mt-1 text-lg font-bold text-slate-900">
+                Linha do tempo
+              </h2>
 
               <div className="mt-6">
                 {!resultado.historico ||
-                resultado.historico.length ===
-                  0 ? (
+                resultado.historico.length === 0 ? (
                   <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                    Nenhuma atualização pública
-                    foi registrada.
+                    Nenhuma atualização pública foi registrada.
                   </p>
                 ) : (
-                  <div className="relative space-y-4 before:absolute before:bottom-3 before:left-[7px] before:top-3 before:w-px before:bg-slate-200">
-                    {resultado.historico.map(
-                      (evento) => (
-                        <div
-                          key={evento.id}
-                          className="relative pl-8"
-                        >
-                          <div className="absolute left-0 top-2 h-[15px] w-[15px] rounded-full border-4 border-white bg-blue-600 shadow-sm" />
+                  <div className="space-y-4">
+                    {resultado.historico.map((evento) => (
+                      <div
+                        key={evento.id}
+                        className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                      >
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {evento.titulo}
+                          </p>
 
-                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                              <div>
-                                <p className="text-sm font-semibold text-slate-900">
-                                  {
-                                    evento.titulo
-                                  }
-                                </p>
-
-                                {evento.statusNovo && (
-                                  <div className="mt-2">
-                                    <Badge
-                                      texto={
-                                        evento.statusNovo
-                                      }
-                                    />
-                                  </div>
-                                )}
-                              </div>
-
-                              <time className="shrink-0 text-xs text-slate-400">
-                                {formatarDataHora(
-                                  evento.criadoEm
-                                )}
-                              </time>
-                            </div>
-
-                            {evento.descricao && (
-                              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                                {
-                                  evento.descricao
-                                }
-                              </p>
-                            )}
-                          </div>
+                          <time className="shrink-0 text-xs text-slate-400">
+                            {formatarDataHora(evento.criadoEm)}
+                          </time>
                         </div>
-                      )
-                    )}
+
+                        {evento.descricao && (
+                          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                            {evento.descricao}
+                          </p>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -317,14 +260,10 @@ function formatarTexto(valor: string) {
   return valor
     .replaceAll("_", " ")
     .toLowerCase()
-    .replace(/\b\w/g, (letra) =>
-      letra.toUpperCase()
-    );
+    .replace(/\b\w/g, (letra) => letra.toUpperCase());
 }
 
-function formatarDataHora(
-  data: Date | string
-) {
+function formatarDataHora(data: Date | string) {
   const valor = new Date(data);
 
   if (Number.isNaN(valor.getTime())) {

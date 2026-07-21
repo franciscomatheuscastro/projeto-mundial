@@ -489,16 +489,12 @@ export function useDenuncias(
   const consultarDenunciaPublica =
     useCallback(
       async (
-        clienteId: string,
         protocolo: string
       ): Promise<ConsultaDenunciaPublica> => {
-        if (!clienteId?.trim()) {
-          throw new Error(
-            "Cliente não informado."
-          );
-        }
+        const protocoloNormalizado =
+          protocolo?.trim().toUpperCase();
 
-        if (!protocolo?.trim()) {
+        if (!protocoloNormalizado) {
           throw new Error(
             "Informe o protocolo da denúncia."
           );
@@ -510,9 +506,8 @@ export function useDenuncias(
 
           return await Backend.denuncias.consultarPublica(
             {
-              clienteId,
               protocolo:
-                protocolo.trim().toUpperCase(),
+                protocoloNormalizado,
             }
           );
         } catch (error) {

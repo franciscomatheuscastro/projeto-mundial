@@ -87,6 +87,9 @@ import obterCategoriasDenunciaAtivas from "./categoriaDenuncia/obterAtivas";
 import salvarCategoriaDenuncia from "./categoriaDenuncia/salvar";
 import alterarStatusCategoriaDenuncia from "./categoriaDenuncia/alterarStatus";
 
+import salvarUsuarioMasterCliente from "./cliente/salvarUsuarioMasterCliente";
+import excluirUsuarioMasterCliente from "./cliente/excluirUsuarioMasterCliente";
+
 import {
   obterTodasPerguntasCanal,
   obterPerguntaCanalPorId,
@@ -108,6 +111,8 @@ export default class Backend {
     obterTodos: obterTodosClientes,
     obterPorId: obterClientePorId,
     excluir: excluirCliente,
+    salvarUsuarioMaster: salvarUsuarioMasterCliente,
+    excluirUsuarioMaster: excluirUsuarioMasterCliente,
   };
 
   static readonly modelosPesquisa = {

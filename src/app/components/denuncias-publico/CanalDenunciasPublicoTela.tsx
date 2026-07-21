@@ -1,9 +1,6 @@
 "use client";
 
-import type {
-  FormEvent,
-  ReactNode,
-} from "react";
+import type { FormEvent, ReactNode } from "react";
 
 import { useState } from "react";
 
@@ -35,92 +32,60 @@ export default function CanalDenunciasPublicoTela({
   categorias,
   perguntasPersonalizadas = [],
 }: Props) {
-  const {
-    criarDenunciaPublica,
-    enviarAnexos,
-    processando,
-    erro,
-  } = useDenuncias(false);
+  const { criarDenunciaPublica, enviarAnexos, processando, erro } =
+    useDenuncias(false);
 
-  const [leuOrientacoes, setLeuOrientacoes] =
-    useState(false);
+  const [leuOrientacoes, setLeuOrientacoes] = useState(false);
 
-  const [
-    orientacoesConfirmadas,
-    setOrientacoesConfirmadas,
-  ] = useState(false);
+  const [orientacoesConfirmadas, setOrientacoesConfirmadas] = useState(false);
 
-  const [aceitouTermos, setAceitouTermos] =
-    useState(false);
+  const [aceitouTermos, setAceitouTermos] = useState(false);
 
-  const [modalAberto, setModalAberto] =
-    useState<"TERMOS" | "PRIVACIDADE" | null>(
-      null
-    );
+  const [modalAberto, setModalAberto] = useState<
+    "TERMOS" | "PRIVACIDADE" | null
+  >(null);
 
-  const [anonima, setAnonima] =
-    useState(true);
+  const [anonima, setAnonima] = useState(false);
 
-  const [categoriaId, setCategoriaId] =
-    useState("");
+  const [categoriaId, setCategoriaId] = useState("");
 
-  const [protocolo, setProtocolo] =
-    useState<string | null>(null);
+  const [protocolo, setProtocolo] = useState<string | null>(null);
 
-  const [arquivos, setArquivos] =
-    useState<File[]>([]);
+  const [protocoloCopiado, setProtocoloCopiado] = useState(false);
 
-  const [
-    enviandoArquivos,
-    setEnviandoArquivos,
-  ] = useState(false);
+  const [arquivos, setArquivos] = useState<File[]>([]);
 
-  const [erroLocal, setErroLocal] =
-    useState<string | null>(null);
+  const [enviandoArquivos, setEnviandoArquivos] = useState(false);
 
-  const enviando =
-    processando || enviandoArquivos;
+  const [erroLocal, setErroLocal] = useState<string | null>(null);
+
+  const enviando = processando || enviandoArquivos;
 
   function montarRespostasPersonalizadas(
-    formData: FormData
+    formData: FormData,
   ): RespostaPerguntaCanalInput[] {
-    return perguntasPersonalizadas.map(
-      (pergunta) => {
-        const valor = formData.get(
-          `pergunta_${pergunta.id}`
-        );
+    return perguntasPersonalizadas.map((pergunta) => {
+      const valor = formData.get(`pergunta_${pergunta.id}`);
 
-        if (pergunta.tipo === "SIM_NAO") {
-          return {
-            perguntaId: pergunta.id,
-            resposta:
-              valor === "SIM"
-                ? true
-                : valor === "NAO"
-                  ? false
-                  : null,
-          };
-        }
-
+      if (pergunta.tipo === "SIM_NAO") {
         return {
           perguntaId: pergunta.id,
-          resposta:
-            typeof valor === "string"
-              ? valor.trim() || null
-              : null,
+          resposta: valor === "SIM" ? true : valor === "NAO" ? false : null,
         };
       }
-    );
+
+      return {
+        perguntaId: pergunta.id,
+        resposta: typeof valor === "string" ? valor.trim() || null : null,
+      };
+    });
   }
 
   function validarRespostasPersonalizadas(
-    respostas: RespostaPerguntaCanalInput[]
+    respostas: RespostaPerguntaCanalInput[],
   ) {
     const mapaRespostas = new Map(
-      respostas.map((item) => [
-        item.perguntaId,
-        item.resposta,
-      ])
+      respostas.map((item) => [item.perguntaId, item.resposta]),
     );
 
     for (const pergunta of perguntasPersonalizadas) {
@@ -128,26 +93,22 @@ export default function CanalDenunciasPublicoTela({
         continue;
       }
 
-      const resposta =
-        mapaRespostas.get(pergunta.id);
+      const resposta = mapaRespostas.get(pergunta.id);
 
       const respostaVazia =
         resposta === null ||
         resposta === undefined ||
-        (typeof resposta === "string" &&
-          !resposta.trim());
+        (typeof resposta === "string" && !resposta.trim());
 
       if (respostaVazia) {
         throw new Error(
-          `Responda à pergunta obrigatória: ${pergunta.enunciado}`
+          `Responda à pergunta obrigatória: ${pergunta.enunciado}`,
         );
       }
     }
   }
 
-  async function enviar(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  async function enviar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (enviando) {
@@ -155,16 +116,14 @@ export default function CanalDenunciasPublicoTela({
     }
 
     if (!categoriaId) {
-      setErroLocal(
-        "Selecione a categoria da denúncia."
-      );
+      setErroLocal("Selecione a categoria da denúncia.");
 
       return;
     }
 
     if (!aceitouTermos) {
       setErroLocal(
-        "É necessário aceitar os Termos de Uso e o Aviso de Privacidade."
+        "É necessário aceitar os Termos de Uso e o Aviso de Privacidade.",
       );
 
       return;
@@ -176,76 +135,44 @@ export default function CanalDenunciasPublicoTela({
     setErroLocal(null);
 
     try {
-      const respostasPersonalizadas =
-        montarRespostasPersonalizadas(
-          formData
-        );
+      const respostasPersonalizadas = montarRespostasPersonalizadas(formData);
 
-      validarRespostasPersonalizadas(
-        respostasPersonalizadas
-      );
+      validarRespostasPersonalizadas(respostasPersonalizadas);
 
-      const resultado =
-        await criarDenunciaPublica({
-          clienteId,
+      const resultado = await criarDenunciaPublica({
+        clienteId,
 
-          titulo: String(
-            formData.get("titulo") || ""
-          ).trim(),
+        titulo: String(formData.get("titulo") || "").trim(),
 
-          descricao: String(
-            formData.get("descricao") || ""
-          ).trim(),
+        descricao: String(formData.get("descricao") || "").trim(),
 
-          categoriaId,
+        categoriaId,
 
-          localOcorrido:
-            String(
-              formData.get(
-                "localOcorrido"
-              ) || ""
-            ).trim() || null,
+        localOcorrido:
+          String(formData.get("localOcorrido") || "").trim() || null,
 
-          dataOcorrido:
-            String(
-              formData.get(
-                "dataOcorrido"
-              ) || ""
-            ).trim() || null,
+        dataOcorrido: String(formData.get("dataOcorrido") || "").trim() || null,
 
-          anonima,
+        anonima,
 
-          nomeDenunciante: anonima
-            ? null
-            : String(
-                formData.get(
-                  "nomeDenunciante"
-                ) || ""
-              ).trim() || null,
+        nomeDenunciante: anonima
+          ? null
+          : String(formData.get("nomeDenunciante") || "").trim() || null,
 
-          emailDenunciante: anonima
-            ? null
-            : String(
-                formData.get(
-                  "emailDenunciante"
-                ) || ""
-              ).trim() || null,
+        emailDenunciante: anonima
+          ? null
+          : String(formData.get("emailDenunciante") || "").trim() || null,
 
-          telefoneDenunciante: anonima
-            ? null
-            : String(
-                formData.get(
-                  "telefoneDenunciante"
-                ) || ""
-              ).trim() || null,
+        telefoneDenunciante: anonima
+          ? null
+          : String(formData.get("telefoneDenunciante") || "").trim() || null,
 
-          respostasPersonalizadas,
+        respostasPersonalizadas,
 
-          aceitouTermos,
+        aceitouTermos,
 
-          versaoTermosAceitos:
-            VERSAO_TERMOS,
-        });
+        versaoTermosAceitos: VERSAO_TERMOS,
+      });
 
       if (arquivos.length > 0) {
         setEnviandoArquivos(true);
@@ -254,21 +181,18 @@ export default function CanalDenunciasPublicoTela({
           await enviarAnexos(
             {
               id: resultado.id,
-              protocolo:
-                resultado.protocolo,
+              protocolo: resultado.protocolo,
             },
-            arquivos
+            arquivos,
           );
         } catch (error) {
           setErroLocal(
             error instanceof Error
               ? `A denúncia foi registrada com o protocolo ${resultado.protocolo}, mas houve erro no envio dos anexos: ${error.message}`
-              : `A denúncia foi registrada com o protocolo ${resultado.protocolo}, mas houve erro no envio dos anexos.`
+              : `A denúncia foi registrada com o protocolo ${resultado.protocolo}, mas houve erro no envio dos anexos.`,
           );
 
-          setProtocolo(
-            resultado.protocolo
-          );
+          setProtocolo(resultado.protocolo);
 
           return;
         } finally {
@@ -283,13 +207,30 @@ export default function CanalDenunciasPublicoTela({
 
       form.reset();
 
-      setAnonima(true);
+      setAnonima(false);
     } catch (error) {
       setErroLocal(
         error instanceof Error
           ? error.message
-          : "Não foi possível registrar a denúncia."
+          : "Não foi possível registrar a denúncia.",
       );
+    }
+  }
+
+  async function copiarProtocolo() {
+    if (!protocolo) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(protocolo);
+      setProtocoloCopiado(true);
+
+      window.setTimeout(() => {
+        setProtocoloCopiado(false);
+      }, 2500);
+    } catch {
+      setErroLocal("Não foi possível copiar o protocolo automaticamente.");
     }
   }
 
@@ -302,7 +243,8 @@ export default function CanalDenunciasPublicoTela({
     setModalAberto(null);
     setCategoriaId("");
     setArquivos([]);
-    setAnonima(true);
+    setAnonima(false);
+    setProtocoloCopiado(false);
   }
 
   if (!orientacoesConfirmadas) {
@@ -319,58 +261,40 @@ export default function CanalDenunciasPublicoTela({
 
           <div className="mt-6 space-y-4 text-sm leading-7 text-slate-600">
             <p>
-              O Canal de Denúncias é um ambiente
-              seguro destinado ao relato de
-              comportamentos, práticas ou
-              situações que possam violar
-              normas internas, princípios
-              éticos, direitos, legislações ou
-              comprometer a integridade das
-              pessoas e da organização.
+              O Canal de Denúncias é um ambiente seguro destinado ao relato de
+              comportamentos, práticas ou situações que possam violar normas
+              internas, princípios éticos, direitos, legislações ou comprometer
+              a integridade das pessoas e da organização.
             </p>
 
             <p>
-              Utilize este canal com
-              responsabilidade, fornecendo
-              informações verdadeiras e,
-              sempre que possível, detalhes
-              que permitam a análise adequada
-              do ocorrido.
+              Utilize este canal com responsabilidade, fornecendo informações
+              verdadeiras e, sempre que possível, detalhes que permitam a
+              análise adequada do ocorrido.
             </p>
 
             <p>
-              A denúncia poderá ser realizada
-              de forma anônima. Quando houver
-              identificação, os dados pessoais
-              serão tratados de maneira
-              restrita e conforme a legislação
-              aplicável.
+              A denúncia poderá ser realizada de forma anônima. Quando houver
+              identificação, os dados pessoais serão tratados de maneira
+              restrita e conforme a legislação aplicável.
             </p>
 
             <p>
-              Os documentos e imagens poderão
-              ser disponibilizados ao comitê
-              responsável pela apuração.
-              Áudios e vídeos permanecerão
-              restritos à equipe da Mundial.
+              Os documentos e imagens poderão ser disponibilizados ao comitê
+              responsável pela apuração. Áudios e vídeos permanecerão restritos
+              à equipe da Mundial.
             </p>
 
             <p>
-              Não utilize este canal para
-              solicitações administrativas,
-              dúvidas operacionais,
-              reclamações comerciais ou
-              emergências. Em caso de risco
-              imediato à integridade física
-              de alguém, procure os serviços
+              Não utilize este canal para solicitações administrativas, dúvidas
+              operacionais, reclamações comerciais ou emergências. Em caso de
+              risco imediato à integridade física de alguém, procure os serviços
               públicos de emergência.
             </p>
 
             <p>
-              O uso consciente deste canal
-              contribui para uma apuração
-              responsável, imparcial e
-              protegida contra retaliações.
+              O uso consciente deste canal contribui para uma apuração
+              responsável, imparcial e protegida contra retaliações.
             </p>
           </div>
 
@@ -378,17 +302,12 @@ export default function CanalDenunciasPublicoTela({
             <input
               type="checkbox"
               checked={leuOrientacoes}
-              onChange={(event) =>
-                setLeuOrientacoes(
-                  event.target.checked
-                )
-              }
+              onChange={(event) => setLeuOrientacoes(event.target.checked)}
               className="mt-1"
             />
 
             <span>
-              Declaro que li e compreendi as
-              orientações para utilização do
+              Declaro que li e compreendi as orientações para utilização do
               Canal de Denúncias.
             </span>
           </label>
@@ -396,9 +315,7 @@ export default function CanalDenunciasPublicoTela({
           <button
             type="button"
             disabled={!leuOrientacoes}
-            onClick={() =>
-              setOrientacoesConfirmadas(true)
-            }
+            onClick={() => setOrientacoesConfirmadas(true)}
             className="mt-5 w-full rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Prosseguir para a denúncia
@@ -421,12 +338,35 @@ export default function CanalDenunciasPublicoTela({
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            Guarde este protocolo para
-            acompanhar o andamento.
+            Guarde este protocolo para acompanhar o andamento.
           </p>
 
-          <div className="mt-5 rounded-2xl bg-slate-100 p-4 text-2xl font-bold text-blue-700">
-            {protocolo}
+          <div className="mt-5 flex items-center gap-2 rounded-2xl bg-slate-100 p-3 sm:p-4">
+            <span className="min-w-0 flex-1 break-all text-xl font-bold text-blue-700 sm:text-2xl">
+              {protocolo}
+            </span>
+
+            <button
+              type="button"
+              onClick={copiarProtocolo}
+              aria-label="Copiar protocolo"
+              title="Copiar protocolo"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm font-bold text-blue-700 transition hover:bg-blue-50"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <rect x="9" y="9" width="11" height="11" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+
+              {protocoloCopiado ? "Copiado" : "Copiar"}
+            </button>
           </div>
 
           <button
@@ -454,12 +394,14 @@ export default function CanalDenunciasPublicoTela({
           </h1>
 
           <p className="mt-3 text-sm leading-6 text-slate-500">
-            Registre sua denúncia com o máximo
-            de informações relevantes. Você
-            pode se identificar ou permanecer
-            anônimo.
+            Registre sua denúncia com o máximo de informações relevantes. Você
+            pode se identificar ou permanecer anônimo.
           </p>
         </div>
+
+        <p className="mb-5 text-xs font-medium text-slate-500">
+          <span className="font-bold text-red-600">*</span> Campos obrigatórios
+        </p>
 
         {(erro || erroLocal) && (
           <div className="mb-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
@@ -467,10 +409,45 @@ export default function CanalDenunciasPublicoTela({
           </div>
         )}
 
-        <form
-          onSubmit={enviar}
-          className="space-y-5"
-        >
+        <form onSubmit={enviar} className="space-y-5">
+          <Card
+            titulo="Identificação"
+            descricao="Você pode optar por não informar seus dados pessoais."
+          >
+            <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                checked={anonima}
+                disabled={enviando}
+                onChange={(event) => setAnonima(event.target.checked)}
+              />
+              Quero realizar a denúncia de forma anônima
+            </label>
+
+            {!anonima && (
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <Campo
+                  name="nomeDenunciante"
+                  label="Nome"
+                  disabled={enviando}
+                />
+
+                <Campo
+                  name="emailDenunciante"
+                  label="E-mail"
+                  type="email"
+                  disabled={enviando}
+                />
+
+                <Campo
+                  name="telefoneDenunciante"
+                  label="Telefone"
+                  disabled={enviando}
+                />
+              </div>
+            )}
+          </Card>
+
           <Card titulo="Dados da denúncia">
             <div className="grid gap-4 md:grid-cols-2">
               <Campo
@@ -483,40 +460,30 @@ export default function CanalDenunciasPublicoTela({
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Categoria
+                  <Obrigatorio />
                 </label>
 
                 <select
                   value={categoriaId}
                   required
                   disabled={enviando}
-                  onChange={(event) =>
-                    setCategoriaId(
-                      event.target.value
-                    )
-                  }
+                  onChange={(event) => setCategoriaId(event.target.value)}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
                 >
-                  <option value="">
-                    Selecione a categoria
-                  </option>
+                  <option value="">Selecione a categoria</option>
 
-                  {categorias.map(
-                    (categoria) => (
-                      <option
-                        key={categoria.id}
-                        value={categoria.id}
-                      >
-                        {categoria.nome}
-                      </option>
-                    )
-                  )}
+                  {categorias.map((categoria) => (
+                    <option key={categoria.id} value={categoria.id}>
+                      {categoria.nome}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <Campo
                 name="localOcorrido"
                 label="Local do ocorrido"
-                placeholder="Opcional"
+                placeholder="Ex: Refeitório"
                 disabled={enviando}
               />
 
@@ -530,6 +497,7 @@ export default function CanalDenunciasPublicoTela({
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Descrição
+                  <Obrigatorio />
                 </label>
 
                 <textarea
@@ -558,62 +526,16 @@ export default function CanalDenunciasPublicoTela({
               descricao="Responda às perguntas adicionais configuradas para este canal."
             >
               <div className="grid gap-5">
-                {perguntasPersonalizadas.map(
-                  (pergunta) => (
-                    <CampoPerguntaPersonalizada
-                      key={pergunta.id}
-                      pergunta={pergunta}
-                      disabled={enviando}
-                    />
-                  )
-                )}
+                {perguntasPersonalizadas.map((pergunta) => (
+                  <CampoPerguntaPersonalizada
+                    key={pergunta.id}
+                    pergunta={pergunta}
+                    disabled={enviando}
+                  />
+                ))}
               </div>
             </Card>
           )}
-
-          <Card
-            titulo="Identificação"
-            descricao="Você pode optar por não informar seus dados pessoais."
-          >
-            <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
-              <input
-                type="checkbox"
-                checked={anonima}
-                disabled={enviando}
-                onChange={(event) =>
-                  setAnonima(
-                    event.target.checked
-                  )
-                }
-              />
-
-              Quero realizar a denúncia de
-              forma anônima
-            </label>
-
-            {!anonima && (
-              <div className="mt-4 grid gap-4 md:grid-cols-3">
-                <Campo
-                  name="nomeDenunciante"
-                  label="Nome"
-                  disabled={enviando}
-                />
-
-                <Campo
-                  name="emailDenunciante"
-                  label="E-mail"
-                  type="email"
-                  disabled={enviando}
-                />
-
-                <Campo
-                  name="telefoneDenunciante"
-                  label="Telefone"
-                  disabled={enviando}
-                />
-              </div>
-            )}
-          </Card>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start gap-3">
@@ -622,11 +544,7 @@ export default function CanalDenunciasPublicoTela({
                 type="checkbox"
                 checked={aceitouTermos}
                 disabled={enviando}
-                onChange={(event) =>
-                  setAceitouTermos(
-                    event.target.checked
-                  )
-                }
+                onChange={(event) => setAceitouTermos(event.target.checked)}
                 className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-blue-600"
               />
 
@@ -635,32 +553,24 @@ export default function CanalDenunciasPublicoTela({
                   htmlFor="aceitouTermos"
                   className="cursor-pointer text-sm leading-6 text-slate-700"
                 >
-                  Declaro que li e aceito os{" "}
+                  Declaro que li e aceito os <Obrigatorio />
                 </label>
 
                 <button
                   type="button"
                   disabled={enviando}
-                  onClick={() =>
-                    setModalAberto("TERMOS")
-                  }
+                  onClick={() => setModalAberto("TERMOS")}
                   className="text-sm font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 transition hover:text-blue-900 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Termos de Uso
                 </button>
 
-                <span className="text-sm leading-6 text-slate-700">
-                  {" "}e o{" "}
-                </span>
+                <span className="text-sm leading-6 text-slate-700"> e o </span>
 
                 <button
                   type="button"
                   disabled={enviando}
-                  onClick={() =>
-                    setModalAberto(
-                      "PRIVACIDADE"
-                    )
-                  }
+                  onClick={() => setModalAberto("PRIVACIDADE")}
                   className="text-sm font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 transition hover:text-blue-900 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Aviso de Privacidade
@@ -669,11 +579,7 @@ export default function CanalDenunciasPublicoTela({
                 <button
                   type="button"
                   disabled={enviando}
-                  onClick={() =>
-                    setModalAberto(
-                      "PRIVACIDADE"
-                    )
-                  }
+                  onClick={() => setModalAberto("PRIVACIDADE")}
                   aria-label="Saiba como seus dados pessoais são tratados"
                   title="Saiba como seus dados pessoais são tratados"
                   className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 align-middle text-xs font-bold text-blue-700 transition hover:bg-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
@@ -685,21 +591,17 @@ export default function CanalDenunciasPublicoTela({
                   htmlFor="aceitouTermos"
                   className="cursor-pointer text-sm leading-6 text-slate-700"
                 >
-                  , e confirmo que as informações
-                  fornecidas são verdadeiras
+                  , e confirmo que as informações fornecidas são verdadeiras
                   segundo o meu conhecimento.
                 </label>
               </div>
             </div>
-
           </div>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <button
               type="submit"
-              disabled={
-                enviando || !aceitouTermos
-              }
+              disabled={enviando || !aceitouTermos}
               className="w-full rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {enviandoArquivos
@@ -716,9 +618,7 @@ export default function CanalDenunciasPublicoTela({
         <ModalDocumento
           titulo="Termos de Uso do Canal de Denúncias"
           subtitulo={`Versão ${VERSAO_TERMOS}`}
-          onClose={() =>
-            setModalAberto(null)
-          }
+          onClose={() => setModalAberto(null)}
         >
           <TermosUsoConteudo />
         </ModalDocumento>
@@ -728,9 +628,7 @@ export default function CanalDenunciasPublicoTela({
         <ModalDocumento
           titulo="Aviso de Privacidade"
           subtitulo={`Tratamento de dados pessoais — LGPD — versão ${VERSAO_TERMOS}`}
-          onClose={() =>
-            setModalAberto(null)
-          }
+          onClose={() => setModalAberto(null)}
         >
           <AvisoPrivacidadeConteudo />
         </ModalDocumento>
@@ -738,7 +636,6 @@ export default function CanalDenunciasPublicoTela({
     </main>
   );
 }
-
 
 function ModalDocumento({
   titulo,
@@ -778,9 +675,7 @@ function ModalDocumento({
             </h2>
 
             {subtitulo && (
-              <p className="mt-1 text-xs text-slate-500">
-                {subtitulo}
-              </p>
+              <p className="mt-1 text-xs text-slate-500">{subtitulo}</p>
             )}
           </div>
 
@@ -817,61 +712,59 @@ function TermosUsoConteudo() {
     <div className="space-y-5 text-sm leading-7 text-slate-700">
       <SecaoDocumento titulo="1. Finalidade do canal">
         <p>
-          Este Canal de Denúncias é destinado ao relato, de boa-fé,
-          de condutas, fatos ou situações que possam violar leis,
-          normas internas, princípios éticos, direitos ou comprometer
-          a integridade das pessoas e da organização.
+          Este Canal de Denúncias é destinado ao relato, de boa-fé, de condutas,
+          fatos ou situações que possam violar leis, normas internas, princípios
+          éticos, direitos ou comprometer a integridade das pessoas e da
+          organização.
         </p>
       </SecaoDocumento>
 
       <SecaoDocumento titulo="2. Uso responsável">
         <p>
-          O usuário deve fornecer informações verdadeiras segundo o
-          seu conhecimento e descrever os fatos com clareza, evitando
-          acusações deliberadamente falsas, conteúdo ofensivo sem
-          relação com a denúncia ou uso do canal para finalidades
-          indevidas.
+          O usuário deve fornecer informações verdadeiras segundo o seu
+          conhecimento e descrever os fatos com clareza, evitando acusações
+          deliberadamente falsas, conteúdo ofensivo sem relação com a denúncia
+          ou uso do canal para finalidades indevidas.
         </p>
       </SecaoDocumento>
 
       <SecaoDocumento titulo="3. Denúncia anônima ou identificada">
         <p>
-          A denúncia pode ser realizada de forma anônima. Quando o
-          usuário optar por se identificar, os dados serão tratados de
-          forma restrita e utilizados somente nas atividades
-          necessárias ao recebimento, análise, investigação e
-          tratamento da denúncia.
+          A denúncia pode ser realizada de forma anônima. Quando o usuário optar
+          por se identificar, os dados serão tratados de forma restrita e
+          utilizados somente nas atividades necessárias ao recebimento, análise,
+          investigação e tratamento da denúncia.
         </p>
       </SecaoDocumento>
 
       <SecaoDocumento titulo="4. Apuração e encaminhamento">
         <p>
-          O envio da denúncia não garante uma conclusão específica.
-          Os fatos serão analisados conforme as informações disponíveis,
-          as regras internas e a legislação aplicável.
+          O envio da denúncia não garante uma conclusão específica. Os fatos
+          serão analisados conforme as informações disponíveis, as regras
+          internas e a legislação aplicável.
         </p>
       </SecaoDocumento>
 
       <SecaoDocumento titulo="5. Anexos e evidências">
         <p>
-          Documentos e imagens poderão ser disponibilizados à equipe
-          responsável e ao comitê autorizado. Áudios e vídeos
-          permanecerão restritos à equipe da Mundial.
+          Documentos e imagens poderão ser disponibilizados à equipe responsável
+          e ao comitê autorizado. Áudios e vídeos permanecerão restritos à
+          equipe da Mundial.
         </p>
       </SecaoDocumento>
 
       <SecaoDocumento titulo="6. Protocolo e acompanhamento">
         <p>
-          Após o envio, será gerado um protocolo. O usuário é
-          responsável por guardá-lo para acompanhar o andamento.
+          Após o envio, será gerado um protocolo. O usuário é responsável por
+          guardá-lo para acompanhar o andamento.
         </p>
       </SecaoDocumento>
 
       <SecaoDocumento titulo="7. Emergências">
         <p>
-          Este canal não substitui serviços públicos de emergência.
-          Em situações de risco imediato à vida ou à integridade física,
-          procure os órgãos públicos competentes.
+          Este canal não substitui serviços públicos de emergência. Em situações
+          de risco imediato à vida ou à integridade física, procure os órgãos
+          públicos competentes.
         </p>
       </SecaoDocumento>
     </div>
@@ -883,85 +776,83 @@ function AvisoPrivacidadeConteudo() {
     <div className="space-y-5 text-sm leading-7 text-slate-700">
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-blue-900">
         <p className="font-semibold">
-          Este aviso apresenta, de forma resumida, como os dados
-          pessoais informados no Canal de Denúncias são tratados em
-          conformidade com a Lei nº 13.709/2018 — LGPD.
+          Este aviso apresenta, de forma resumida, como os dados pessoais
+          informados no Canal de Denúncias são tratados em conformidade com a
+          Lei nº 13.709/2018 — LGPD.
         </p>
       </div>
 
       <SecaoDocumento titulo="1. Dados que podem ser tratados">
         <p>
-          Quando a denúncia for identificada, poderão ser tratados
-          nome, e-mail, telefone e outras informações pessoais
-          fornecidas pelo denunciante. O conteúdo da denúncia e os
-          anexos também podem conter dados pessoais de terceiros.
+          Quando a denúncia for identificada, poderão ser tratados nome, e-mail,
+          telefone e outras informações pessoais fornecidas pelo denunciante. O
+          conteúdo da denúncia e os anexos também podem conter dados pessoais de
+          terceiros.
         </p>
       </SecaoDocumento>
 
       <SecaoDocumento titulo="2. Finalidades">
         <p>
           Os dados serão utilizados para receber, registrar, analisar,
-          investigar, encaminhar, responder e manter o histórico da
-          denúncia, bem como para cumprir obrigações legais e proteger
-          direitos.
+          investigar, encaminhar, responder e manter o histórico da denúncia,
+          bem como para cumprir obrigações legais e proteger direitos.
         </p>
       </SecaoDocumento>
 
       <SecaoDocumento titulo="3. Acesso restrito">
         <p>
-          O acesso será limitado às pessoas autorizadas e necessárias
-          para a gestão e apuração do caso, conforme seus perfis e
-          responsabilidades.
+          O acesso será limitado às pessoas autorizadas e necessárias para a
+          gestão e apuração do caso, conforme seus perfis e responsabilidades.
         </p>
       </SecaoDocumento>
 
       <SecaoDocumento titulo="4. Compartilhamento">
         <p>
-          Os dados poderão ser compartilhados com prestadores de
-          serviços essenciais, profissionais autorizados, autoridades
-          públicas ou terceiros quando houver fundamento legal.
+          Os dados poderão ser compartilhados com prestadores de serviços
+          essenciais, profissionais autorizados, autoridades públicas ou
+          terceiros quando houver fundamento legal.
         </p>
       </SecaoDocumento>
 
       <SecaoDocumento titulo="5. Segurança e confidencialidade">
         <p>
-          São adotadas medidas técnicas e administrativas para reduzir
-          riscos de acesso não autorizado, perda, alteração, divulgação
-          ou tratamento inadequado.
+          São adotadas medidas técnicas e administrativas para reduzir riscos de
+          acesso não autorizado, perda, alteração, divulgação ou tratamento
+          inadequado.
         </p>
       </SecaoDocumento>
 
       <SecaoDocumento titulo="6. Conservação">
         <p>
-          Os dados serão mantidos pelo período necessário para cumprir
-          as finalidades do canal, atender obrigações legais, preservar
-          evidências e exercer ou defender direitos.
+          Os dados serão mantidos pelo período necessário para cumprir as
+          finalidades do canal, atender obrigações legais, preservar evidências
+          e exercer ou defender direitos.
         </p>
       </SecaoDocumento>
 
       <SecaoDocumento titulo="7. Denúncia anônima">
         <p>
-          Quando a denúncia for anônima, não será exigido nome, e-mail
-          ou telefone. O usuário deve evitar inserir informações que
-          permitam sua identificação caso deseje preservar o anonimato.
+          Quando a denúncia for anônima, não será exigido nome, e-mail ou
+          telefone. O usuário deve evitar inserir informações que permitam sua
+          identificação caso deseje preservar o anonimato.
         </p>
       </SecaoDocumento>
 
       <SecaoDocumento titulo="8. Direitos do titular">
         <p>
-          Nos casos aplicáveis, o titular pode solicitar confirmação
-          do tratamento, acesso, correção e outras medidas previstas
-          na LGPD, observadas as limitações necessárias para preservar
-          o sigilo da apuração e direitos de terceiros.
+          Nos casos aplicáveis, o titular pode solicitar confirmação do
+          tratamento, acesso, correção e outras medidas previstas na LGPD,
+          observadas as limitações necessárias para preservar o sigilo da
+          apuração e direitos de terceiros.
         </p>
       </SecaoDocumento>
 
       <SecaoDocumento titulo="9. Bases legais">
         <p>
-          O tratamento poderá ocorrer com fundamento nas bases legais
-          previstas na LGPD, incluindo cumprimento de obrigação legal,
-          exercício regular de direitos, legítimo interesse e proteção
-          da vida ou da integridade física.
+          O tratamento poderá ocorrer com fundamento nas bases legais previstas
+          na LGPD, incluindo cumprimento de obrigação legal, exercício regular
+          de direitos, legítimo interesse e proteção da vida ou da integridade
+          física.
         </p>
       </SecaoDocumento>
     </div>
@@ -977,14 +868,22 @@ function SecaoDocumento({
 }) {
   return (
     <section>
-      <h3 className="font-bold text-slate-900">
-        {titulo}
-      </h3>
+      <h3 className="font-bold text-slate-900">{titulo}</h3>
 
-      <div className="mt-1">
-        {children}
-      </div>
+      <div className="mt-1">{children}</div>
     </section>
+  );
+}
+
+function Obrigatorio() {
+  return (
+    <span
+      className="ml-1 text-red-600"
+      aria-label="Campo obrigatório"
+      title="Campo obrigatório"
+    >
+      *
+    </span>
   );
 }
 
@@ -995,8 +894,7 @@ function CampoPerguntaPersonalizada({
   pergunta: PerguntaCanalPublica;
   disabled: boolean;
 }) {
-  const nomeCampo =
-    `pergunta_${pergunta.id}`;
+  const nomeCampo = `pergunta_${pergunta.id}`;
 
   return (
     <div>
@@ -1006,14 +904,7 @@ function CampoPerguntaPersonalizada({
       >
         {pergunta.enunciado}
 
-        {pergunta.obrigatoria && (
-          <span
-            className="ml-1 text-red-600"
-            aria-label="Campo obrigatório"
-          >
-            *
-          </span>
-        )}
+        {pergunta.obrigatoria && <Obrigatorio />}
       </label>
 
       {pergunta.descricao && (
@@ -1052,22 +943,15 @@ function CampoPerguntaPersonalizada({
           defaultValue=""
           className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
         >
-          <option value="">
-            Selecione
-          </option>
+          <option value="">Selecione</option>
 
-          <option value="SIM">
-            Sim
-          </option>
+          <option value="SIM">Sim</option>
 
-          <option value="NAO">
-            Não
-          </option>
+          <option value="NAO">Não</option>
         </select>
       )}
 
-      {pergunta.tipo ===
-        "MULTIPLA_ESCOLHA" && (
+      {pergunta.tipo === "MULTIPLA_ESCOLHA" && (
         <select
           id={nomeCampo}
           name={nomeCampo}
@@ -1076,15 +960,10 @@ function CampoPerguntaPersonalizada({
           defaultValue=""
           className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
         >
-          <option value="">
-            Selecione
-          </option>
+          <option value="">Selecione</option>
 
           {pergunta.opcoes.map((opcao) => (
-            <option
-              key={opcao}
-              value={opcao}
-            >
+            <option key={opcao} value={opcao}>
               {opcao}
             </option>
           ))}
@@ -1106,14 +985,10 @@ function Card({
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
       <div className="mb-5">
-        <h2 className="text-lg font-bold text-slate-900">
-          {titulo}
-        </h2>
+        <h2 className="text-lg font-bold text-slate-900">{titulo}</h2>
 
         {descricao && (
-          <p className="mt-1 text-sm text-slate-500">
-            {descricao}
-          </p>
+          <p className="mt-1 text-sm text-slate-500">{descricao}</p>
         )}
       </div>
 
@@ -1141,6 +1016,7 @@ function Campo({
     <div>
       <label className="mb-2 block text-sm font-semibold text-slate-700">
         {label}
+        {required && <Obrigatorio />}
       </label>
 
       <input

@@ -13,6 +13,8 @@ import type {
   Cliente,
   ClienteComResumo,
   ClienteDetalhado,
+  ExcluirUsuarioMasterClienteInput,
+  SalvarUsuarioMasterClienteInput,
 } from "@/src/core/model/Cliente";
 
 export function useClientes(
@@ -24,9 +26,10 @@ export function useClientes(
   const [
     clienteSelecionado,
     setClienteSelecionado,
-  ] = useState<ClienteDetalhado | null>(
-    null
-  );
+  ] =
+    useState<ClienteDetalhado | null>(
+      null
+    );
 
   const [erro, setErro] =
     useState<string | null>(null);
@@ -34,8 +37,10 @@ export function useClientes(
   const [carregando, setCarregando] =
     useState(carregarInicial);
 
-  const [processando, startTransition] =
-    useTransition();
+  const [
+    processando,
+    startTransition,
+  ] = useTransition();
 
   const carregarClientes =
     useCallback(async () => {
@@ -64,39 +69,46 @@ export function useClientes(
     }, []);
 
   const carregarClientePorId =
-    useCallback(async (id: string) => {
-      if (!id?.trim()) {
-        throw new Error(
-          "Cliente não informado."
-        );
-      }
+    useCallback(
+      async (id: string) => {
+        if (!id?.trim()) {
+          throw new Error(
+            "Cliente não informado."
+          );
+        }
 
-      try {
-        setCarregando(true);
-        setErro(null);
+        try {
+          setCarregando(true);
+          setErro(null);
 
-        const dados =
-          await Backend.clientes.obterPorId(
-            id
+          const dados =
+            await Backend.clientes.obterPorId(
+              id
+            );
+
+          setClienteSelecionado(
+            dados
           );
 
-        setClienteSelecionado(dados);
+          return dados;
+        } catch (error) {
+          const mensagem =
+            error instanceof Error
+              ? error.message
+              : "Erro ao carregar cliente.";
 
-        return dados;
-      } catch (error) {
-        const mensagem =
-          error instanceof Error
-            ? error.message
-            : "Erro ao carregar cliente.";
+          setErro(mensagem);
+          setClienteSelecionado(
+            null
+          );
 
-        setErro(mensagem);
-        setClienteSelecionado(null);
-
-        throw error;
-      } finally {
-        setCarregando(false);
-      }
-    }, []);
+          throw error;
+        } finally {
+          setCarregando(false);
+        }
+      },
+      []
+    );
 
   const excluirCliente =
     useCallback(
@@ -109,35 +121,39 @@ export function useClientes(
 
         return new Promise<void>(
           (resolve, reject) => {
-            startTransition(async () => {
-              try {
-                setErro(null);
+            startTransition(
+              async () => {
+                try {
+                  setErro(null);
 
-                await Backend.clientes.excluir(
-                  id
-                );
+                  await Backend.clientes.excluir(
+                    id
+                  );
 
-                await carregarClientes();
+                  await carregarClientes();
 
-                setClienteSelecionado(
-                  (clienteAtual) =>
-                    clienteAtual?.id === id
-                      ? null
-                      : clienteAtual
-                );
+                  setClienteSelecionado(
+                    (clienteAtual) =>
+                      clienteAtual?.id ===
+                      id
+                        ? null
+                        : clienteAtual
+                  );
 
-                resolve();
-              } catch (error) {
-                const mensagem =
-                  error instanceof Error
-                    ? error.message
-                    : "Erro ao excluir cliente.";
+                  resolve();
+                } catch (error) {
+                  const mensagem =
+                    error instanceof
+                    Error
+                      ? error.message
+                      : "Erro ao excluir cliente.";
 
-                setErro(mensagem);
+                  setErro(mensagem);
 
-                reject(error);
+                  reject(error);
+                }
               }
-            });
+            );
           }
         );
       },
@@ -149,33 +165,129 @@ export function useClientes(
       async (cliente: Cliente) => {
         return new Promise<Cliente>(
           (resolve, reject) => {
-            startTransition(async () => {
-              try {
-                setErro(null);
+            startTransition(
+              async () => {
+                try {
+                  setErro(null);
 
-                const resultado =
-                  await Backend.clientes.salvar(
-                    cliente
-                  );
+                  const resultado =
+                    await Backend.clientes.salvar(
+                      cliente
+                    );
 
-                await carregarClientes();
+                  await carregarClientes();
 
-                resolve(resultado);
-              } catch (error) {
-                const mensagem =
-                  error instanceof Error
-                    ? error.message
-                    : "Erro ao salvar cliente.";
+                  resolve(resultado);
+                } catch (error) {
+                  const mensagem =
+                    error instanceof
+                    Error
+                      ? error.message
+                      : "Erro ao salvar cliente.";
 
-                setErro(mensagem);
+                  setErro(mensagem);
 
-                reject(error);
+                  reject(error);
+                }
               }
-            });
+            );
           }
         );
       },
       [carregarClientes]
+    );
+
+
+
+  const salvarUsuarioMaster =
+    useCallback(
+      async (
+        dados:
+          SalvarUsuarioMasterClienteInput
+      ) => {
+        return new Promise(
+          (resolve, reject) => {
+            startTransition(
+              async () => {
+                try {
+                  setErro(null);
+
+                  const resultado =
+                    await Backend.clientes.salvarUsuarioMaster(
+                      dados
+                    );
+
+                  const clienteAtualizado =
+                    await Backend.clientes.obterPorId(
+                      dados.clienteId
+                    );
+
+                  setClienteSelecionado(
+                    clienteAtualizado
+                  );
+
+                  resolve(resultado);
+                } catch (error) {
+                  const mensagem =
+                    error instanceof
+                    Error
+                      ? error.message
+                      : "Erro ao salvar usuário master.";
+
+                  setErro(mensagem);
+                  reject(error);
+                }
+              }
+            );
+          }
+        );
+      },
+      []
+    );
+
+  const excluirUsuarioMaster =
+    useCallback(
+      async (
+        dados:
+          ExcluirUsuarioMasterClienteInput
+      ) => {
+        return new Promise<void>(
+          (resolve, reject) => {
+            startTransition(
+              async () => {
+                try {
+                  setErro(null);
+
+                  await Backend.clientes.excluirUsuarioMaster(
+                    dados
+                  );
+
+                  const clienteAtualizado =
+                    await Backend.clientes.obterPorId(
+                      dados.clienteId
+                    );
+
+                  setClienteSelecionado(
+                    clienteAtualizado
+                  );
+
+                  resolve();
+                } catch (error) {
+                  const mensagem =
+                    error instanceof
+                    Error
+                      ? error.message
+                      : "Erro ao excluir usuário master.";
+
+                  setErro(mensagem);
+                  reject(error);
+                }
+              }
+            );
+          }
+        );
+      },
+      []
     );
 
   const limparErro =
@@ -189,9 +301,11 @@ export function useClientes(
       return;
     }
 
-    carregarClientes().catch(() => {
-      // O erro já foi registrado no estado.
-    });
+    carregarClientes().catch(
+      () => {
+        // O erro já foi registrado.
+      }
+    );
   }, [
     carregarInicial,
     carregarClientes,
@@ -213,5 +327,7 @@ export function useClientes(
     carregarClientes,
     carregarClientePorId,
     salvarCliente,
+    salvarUsuarioMaster,
+    excluirUsuarioMaster,
   };
 }
