@@ -66,6 +66,30 @@ export type ClienteDetalhado = {
   }[];
 };
 
+export type MinhaContaCliente = {
+  cliente: {
+    id: string;
+    nome: string;
+    empresa: string | null;
+    email: string | null;
+    telefone: string | null;
+    documento: string | null;
+    observacoes: string | null;
+    ativo: boolean;
+    criadoEm: Date;
+    atualizadoEm: Date;
+  };
+
+  usuario: {
+    id: string;
+    nome: string;
+    email: string;
+    perfil: PerfilUsuario;
+    ativo: boolean;
+    criadoEm: Date;
+    atualizadoEm: Date;
+  };
+};
 
 export type SalvarUsuarioMasterClienteInput = {
   clienteId: string;

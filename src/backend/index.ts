@@ -7,6 +7,7 @@ import salvarCliente from "./cliente/salvarCliente";
 import obterTodosClientes from "./cliente/obterTodos";
 import obterClientePorId from "./cliente/obterPorId";
 import excluirCliente from "./cliente/excluirCliente";
+import obterMinhaContaCliente from "./cliente/obterMinhaConta";
 
 import salvarModeloPesquisa from "./modeloPesquisa/salvarModeloPesquisa";
 import obterTodosModelosPesquisa from "./modeloPesquisa/obterTodos";
@@ -110,9 +111,13 @@ export default class Backend {
     salvar: salvarCliente,
     obterTodos: obterTodosClientes,
     obterPorId: obterClientePorId,
+    obterMinhaConta:
+      obterMinhaContaCliente,
     excluir: excluirCliente,
-    salvarUsuarioMaster: salvarUsuarioMasterCliente,
-    excluirUsuarioMaster: excluirUsuarioMasterCliente,
+    salvarUsuarioMaster:
+      salvarUsuarioMasterCliente,
+    excluirUsuarioMaster:
+      excluirUsuarioMasterCliente,
   };
 
   static readonly modelosPesquisa = {

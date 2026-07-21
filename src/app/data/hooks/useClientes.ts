@@ -199,6 +199,10 @@ export function useClientes(
 
 
 
+  
+
+
+
   const salvarUsuarioMaster =
     useCallback(
       async (
@@ -244,6 +248,37 @@ export function useClientes(
       },
       []
     );
+
+  const carregarMinhaConta =
+  useCallback(async () => {
+    try {
+      setCarregando(true);
+      setErro(null);
+
+      const dados =
+        await Backend.clientes.obterMinhaConta();
+
+      setClienteSelecionado(
+        dados
+      );
+
+      return dados;
+    } catch (error) {
+      const mensagem =
+        error instanceof Error
+          ? error.message
+          : "Erro ao carregar os dados da conta.";
+
+      setErro(mensagem);
+      setClienteSelecionado(
+        null
+      );
+
+      throw error;
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
 
   const excluirUsuarioMaster =
     useCallback(
@@ -326,6 +361,7 @@ export function useClientes(
     excluirCliente,
     carregarClientes,
     carregarClientePorId,
+    carregarMinhaConta,
     salvarCliente,
     salvarUsuarioMaster,
     excluirUsuarioMaster,

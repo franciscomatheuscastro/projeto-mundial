@@ -12,6 +12,7 @@ import type {
   ClienteComResumo,
   ClienteDetalhado,
   ExcluirUsuarioMasterClienteInput,
+  MinhaContaCliente,
   SalvarUsuarioMasterClienteInput,
   UsuarioMasterCliente,
 } from "@/src/core/model/Cliente";
@@ -105,6 +106,96 @@ export default class RepositorioCliente {
     return prisma.cliente.create({
       data: dados,
     });
+  }
+
+  static async obterMinhaConta(
+    clienteId: string,
+    usuarioId: string
+  ): Promise<MinhaContaCliente> {
+    const clienteIdNormalizado =
+      clienteId?.trim();
+
+    const usuarioIdNormalizado =
+      usuarioId?.trim();
+
+    if (!clienteIdNormalizado) {
+      throw new Error(
+        "Cliente não vinculado ao usuário."
+      );
+    }
+
+    if (!usuarioIdNormalizado) {
+      throw new Error(
+        "Usuário não identificado."
+      );
+    }
+
+    const cliente =
+      await prisma.cliente.findUnique({
+        where: {
+          id: clienteIdNormalizado,
+        },
+
+        select: {
+          id: true,
+          nome: true,
+          empresa: true,
+          email: true,
+          telefone: true,
+          documento: true,
+          observacoes: true,
+          ativo: true,
+          criadoEm: true,
+          atualizadoEm: true,
+
+          usuarios: {
+            where: {
+              id: usuarioIdNormalizado,
+              clienteId:
+                clienteIdNormalizado,
+              perfil:
+                PerfilUsuario.CLIENTE,
+            },
+
+            take: 1,
+
+            select: {
+              id: true,
+              nome: true,
+              email: true,
+              perfil: true,
+              ativo: true,
+              criadoEm: true,
+              atualizadoEm: true,
+            },
+          },
+        },
+      });
+
+    if (!cliente) {
+      throw new Error(
+        "Cliente não encontrado."
+      );
+    }
+
+    const usuario =
+      cliente.usuarios[0];
+
+    if (!usuario) {
+      throw new Error(
+        "O usuário não possui acesso válido a este cliente."
+      );
+    }
+
+    const {
+      usuarios: _usuarios,
+      ...dadosCliente
+    } = cliente;
+
+    return {
+      cliente: dadosCliente,
+      usuario,
+    };
   }
 
   static async excluir(

@@ -188,12 +188,23 @@ function MenuNavegacao({
       )}
 
       <GrupoMenu titulo="Suporte" mobile={mobile}>
+
+        <MenuLink
+          href="/minha-conta"
+          mobile={mobile}
+        >
+          Minha conta
+        </MenuLink>
+        
         <MenuLink
           href="/minha-central-ajuda"
           mobile={mobile}
         >
           Central de ajuda
         </MenuLink>
+
+        
+
       </GrupoMenu>
 
       
