@@ -76,7 +76,7 @@ function PainelInstitucional() {
 
       <div className="-translate-y-8 text-center">
         <h1 className="text-6xl font-black tracking-tight">
-          MundialSafe
+          Mundial Connect
         </h1>
 
         <p className="mt-7 text-2xl font-semibold leading-relaxed text-blue-100">
