@@ -24,6 +24,9 @@ export type CategoriaDenuncia = {
   id: string;
   nome: string;
   descricao?: string | null;
+
+  gravidade: GravidadeDenuncia;
+
   ativo?: boolean;
   ordem?: number;
 };

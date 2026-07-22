@@ -1,11 +1,9 @@
 import {
-  GravidadeDenuncia,
   OrigemAtorDenuncia,
   PerfilUsuario,
   Prisma,
   StatusDenuncia,
   TipoAnexoDenuncia,
-  TipoEventoDenuncia,
   VisibilidadeAnexoDenuncia,
 } from "@prisma/client";
 
@@ -24,7 +22,6 @@ import {
   PrepararUploadDenunciaInput,
 } from "@/src/core/model/Denuncia";
 
-import RepositorioCriticidadeDenuncia from "../criticidadeDenuncia/RepositorioCriticidadeDenuncia";
 
 import {
   gerarUploadTemporario,
@@ -180,6 +177,7 @@ async function validarCategoria(
       id: true,
       nome: true,
       descricao: true,
+      gravidade: true,
       ativo: true,
       ordem: true,
     },
@@ -478,6 +476,8 @@ function montarResumo(
           nome: denuncia.categoria.nome,
           descricao:
             denuncia.categoria.descricao,
+          gravidade:
+            denuncia.categoria.gravidade,
           ativo: denuncia.categoria.ativo,
           ordem: denuncia.categoria.ordem,
         }
@@ -486,6 +486,7 @@ function montarResumo(
           nome: "Sem categoria",
           descricao:
             "Denúncia registrada antes da implantação das categorias.",
+          gravidade: denuncia.gravidade,
           ativo: false,
           ordem: 9999,
         },
@@ -624,23 +625,6 @@ async function montarDetalhada(
   return detalhada;
 }
 
-async function calcularGravidadeAutomatica(dados: {
-  titulo: string;
-  descricao: string;
-  categoria?: string | null;
-  gravidade?: GravidadeDenuncia | null;
-}) {
-  if (dados.gravidade) {
-    return dados.gravidade;
-  }
-
-  return RepositorioCriticidadeDenuncia.calcularGravidade({
-    titulo: dados.titulo,
-    descricao: dados.descricao,
-    categoria: dados.categoria,
-  });
-}
-
 const includeDetalhadaMundial = {
   cliente: true,
   categoria: true,
@@ -708,12 +692,6 @@ export default class RepositorioDenuncia {
     const descricao = dados.descricao.trim();
     const protocolo = await gerarProtocoloUnico();
 
-    const gravidade = await calcularGravidadeAutomatica({
-      titulo,
-      descricao,
-      categoria: categoria.nome,
-    });
-
     const respostasPersonalizadas =
       await validarRespostasPersonalizadas(
         dados.clienteId,
@@ -756,7 +734,7 @@ export default class RepositorioDenuncia {
               dados.telefoneDenunciante
             ),
 
-        gravidade,
+        gravidade: categoria.gravidade,
         status: "RECEBIDA",
 
         respostaPublica: null,
@@ -814,13 +792,6 @@ export default class RepositorioDenuncia {
     const descricao = dados.descricao.trim();
     const protocolo = await gerarProtocoloUnico();
 
-    const gravidade = await calcularGravidadeAutomatica({
-      titulo,
-      descricao,
-      categoria: categoria.nome,
-      gravidade: dados.gravidade || null,
-    });
-
     const anonima = dados.anonima ?? true;
 
     const denuncia = await prisma.denuncia.create({
@@ -845,18 +816,18 @@ export default class RepositorioDenuncia {
           ? null
           : textoOpcional(dados.nomeDenunciante),
 
-        emailDenunciante: dados.anonima
+        emailDenunciante: anonima
           ? null
           : textoOpcional(
               dados.emailDenunciante
             )?.toLowerCase() || null,
 
-        telefoneDenunciante: dados.anonima
+        telefoneDenunciante: anonima
           ? null
           : textoOpcional(dados.telefoneDenunciante),
 
         status: dados.status || "RECEBIDA",
-        gravidade,
+        gravidade: categoria.gravidade,
 
         respostaPublica: textoOpcional(
           dados.respostaPublica

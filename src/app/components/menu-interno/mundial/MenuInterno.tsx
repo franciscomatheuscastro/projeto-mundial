@@ -148,12 +148,7 @@ function MenuNavegacao({
           Perguntas
         </MenuLink>
 
-        <MenuLink
-          href="/criticidade"
-          mobile={mobile}
-        >
-          Criticidade
-        </MenuLink>
+        
       </GrupoMenu>
 
       <GrupoMenu

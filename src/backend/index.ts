@@ -54,29 +54,20 @@ import obterTodosDenuncias from "./denuncia/obterTodos";
 import obterDenunciaPorId from "./denuncia/obterPorId";
 import obterDenunciasPorCliente from "./denuncia/obterPorCliente";
 import salvarDenuncia from "./denuncia/salvarDenuncia";
-
 import adicionarTratativaDenuncia from "./denuncia/adicionarTratativa";
 import editarTratativaDenuncia from "./denuncia/editarTratativa";
 import liberarTratativaDenuncia from "./denuncia/liberarTratativa";
-
 import obterMinhasDenuncias from "./denuncia/obterMinhasDenuncias";
 import obterMinhaDenunciaPorId from "./denuncia/obterMinhaDenunciaPorId";
 import salvarMinhaDenuncia from "./denuncia/salvarMinhaDenuncia";
-
 import adicionarMinhaTratativa from "./denuncia/adicionarMinhaTratativa";
 import editarMinhaTratativa from "./denuncia/editarMinhaTratativa";
-
 import criarDenunciaManual from "./denuncia/criarDenunciaManual";
 import criarMinhaDenunciaManual from "./denuncia/criarMinhaDenunciaManual";
-
 import prepararUploadDenuncia from "./denuncia/prepararUploadDenuncia";
 import confirmarUploadDenuncia from "./denuncia/confirmarUploadDenuncia";
-
 import obterDadosRelatorioDenuncias from "./denuncia/obterDadosRelatorio";
 
-import obterTodosRegrasCriticidade from "./criticidadeDenuncia/obterTodos";
-import salvarRegraCriticidade from "./criticidadeDenuncia/salvar";
-import excluirRegraCriticidade from "./criticidadeDenuncia/excluir";
 
 import obterMeusColaboradores from "./colaboradorCliente/obterMeus";
 import salvarMeuColaborador from "./colaboradorCliente/salvarMeu";
@@ -87,6 +78,7 @@ import obterTodasCategoriasDenuncia from "./categoriaDenuncia/obterTodas";
 import obterCategoriasDenunciaAtivas from "./categoriaDenuncia/obterAtivas";
 import salvarCategoriaDenuncia from "./categoriaDenuncia/salvar";
 import alterarStatusCategoriaDenuncia from "./categoriaDenuncia/alterarStatus";
+import obterGravidadeCategoriaDenuncia from "./categoriaDenuncia/obterGravidade";
 
 import salvarUsuarioMasterCliente from "./cliente/salvarUsuarioMasterCliente";
 import excluirUsuarioMasterCliente from "./cliente/excluirUsuarioMasterCliente";
@@ -208,13 +200,10 @@ export default class Backend {
     obterAtivas: obterCategoriasDenunciaAtivas,
     salvar: salvarCategoriaDenuncia,
     alterarStatus: alterarStatusCategoriaDenuncia,
+    obterGravidade: obterGravidadeCategoriaDenuncia,
   };
 
-  static readonly criticidadeDenuncia = {
-    obterTodos: obterTodosRegrasCriticidade,
-    salvar: salvarRegraCriticidade,
-    excluir: excluirRegraCriticidade,
-  };
+
 
   static readonly colaboradoresCliente = {
     obterMeus: obterMeusColaboradores,

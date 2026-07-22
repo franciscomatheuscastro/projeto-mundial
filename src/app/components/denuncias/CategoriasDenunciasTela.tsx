@@ -12,6 +12,10 @@ import {
   useTransition,
 } from "react";
 
+import {
+  GravidadeDenuncia,
+} from "@prisma/client";
+
 import Backend from "@/src/backend";
 
 import type {
@@ -21,18 +25,53 @@ import type {
 const CATEGORIA_INICIAL: CategoriaDenuncia = {
   nome: "",
   descricao: "",
+  gravidade:
+    GravidadeDenuncia.MEDIA,
   ativo: true,
   ordem: 0,
 };
+
+const GRAVIDADES: Array<{
+  valor: GravidadeDenuncia;
+  nome: string;
+  descricao: string;
+}> = [
+  {
+    valor: GravidadeDenuncia.BAIXA,
+    nome: "Baixa",
+    descricao:
+      "Situação de menor impacto ou urgência.",
+  },
+  {
+    valor: GravidadeDenuncia.MEDIA,
+    nome: "Média",
+    descricao:
+      "Situação relevante que exige avaliação.",
+  },
+  {
+    valor: GravidadeDenuncia.ALTA,
+    nome: "Alta",
+    descricao:
+      "Situação grave que exige prioridade.",
+  },
+  {
+    valor: GravidadeDenuncia.CRITICA,
+    nome: "Crítica",
+    descricao:
+      "Situação emergencial ou de risco elevado.",
+  },
+];
 
 export default function CategoriasDenunciaTela() {
   const [categorias, setCategorias] =
     useState<CategoriaDenuncia[]>([]);
 
-  const [categoriaEditando, setCategoriaEditando] =
-    useState<CategoriaDenuncia>(
-      CATEGORIA_INICIAL
-    );
+  const [
+    categoriaEditando,
+    setCategoriaEditando,
+  ] = useState<CategoriaDenuncia>({
+    ...CATEGORIA_INICIAL,
+  });
 
   const [carregando, setCarregando] =
     useState(true);
@@ -43,8 +82,10 @@ export default function CategoriasDenunciaTela() {
   const [mensagem, setMensagem] =
     useState<string | null>(null);
 
-  const [processando, iniciarTransicao] =
-    useTransition();
+  const [
+    processando,
+    iniciarTransicao,
+  ] = useTransition();
 
   const editando = Boolean(
     categoriaEditando.id
@@ -53,15 +94,19 @@ export default function CategoriasDenunciaTela() {
   const categoriasAtivas = useMemo(
     () =>
       categorias.filter(
-        (categoria) => categoria.ativo
+        (categoria) =>
+          categoria.ativo
       ).length,
     [categorias]
   );
 
-  const categoriasInativas = useMemo(
+  const categoriasCriticas = useMemo(
     () =>
       categorias.filter(
-        (categoria) => !categoria.ativo
+        (categoria) =>
+          categoria.ativo &&
+          categoria.gravidade ===
+            GravidadeDenuncia.CRITICA
       ).length,
     [categorias]
   );
@@ -88,7 +133,7 @@ export default function CategoriasDenunciaTela() {
     }, []);
 
   useEffect(() => {
-    carregarCategorias();
+    void carregarCategorias();
   }, [carregarCategorias]);
 
   function limparFormulario() {
@@ -105,8 +150,13 @@ export default function CategoriasDenunciaTela() {
 
     setCategoriaEditando({
       ...categoria,
+
       descricao:
-        categoria.descricao || "",
+        categoria.descricao ?? "",
+
+      gravidade:
+        categoria.gravidade ??
+        GravidadeDenuncia.MEDIA,
     });
 
     window.scrollTo({
@@ -139,13 +189,15 @@ export default function CategoriasDenunciaTela() {
             categoriaEditando.descricao?.trim() ||
             null,
 
+          gravidade:
+            categoriaEditando.gravidade,
+
           ativo:
             categoriaEditando.ativo,
 
-          ordem:
-            Number(
-              categoriaEditando.ordem
-            ),
+          ordem: Number(
+            categoriaEditando.ordem
+          ),
         });
 
         setMensagem(
@@ -170,7 +222,10 @@ export default function CategoriasDenunciaTela() {
   async function alterarStatus(
     categoria: CategoriaDenuncia
   ) {
-    if (!categoria.id || processando) {
+    if (
+      !categoria.id ||
+      processando
+    ) {
       return;
     }
 
@@ -181,9 +236,10 @@ export default function CategoriasDenunciaTela() {
       ? "reativar"
       : "desativar";
 
-    const confirmar = window.confirm(
-      `Deseja realmente ${acao} a categoria "${categoria.nome}"?`
-    );
+    const confirmar =
+      window.confirm(
+        `Deseja realmente ${acao} a categoria "${categoria.nome}"?`
+      );
 
     if (!confirmar) {
       return;
@@ -236,8 +292,9 @@ export default function CategoriasDenunciaTela() {
           </h1>
 
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-            Configure as categorias obrigatórias
-            utilizadas no registro das denúncias.
+            Configure as categorias e a
+            gravidade automática aplicada
+            no registro de cada denúncia.
           </p>
         </div>
       </header>
@@ -267,8 +324,8 @@ export default function CategoriasDenunciaTela() {
           />
 
           <CardResumo
-            titulo="Inativas"
-            valor={categoriasInativas}
+            titulo="Críticas"
+            valor={categoriasCriticas}
           />
         </div>
 
@@ -285,8 +342,10 @@ export default function CategoriasDenunciaTela() {
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                O nome será exibido no formulário
-                público da denúncia.
+                A gravidade selecionada
+                será aplicada automaticamente
+                às novas denúncias desta
+                categoria.
               </p>
             </div>
 
@@ -334,6 +393,57 @@ export default function CategoriasDenunciaTela() {
 
             <div>
               <label
+                htmlFor="gravidade"
+                className="mb-2 block text-sm font-semibold text-slate-700"
+              >
+                Gravidade automática
+              </label>
+
+              <select
+                id="gravidade"
+                required
+                disabled={processando}
+                value={
+                  categoriaEditando.gravidade
+                }
+                onChange={(event) =>
+                  setCategoriaEditando(
+                    (atual) => ({
+                      ...atual,
+
+                      gravidade:
+                        event.target
+                          .value as GravidadeDenuncia,
+                    })
+                  )
+                }
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+              >
+                {GRAVIDADES.map(
+                  (item) => (
+                    <option
+                      key={item.valor}
+                      value={item.valor}
+                    >
+                      {item.nome}
+                    </option>
+                  )
+                )}
+              </select>
+
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                {
+                  GRAVIDADES.find(
+                    (item) =>
+                      item.valor ===
+                      categoriaEditando.gravidade
+                  )?.descricao
+                }
+              </p>
+            </div>
+
+            <div>
+              <label
                 htmlFor="ordem"
                 className="mb-2 block text-sm font-semibold text-slate-700"
               >
@@ -354,6 +464,7 @@ export default function CategoriasDenunciaTela() {
                   setCategoriaEditando(
                     (atual) => ({
                       ...atual,
+
                       ordem: Number(
                         event.target.value
                       ),
@@ -364,37 +475,7 @@ export default function CategoriasDenunciaTela() {
               />
             </div>
 
-            <div className="lg:col-span-2">
-              <label
-                htmlFor="descricao"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                Descrição
-              </label>
-
-              <textarea
-                id="descricao"
-                rows={4}
-                disabled={processando}
-                value={
-                  categoriaEditando.descricao ||
-                  ""
-                }
-                onChange={(event) =>
-                  setCategoriaEditando(
-                    (atual) => ({
-                      ...atual,
-                      descricao:
-                        event.target.value,
-                    })
-                  )
-                }
-                placeholder="Explique em quais situações esta categoria deve ser utilizada."
-                className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
-              />
-            </div>
-
-            <label className="lg:col-span-2 flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <input
                 type="checkbox"
                 checked={
@@ -405,6 +486,7 @@ export default function CategoriasDenunciaTela() {
                   setCategoriaEditando(
                     (atual) => ({
                       ...atual,
+
                       ativo:
                         event.target.checked,
                     })
@@ -419,12 +501,42 @@ export default function CategoriasDenunciaTela() {
                 </strong>
 
                 <span className="mt-1 block text-sm leading-6 text-slate-500">
-                  Categorias ativas aparecem nos
-                  formulários de registro de
-                  denúncia.
+                  Categorias ativas aparecem
+                  nos formulários de denúncia.
                 </span>
               </span>
             </label>
+
+            <div className="lg:col-span-2">
+              <label
+                htmlFor="descricao"
+                className="mb-2 block text-sm font-semibold text-slate-700"
+              >
+                Descrição
+              </label>
+
+              <textarea
+                id="descricao"
+                rows={4}
+                disabled={processando}
+                value={
+                  categoriaEditando.descricao ??
+                  ""
+                }
+                onChange={(event) =>
+                  setCategoriaEditando(
+                    (atual) => ({
+                      ...atual,
+
+                      descricao:
+                        event.target.value,
+                    })
+                  )
+                }
+                placeholder="Explique em quais situações esta categoria deve ser utilizada."
+                className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+              />
+            </div>
           </div>
 
           <button
@@ -447,9 +559,9 @@ export default function CategoriasDenunciaTela() {
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Categorias desativadas permanecem
-              vinculadas às denúncias já
-              registradas.
+              Alterações de gravidade afetam
+              apenas novas denúncias. Denúncias
+              existentes mantêm sua classificação.
             </p>
           </div>
 
@@ -474,6 +586,12 @@ export default function CategoriasDenunciaTela() {
                         <p className="font-semibold text-slate-900">
                           {categoria.nome}
                         </p>
+
+                        <GravidadeBadge
+                          gravidade={
+                            categoria.gravidade
+                          }
+                        />
 
                         <StatusBadge
                           ativo={
@@ -563,6 +681,41 @@ function CardResumo({
   );
 }
 
+function GravidadeBadge({
+  gravidade,
+}: {
+  gravidade: GravidadeDenuncia;
+}) {
+  const configuracao = {
+    BAIXA:
+      "bg-green-100 text-green-700",
+
+    MEDIA:
+      "bg-yellow-100 text-yellow-700",
+
+    ALTA:
+      "bg-orange-100 text-orange-700",
+
+    CRITICA:
+      "bg-red-100 text-red-700",
+  }[gravidade];
+
+  const texto = {
+    BAIXA: "Baixa",
+    MEDIA: "Média",
+    ALTA: "Alta",
+    CRITICA: "Crítica",
+  }[gravidade];
+
+  return (
+    <span
+      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${configuracao}`}
+    >
+      {texto}
+    </span>
+  );
+}
+
 function StatusBadge({
   ativo,
 }: {
@@ -572,7 +725,7 @@ function StatusBadge({
     <span
       className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
         ativo
-          ? "bg-green-100 text-green-700"
+          ? "bg-blue-100 text-blue-700"
           : "bg-slate-200 text-slate-700"
       }`}
     >

@@ -274,28 +274,24 @@ model HistoricoDenuncia {
   @@index([visivelPublicamente])
 }
 
-model RegraCriticidadeDenuncia {
-  id           String            @id @default(cuid())
-  termo        String
-  categoria    String?
-  gravidade    GravidadeDenuncia @default(ALTA)
-  ativo        Boolean           @default(true)
-  criadoEm     DateTime          @default(now())
-  atualizadoEm DateTime          @updatedAt
-}
+
 
 model CategoriaDenuncia {
-  id           String     @id @default(cuid())
-  nome         String     @unique
+  id           String            @id @default(cuid())
+  nome         String            @unique
   descricao    String?
-  ativo        Boolean    @default(true)
-  ordem        Int        @default(0)
-  criadoEm     DateTime   @default(now())
-  atualizadoEm DateTime   @updatedAt
+  gravidade    GravidadeDenuncia @default(MEDIA)
+  ativo        Boolean           @default(true)
+  ordem        Int               @default(0)
+  criadoEm     DateTime          @default(now())
+  atualizadoEm DateTime          @updatedAt
+
   denuncias    Denuncia[]
 
   @@index([ativo, ordem])
+  @@index([gravidade])
 }
+
 
 model PerguntaCanalDenuncia {
   id           String                          @id @default(cuid())
