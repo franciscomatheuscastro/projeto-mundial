@@ -1,19 +1,30 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+
 import Backend from "@/src/backend";
-import type { PerguntaCanalDenuncia } from "@/src/core/model/PerguntaCanalDenuncia";
+
+import type {
+  PerguntaCanalDenuncia,
+} from "@/src/core/model/PerguntaCanalDenuncia";
 
 export default function PerguntasCanalDenunciaTela() {
-  const [perguntas, setPerguntas] = useState<PerguntaCanalDenuncia[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
+  const [perguntas, setPerguntas] =
+    useState<PerguntaCanalDenuncia[]>([]);
+
+  const [carregando, setCarregando] =
+    useState(true);
+
+  const [erro, setErro] =
+    useState<string | null>(null);
 
   async function carregar() {
     try {
       setCarregando(true);
       setErro(null);
+
       setPerguntas(
         await Backend.perguntasCanalDenuncia.obterTodas()
       );
@@ -29,16 +40,27 @@ export default function PerguntasCanalDenunciaTela() {
   }
 
   useEffect(() => {
-    carregar();
+    void carregar();
   }, []);
 
-  async function excluir(id: string) {
-    if (!window.confirm("Deseja excluir ou desativar esta pergunta?")) {
+  async function excluir(
+    id: string
+  ) {
+    if (
+      !window.confirm(
+        "Deseja excluir ou desativar esta pergunta?"
+      )
+    ) {
       return;
     }
 
     try {
-      await Backend.perguntasCanalDenuncia.excluir(id);
+      setErro(null);
+
+      await Backend.perguntasCanalDenuncia.excluir(
+        id
+      );
+
       await carregar();
     } catch (error) {
       setErro(
@@ -57,9 +79,11 @@ export default function PerguntasCanalDenunciaTela() {
             <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
               Canal de denúncias
             </p>
+
             <h1 className="mt-1 text-2xl font-black text-slate-900">
               Perguntas personalizadas
             </h1>
+
             <p className="mt-1 text-sm text-slate-500">
               Configure perguntas adicionais por cliente.
             </p>
@@ -67,7 +91,7 @@ export default function PerguntasCanalDenunciaTela() {
 
           <Link
             href="/denuncias/perguntas/nova"
-            className="rounded-xl bg-blue-600 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-blue-700"
+            className="rounded-xl bg-blue-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-blue-700"
           >
             Nova pergunta
           </Link>
@@ -89,58 +113,110 @@ export default function PerguntasCanalDenunciaTela() {
                   <Th>Ordem</Th>
                   <Th>Pergunta</Th>
                   <Th>Tipo</Th>
-                  <Th>Clientes</Th>
+                  <Th>Canais</Th>
                   <Th>Status</Th>
-                  <Th direita>Opções</Th>
+                  <Th direita>
+                    Opções
+                  </Th>
                 </tr>
               </thead>
+
               <tbody>
                 {carregando ? (
-                  <Linha colunas={6} texto="Carregando..." />
-                ) : perguntas.length === 0 ? (
-                  <Linha colunas={6} texto="Nenhuma pergunta cadastrada." />
+                  <Linha
+                    colunas={6}
+                    texto="Carregando..."
+                  />
+                ) : perguntas.length ===
+                  0 ? (
+                  <Linha
+                    colunas={6}
+                    texto="Nenhuma pergunta cadastrada."
+                  />
                 ) : (
-                  perguntas.map((pergunta) => (
-                    <tr key={pergunta.id} className="border-t border-slate-100">
-                      <td className="px-4 py-4 text-sm">{pergunta.ordem}</td>
-                      <td className="px-4 py-4">
-                        <p className="font-semibold text-slate-900">
-                          {pergunta.enunciado}
-                        </p>
-                        {pergunta.obrigatoria && (
-                          <p className="mt-1 text-xs font-semibold text-amber-700">
-                            Obrigatória
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-4 py-4 text-sm text-slate-600">
-                        {pergunta.tipo.replaceAll("_", " ").toLowerCase()}
-                      </td>
-                      <td className="px-4 py-4 text-sm text-slate-600">
-                        {pergunta.clientes
-                          ?.map((cliente) => cliente.empresa || cliente.nome)
-                          .join(", ") || "-"}
-                      </td>
-                      <td className="px-4 py-4 text-sm">
-                        {pergunta.ativo ? "Ativa" : "Inativa"}
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        <Link
-                          href={`/denuncias/perguntas/${pergunta.id}`}
-                          className="mr-3 text-sm font-semibold text-blue-600"
+                  perguntas.map(
+                    (pergunta) => {
+                      const canais =
+                        pergunta.clientes
+                          ?.map(
+                            (cliente) =>
+                              cliente.empresa ||
+                              cliente.nome
+                          )
+                          .filter(Boolean) ||
+                        [];
+
+                      return (
+                        <tr
+                          key={pergunta.id}
+                          className="border-t border-slate-100"
                         >
-                          Editar
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => excluir(pergunta.id!)}
-                          className="text-sm font-semibold text-red-600"
-                        >
-                          Excluir
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                          <td className="px-4 py-4 text-sm">
+                            {pergunta.ordem}
+                          </td>
+
+                          <td className="px-4 py-4">
+                            <p className="font-semibold text-slate-900">
+                              {pergunta.enunciado}
+                            </p>
+
+                            {pergunta.obrigatoria && (
+                              <p className="mt-1 text-xs font-semibold text-amber-700">
+                                Obrigatória
+                              </p>
+                            )}
+                          </td>
+
+                          <td className="px-4 py-4 text-sm text-slate-600">
+                            {formatarTipo(
+                              pergunta.tipo
+                            )}
+                          </td>
+
+                          <td className="px-4 py-4 text-sm text-slate-600">
+                            {canais.length > 0
+                              ? canais.join(", ")
+                              : "-"}
+                          </td>
+
+                          <td className="px-4 py-4 text-sm">
+                            <span
+                              className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                                pergunta.ativo
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-slate-200 text-slate-700"
+                              }`}
+                            >
+                              {pergunta.ativo
+                                ? "Ativa"
+                                : "Inativa"}
+                            </span>
+                          </td>
+
+                          <td className="px-4 py-4 text-right">
+                            <Link
+                              href={`/denuncias/perguntas/${pergunta.id}`}
+                              className="mr-3 text-sm font-semibold text-blue-600 transition hover:text-blue-800"
+                            >
+                              Editar
+                            </Link>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                excluir(
+                                  pergunta.id!
+                                )
+                              }
+                              className="text-sm font-semibold text-red-600 transition hover:text-red-800"
+                            >
+                              Excluir
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    }
+                  )
                 )}
               </tbody>
             </table>
@@ -151,20 +227,55 @@ export default function PerguntasCanalDenunciaTela() {
   );
 }
 
-function Th({ children, direita = false }: { children: React.ReactNode; direita?: boolean }) {
+function Th({
+  children,
+  direita = false,
+}: {
+  children: ReactNode;
+  direita?: boolean;
+}) {
   return (
-    <th className={`px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 ${direita ? "text-right" : "text-left"}`}>
+    <th
+      className={`px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 ${
+        direita
+          ? "text-right"
+          : "text-left"
+      }`}
+    >
       {children}
     </th>
   );
 }
 
-function Linha({ colunas, texto }: { colunas: number; texto: string }) {
+function Linha({
+  colunas,
+  texto,
+}: {
+  colunas: number;
+  texto: string;
+}) {
   return (
     <tr>
-      <td colSpan={colunas} className="px-4 py-12 text-center text-sm text-slate-500">
+      <td
+        colSpan={colunas}
+        className="px-4 py-12 text-center text-sm text-slate-500"
+      >
         {texto}
       </td>
     </tr>
   );
+}
+
+function formatarTipo(
+  tipo: string
+) {
+  const nomes: Record<string, string> = {
+    TEXTO: "Texto curto",
+    TEXTO_LONGO: "Texto longo",
+    SIM_NAO: "Sim ou não",
+    MULTIPLA_ESCOLHA:
+      "Múltipla escolha",
+  };
+
+  return nomes[tipo] || tipo;
 }

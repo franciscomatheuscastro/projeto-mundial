@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import type {
   DadosRelatorioDenuncias,
 } from "@/src/core/model/Denuncia";
@@ -7,6 +9,9 @@ import type {
 type Props = {
   dados: DadosRelatorioDenuncias;
 };
+
+const CAMINHO_LOGO =
+  "/logo-pessoas.png";
 
 export default function RelatorioDenunciasTela({
   dados,
@@ -44,16 +49,60 @@ export default function RelatorioDenunciasTela({
         item.status === "ARQUIVADA"
     ).length;
 
+  const quantidadeColunas =
+    dados.contexto === "mundial"
+      ? 6
+      : 5;
+
   return (
-    <main className="min-h-screen bg-white p-6 text-slate-900 print:p-0">
-      <div className="mx-auto max-w-[1200px]">
+    <main className="min-h-screen bg-white p-6 text-slate-900 print:min-h-0 print:p-0">
+      <style jsx global>{`
+        @page {
+          size: A4 portrait;
+          margin: 12mm;
+        }
+
+        @media print {
+          html,
+          body {
+            background: #ffffff !important;
+          }
+
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+
+          .relatorio-denuncias {
+            width: 100% !important;
+            max-width: none !important;
+          }
+
+          .relatorio-denuncias table {
+            page-break-inside: auto;
+          }
+
+          .relatorio-denuncias thead {
+            display: table-header-group;
+          }
+
+          .relatorio-denuncias tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+        }
+      `}</style>
+
+      <div className="relatorio-denuncias mx-auto max-w-[1200px]">
         <div className="mb-6 flex justify-end gap-3 print:hidden">
           <button
             type="button"
             onClick={() =>
               window.close()
             }
-            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
+            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             Fechar
           </button>
@@ -63,20 +112,30 @@ export default function RelatorioDenunciasTela({
             onClick={() =>
               window.print()
             }
-            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
+            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
           >
             Imprimir / salvar PDF
           </button>
         </div>
 
         <header className="border-b-2 border-slate-900 pb-5">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
-            Mundial Connect
-          </p>
+          <div className="flex items-start justify-between gap-6">
+            <div className="min-w-0">
+              <img
+                src={CAMINHO_LOGO}
+                alt="Grupo Mundial RH"
+                className="h-auto w-[150px] object-contain print:w-[135px]"
+              />
 
-          <h1 className="mt-2 text-3xl font-black">
-            Relatório de denúncias
-          </h1>
+              <p className="mt-3 text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
+                Mundial Connect
+              </p>
+
+              <h1 className="mt-2 text-3xl font-black">
+                Relatório de denúncias
+              </h1>
+            </div>
+          </div>
 
           <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
             <p>
@@ -106,7 +165,7 @@ export default function RelatorioDenunciasTela({
           </div>
         </header>
 
-        <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 print:grid-cols-3">
           <Indicador
             label="Total"
             valor={total}
@@ -143,95 +202,90 @@ export default function RelatorioDenunciasTela({
             Registros
           </h2>
 
-          <table className="w-full border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-100">
-                <Th>Data</Th>
-                <Th>Protocolo</Th>
+          <div className="overflow-x-auto print:overflow-visible">
+            <table className="w-full border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-100">
+                  <Th>Data</Th>
+                  <Th>Protocolo</Th>
 
-                {dados.contexto ===
-                  "mundial" && (
-                  <Th>Empresa</Th>
-                )}
+                  {dados.contexto ===
+                    "mundial" && (
+                    <Th>Empresa</Th>
+                  )}
 
-                <Th>Categoria</Th>
-                <Th>Título</Th>
-                <Th>Gravidade</Th>
-                <Th>Status</Th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {dados.denuncias.length ===
-              0 ? (
-                <tr>
-                  <td
-                    colSpan={
-                      dados.contexto ===
-                      "mundial"
-                        ? 7
-                        : 6
-                    }
-                    className="border border-slate-300 px-3 py-8 text-center text-slate-500"
-                  >
-                    Nenhuma denúncia encontrada.
-                  </td>
+                  <Th>Categoria</Th>
+                  <Th>Gravidade</Th>
+                  <Th>Status</Th>
                 </tr>
-              ) : (
-                dados.denuncias.map(
-                  (denuncia) => (
-                    <tr
-                      key={denuncia.id}
-                      className="break-inside-avoid"
+              </thead>
+
+              <tbody>
+                {dados.denuncias.length ===
+                0 ? (
+                  <tr>
+                    <td
+                      colSpan={
+                        quantidadeColunas
+                      }
+                      className="border border-slate-300 px-3 py-8 text-center text-slate-500"
                     >
-                      <Td>
-                        {new Date(
-                          denuncia.criadoEm
-                        ).toLocaleDateString(
-                          "pt-BR"
-                        )}
-                      </Td>
-
-                      <Td>
-                        {denuncia.protocolo}
-                      </Td>
-
-                      {dados.contexto ===
-                        "mundial" && (
+                      Nenhuma denúncia encontrada.
+                    </td>
+                  </tr>
+                ) : (
+                  dados.denuncias.map(
+                    (denuncia) => (
+                      <tr
+                        key={denuncia.id}
+                        className="break-inside-avoid"
+                      >
                         <Td>
-                          {denuncia.cliente
-                            .empresa ||
-                            denuncia.cliente.nome}
+                          {new Date(
+                            denuncia.criadoEm
+                          ).toLocaleDateString(
+                            "pt-BR"
+                          )}
                         </Td>
-                      )}
 
-                      <Td>
-                        {denuncia.categoria
-                          ?.nome ||
-                          "Sem categoria"}
-                      </Td>
+                        <Td>
+                          {denuncia.protocolo}
+                        </Td>
 
-                      <Td>
-                        {denuncia.titulo}
-                      </Td>
-
-                      <Td>
-                        {formatarTexto(
-                          denuncia.gravidade
+                        {dados.contexto ===
+                          "mundial" && (
+                          <Td>
+                            {denuncia.cliente
+                              .empresa ||
+                              denuncia.cliente
+                                .nome}
+                          </Td>
                         )}
-                      </Td>
 
-                      <Td>
-                        {formatarTexto(
-                          denuncia.status
-                        )}
-                      </Td>
-                    </tr>
+                        <Td>
+                          {denuncia.categoria
+                            ?.nome ||
+                            "Sem categoria"}
+                        </Td>
+
+                        <Td>
+                          {formatarTexto(
+                            denuncia.gravidade
+                          )}
+                        </Td>
+
+                        <Td>
+                          {formatarTexto(
+                            denuncia.status
+                          )}
+                        </Td>
+                      </tr>
+                    )
                   )
-                )
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <footer className="mt-8 border-t border-slate-300 pt-4 text-xs text-slate-500">
@@ -267,7 +321,7 @@ function Indicador({
 function Th({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <th className="border border-slate-300 px-2 py-2 text-left font-bold">
@@ -279,7 +333,7 @@ function Th({
 function Td({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <td className="border border-slate-300 px-2 py-2 align-top">

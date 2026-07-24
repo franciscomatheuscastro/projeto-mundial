@@ -1146,6 +1146,9 @@ export default class RepositorioDenuncia {
         id: true,
         clienteId: true,
         tratativaLiberada: true,
+        destinoTratativa: true,
+        colaboradorResponsavelId: true,
+        status: true,
         tratativas: {
           select: { id: true },
           take: 1,
@@ -1155,12 +1158,6 @@ export default class RepositorioDenuncia {
 
     if (!denuncia) {
       throw new Error("Denúncia não encontrada.");
-    }
-
-    if (denuncia.tratativaLiberada) {
-      throw new Error(
-        "A tratativa desta denúncia já foi liberada e direcionada."
-      );
     }
 
     if (denuncia.tratativas.length > 0) {
@@ -1203,6 +1200,23 @@ export default class RepositorioDenuncia {
       colaboradorNome = colaborador.nome;
     }
 
+    const direcionamentoAlterado =
+      denuncia.tratativaLiberada &&
+      (
+        denuncia.destinoTratativa !== dados.destino ||
+        denuncia.colaboradorResponsavelId !== colaboradorId
+      );
+
+    const primeiraLiberacao =
+      !denuncia.tratativaLiberada;
+
+    if (
+      !primeiraLiberacao &&
+      !direcionamentoAlterado
+    ) {
+      return this.obterPorId(denuncia.id);
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.denuncia.update({
         where: { id: denuncia.id },
@@ -1213,7 +1227,11 @@ export default class RepositorioDenuncia {
           tratativaLiberadaEm: new Date(),
           tratativaLiberadaPorUsuarioId:
             ator.usuarioId || null,
-          status: "EM_TRATATIVA",
+          status:
+            denuncia.status === "CONCLUIDA" ||
+            denuncia.status === "ARQUIVADA"
+              ? denuncia.status
+              : "EM_TRATATIVA",
         },
       });
 
@@ -1221,15 +1239,26 @@ export default class RepositorioDenuncia {
         data: {
           denunciaId: denuncia.id,
           tipo: "RESPONSAVEL_ATRIBUIDO",
-          titulo:
-            dados.destino === "MUNDIAL"
+          titulo: primeiraLiberacao
+            ? dados.destino === "MUNDIAL"
               ? "Tratativa liberada para a Mundial"
-              : "Tratativa direcionada para colaborador",
+              : "Tratativa direcionada para colaborador"
+            : dados.destino === "MUNDIAL"
+              ? "Direcionamento alterado para a Mundial"
+              : "Direcionamento alterado para colaborador",
           descricao:
             dados.destino === "MUNDIAL"
-              ? "A Mundial será a responsável exclusiva pelas tratativas desta denúncia."
-              : `${colaboradorNome} será o responsável exclusivo pelas tratativas desta denúncia.`,
-          statusNovo: "EM_TRATATIVA",
+              ? primeiraLiberacao
+                ? "A Mundial será a responsável exclusiva pelas tratativas desta denúncia."
+                : "O direcionamento da denúncia foi alterado. A Mundial passa a ser a responsável exclusiva pelas tratativas."
+              : primeiraLiberacao
+                ? `${colaboradorNome} será o responsável exclusivo pelas tratativas desta denúncia.`
+                : `O direcionamento da denúncia foi alterado. ${colaboradorNome} passa a ser o responsável exclusivo pelas tratativas.`,
+          statusNovo:
+            denuncia.status === "CONCLUIDA" ||
+            denuncia.status === "ARQUIVADA"
+              ? denuncia.status
+              : "EM_TRATATIVA",
           origemAtor: ator.origem,
           atorId: ator.usuarioId,
           atorNome: ator.nome,

@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormEvent, ReactNode } from "react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   DestinoTratativaDenuncia,
@@ -136,6 +137,16 @@ export default function DenunciaDetalheTela({
         setRespostaPublica(
           denuncia.respostaPublica || ""
         );
+
+        setDestino(
+          denuncia.destinoTratativa ||
+            "MUNDIAL"
+        );
+
+        setColaboradorId(
+          denuncia.colaboradorResponsavelId ||
+            ""
+        );
       })
       .catch(() => {});
   }, [id, carregarDenunciaPorId]);
@@ -148,7 +159,12 @@ export default function DenunciaDetalheTela({
     [denunciaSelecionada?.tratativas, podeVerTratativas]
   );
 
-  const possuiTratativa = tratativas.length > 0;
+  const possuiTratativa =
+    (denunciaSelecionada?.tratativas?.length ?? 0) > 0;
+
+  const podeEditarDirecionamento =
+    podeLiberarTratativa &&
+    !possuiTratativa;
 
   const responsavelExclusivo = useMemo(() => {
     if (!denunciaSelecionada?.tratativaLiberada) {
@@ -229,26 +245,48 @@ export default function DenunciaDetalheTela({
   ) {
     event.preventDefault();
 
-    if (processando) return;
+    if (
+      processando ||
+      !denunciaSelecionada
+    ) {
+      return;
+    }
 
     setMensagem(null);
     setErroLocal(null);
 
+    const jaEstavaLiberada =
+      denunciaSelecionada.tratativaLiberada;
+
     try {
-      const resultado = await liberarTratativa({
-        denunciaId: id,
-        destino,
-        colaboradorId:
-          destino === "COLABORADOR"
-            ? colaboradorId
-            : null,
-      });
+      const resultado =
+        await liberarTratativa({
+          denunciaId: id,
+          destino,
+          colaboradorId:
+            destino === "COLABORADOR"
+              ? colaboradorId
+              : null,
+        });
 
       setStatus(resultado.status);
+
+      setDestino(
+        resultado.destinoTratativa ||
+          "MUNDIAL"
+      );
+
+      setColaboradorId(
+        resultado.colaboradorResponsavelId ||
+          ""
+      );
+
       setMensagem(
-        destino === "MUNDIAL"
-          ? "Tratativa liberada exclusivamente para a Mundial."
-          : "Tratativa direcionada exclusivamente ao colaborador."
+        jaEstavaLiberada
+          ? "Direcionamento atualizado com sucesso."
+          : destino === "MUNDIAL"
+            ? "Tratativa liberada exclusivamente para a Mundial."
+            : "Tratativa direcionada exclusivamente ao colaborador."
       );
     } catch (error) {
       setErroLocal(
@@ -530,21 +568,21 @@ export default function DenunciaDetalheTela({
           </div>
         </section>
 
-        {podeLiberarTratativa &&
-          !denunciaSelecionada.tratativaLiberada && (
+        {podeEditarDirecionamento && (
             <form
               onSubmit={confirmarLiberacao}
               className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6"
             >
               <h2 className="text-lg font-bold text-amber-950">
-                Liberar tratativa
+                {denunciaSelecionada.tratativaLiberada
+                  ? "Editar direcionamento"
+                  : "Liberar tratativa"}
               </h2>
 
               <p className="mt-1 text-sm leading-6 text-amber-800">
-                Defina quem ficará responsável por todas as
-                tratativas desta denúncia. Após a liberação,
-                Mundial e colaborador não poderão atuar
-                simultaneamente.
+                {denunciaSelecionada.tratativaLiberada
+                  ? "Altere o responsável exclusivo enquanto ainda não houver tratativas registradas."
+                  : "Defina quem ficará responsável por todas as tratativas desta denúncia. Mundial e colaborador não poderão atuar simultaneamente."}
               </p>
 
               <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -601,10 +639,31 @@ export default function DenunciaDetalheTela({
                 className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-60 sm:w-auto"
               >
                 {processando
-                  ? "Liberando..."
-                  : "Liberar tratativa"}
+                  ? denunciaSelecionada.tratativaLiberada
+                    ? "Atualizando..."
+                    : "Liberando..."
+                  : denunciaSelecionada.tratativaLiberada
+                    ? "Salvar novo direcionamento"
+                    : "Liberar tratativa"}
               </button>
             </form>
+          )}
+
+        {podeLiberarTratativa &&
+          denunciaSelecionada.tratativaLiberada &&
+          possuiTratativa && (
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+              <h2 className="text-lg font-bold text-slate-900">
+                Direcionamento da tratativa
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Responsável atual:{" "}
+                <strong>{responsavelExclusivo}</strong>.
+                O direcionamento não pode mais ser alterado porque
+                já existe pelo menos uma tratativa registrada.
+              </p>
+            </div>
           )}
 
         {podeGerenciar && (
@@ -848,6 +907,20 @@ export default function DenunciaDetalheTela({
               )}
           </section>
         )}
+
+        <div className="pb-2 pt-2">
+          <Link
+            href={
+              usuarioMundial
+                ? "/denuncias"
+                : "/minhas-denuncias"
+            }
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:w-auto"
+          >
+            <span aria-hidden="true">←</span>
+            Voltar para denúncias
+          </Link>
+        </div>
       </section>
     </main>
   );

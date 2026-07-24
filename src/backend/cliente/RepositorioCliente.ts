@@ -7,6 +7,10 @@ import { hash } from "bcryptjs";
 
 import { prisma } from "@/src/lib/prisma";
 
+import {
+  enviarEmailNovoCliente,
+} from "@/src/lib/email";
+
 import type {
   Cliente,
   ClienteComResumo,
@@ -448,6 +452,15 @@ export default class RepositorioCliente {
       );
     }
 
+    if (
+      senha &&
+      senha.length < 8
+    ) {
+      throw new Error(
+        "A senha deve possuir pelo menos 8 caracteres."
+      );
+    }
+
     const cliente =
       await prisma.cliente.findUnique({
         where: {
@@ -572,31 +585,62 @@ export default class RepositorioCliente {
       );
     }
 
-    return prisma.usuario.create({
-      data: {
-        clienteId,
+    const usuarioCriado =
+      await prisma.usuario.create({
+        data: {
+          clienteId,
+          nome,
+          email,
+
+          senha:
+            await hash(
+              senha,
+              12
+            ),
+
+          perfil:
+            PerfilUsuario.CLIENTE,
+
+          ativo:
+            dados.ativo,
+        },
+
+        select: {
+          id: true,
+          nome: true,
+          email: true,
+          ativo: true,
+          perfil: true,
+          criadoEm: true,
+        },
+      });
+
+    /*
+     * O cliente e o usuário já foram persistidos.
+     * Uma indisponibilidade temporária do SMTP
+     * não deve duplicar o cadastro.
+     */
+    try {
+      await enviarEmailNovoCliente({
         nome,
         email,
-        senha:
-          await hash(
-            senha,
-            12
-          ),
-        perfil:
-          PerfilUsuario.CLIENTE,
-        ativo:
-          dados.ativo,
-      },
+        senhaTemporaria:
+          senha,
+      });
+    } catch (error) {
+      console.error(
+        "O usuário master foi criado, mas o e-mail de acesso não pôde ser enviado:",
+        {
+          clienteId,
+          usuarioId:
+            usuarioCriado.id,
+          email,
+          error,
+        }
+      );
+    }
 
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        ativo: true,
-        perfil: true,
-        criadoEm: true,
-      },
-    });
+    return usuarioCriado;
   }
 
   static async excluirUsuarioMaster(

@@ -47,6 +47,9 @@ export default function CanalDenunciasPublicoTela({
 
   const [anonima, setAnonima] = useState(false);
 
+  const [telefoneDenunciante, setTelefoneDenunciante] =
+    useState("");
+
   const [categoriaId, setCategoriaId] = useState("");
 
   const [protocolo, setProtocolo] = useState<string | null>(null);
@@ -60,6 +63,67 @@ export default function CanalDenunciasPublicoTela({
   const [erroLocal, setErroLocal] = useState<string | null>(null);
 
   const enviando = processando || enviandoArquivos;
+
+  const hojeParaInput = (() => {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(
+      hoje.getMonth() + 1
+    ).padStart(2, "0");
+    const dia = String(
+      hoje.getDate()
+    ).padStart(2, "0");
+
+    return `${ano}-${mes}-${dia}`;
+  })();
+
+  function formatarTelefone(
+    valor: string
+  ): string {
+    const digitos = valor
+      .replace(/\D/g, "")
+      .slice(0, 11);
+
+    if (digitos.length <= 2) {
+      return digitos
+        ? `(${digitos}`
+        : "";
+    }
+
+    if (digitos.length <= 6) {
+      return `(${digitos.slice(
+        0,
+        2
+      )}) ${digitos.slice(2)}`;
+    }
+
+    if (digitos.length <= 10) {
+      return `(${digitos.slice(
+        0,
+        2
+      )}) ${digitos.slice(
+        2,
+        6
+      )}-${digitos.slice(6)}`;
+    }
+
+    return `(${digitos.slice(
+      0,
+      2
+    )}) ${digitos.slice(
+      2,
+      7
+    )}-${digitos.slice(7)}`;
+  }
+
+  function normalizarTelefone(
+    valor: string
+  ): string | null {
+    const digitos =
+      valor.replace(/\D/g, "");
+
+    return digitos || null;
+  }
 
   function montarRespostasPersonalizadas(
     formData: FormData,
@@ -132,6 +196,39 @@ export default function CanalDenunciasPublicoTela({
     const form = event.currentTarget;
     const formData = new FormData(form);
 
+    const dataOcorrido = String(
+      formData.get("dataOcorrido") || ""
+    ).trim();
+
+    if (
+      dataOcorrido &&
+      dataOcorrido > hojeParaInput
+    ) {
+      setErroLocal(
+        "A data do ocorrido não pode ser futura."
+      );
+
+      return;
+    }
+
+    const telefoneNormalizado =
+      normalizarTelefone(
+        telefoneDenunciante
+      );
+
+    if (
+      !anonima &&
+      telefoneNormalizado &&
+      telefoneNormalizado.length !== 10 &&
+      telefoneNormalizado.length !== 11
+    ) {
+      setErroLocal(
+        "Informe um telefone válido com DDD."
+      );
+
+      return;
+    }
+
     setErroLocal(null);
 
     try {
@@ -142,7 +239,11 @@ export default function CanalDenunciasPublicoTela({
       const resultado = await criarDenunciaPublica({
         clienteId,
 
-        titulo: String(formData.get("titulo") || "").trim(),
+        titulo:
+          categorias.find(
+            (categoria) =>
+              categoria.id === categoriaId
+          )?.nome || "Denúncia",
 
         descricao: String(formData.get("descricao") || "").trim(),
 
@@ -151,7 +252,8 @@ export default function CanalDenunciasPublicoTela({
         localOcorrido:
           String(formData.get("localOcorrido") || "").trim() || null,
 
-        dataOcorrido: String(formData.get("dataOcorrido") || "").trim() || null,
+        dataOcorrido:
+          dataOcorrido || null,
 
         anonima,
 
@@ -165,7 +267,7 @@ export default function CanalDenunciasPublicoTela({
 
         telefoneDenunciante: anonima
           ? null
-          : String(formData.get("telefoneDenunciante") || "").trim() || null,
+          : telefoneNormalizado,
 
         respostasPersonalizadas,
 
@@ -208,6 +310,7 @@ export default function CanalDenunciasPublicoTela({
       form.reset();
 
       setAnonima(false);
+      setTelefoneDenunciante("");
     } catch (error) {
       setErroLocal(
         error instanceof Error
@@ -244,6 +347,7 @@ export default function CanalDenunciasPublicoTela({
     setCategoriaId("");
     setArquivos([]);
     setAnonima(false);
+    setTelefoneDenunciante("");
     setProtocoloCopiado(false);
   }
 
@@ -439,25 +543,41 @@ export default function CanalDenunciasPublicoTela({
                   disabled={enviando}
                 />
 
-                <Campo
-                  name="telefoneDenunciante"
-                  label="Telefone"
-                  disabled={enviando}
-                />
+                <div>
+                  <label
+                    htmlFor="telefoneDenunciante"
+                    className="mb-2 block text-sm font-semibold text-slate-700"
+                  >
+                    Telefone
+                  </label>
+
+                  <input
+                    id="telefoneDenunciante"
+                    name="telefoneDenunciante"
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    value={telefoneDenunciante}
+                    disabled={enviando}
+                    maxLength={15}
+                    placeholder="(00) 00000-0000"
+                    onChange={(event) =>
+                      setTelefoneDenunciante(
+                        formatarTelefone(
+                          event.target.value
+                        )
+                      )
+                    }
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+                  />
+                </div>
               </div>
             )}
           </Card>
 
           <Card titulo="Dados da denúncia">
             <div className="grid gap-4 md:grid-cols-2">
-              <Campo
-                name="titulo"
-                label="Título"
-                required
-                disabled={enviando}
-              />
-
-              <div>
+              <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Categoria
                   <Obrigatorio />
@@ -487,12 +607,23 @@ export default function CanalDenunciasPublicoTela({
                 disabled={enviando}
               />
 
-              <Campo
-                name="dataOcorrido"
-                label="Data do ocorrido"
-                type="date"
-                disabled={enviando}
-              />
+              <div>
+                <label
+                  htmlFor="dataOcorrido"
+                  className="mb-2 block text-sm font-semibold text-slate-700"
+                >
+                  Data do ocorrido
+                </label>
+
+                <input
+                  id="dataOcorrido"
+                  name="dataOcorrido"
+                  type="date"
+                  max={hojeParaInput}
+                  disabled={enviando}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+                />
+              </div>
 
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
