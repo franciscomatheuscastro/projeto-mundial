@@ -23,6 +23,36 @@ function criarFormularioInicial(): ColaboradorCliente {
   };
 }
 
+function obterDigitosTelefone(
+  valor?: string | null
+): string {
+  return valor?.replace(/\D/g, "").slice(0, 11) ?? "";
+}
+
+function formatarTelefone(
+  valor?: string | null
+): string {
+  const digitos = obterDigitosTelefone(valor);
+
+  if (!digitos) {
+    return "";
+  }
+
+  if (digitos.length <= 2) {
+    return `(${digitos}`;
+  }
+
+  if (digitos.length <= 6) {
+    return `(${digitos.slice(0, 2)}) ${digitos.slice(2)}`;
+  }
+
+  if (digitos.length <= 10) {
+    return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 6)}-${digitos.slice(6)}`;
+  }
+
+  return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7)}`;
+}
+
 export default function MeusColaboradoresTela() {
   const {
     colaboradores,
@@ -58,8 +88,9 @@ export default function MeusColaboradoresTela() {
       email:
         colaboradorSelecionado.email ?? "",
       senha: "",
-      telefone:
-        colaboradorSelecionado.telefone ?? "",
+      telefone: formatarTelefone(
+        colaboradorSelecionado.telefone
+      ),
       setor:
         colaboradorSelecionado.setor ?? "",
       cargo:
@@ -158,6 +189,9 @@ export default function MeusColaboradoresTela() {
       .trim()
       .toLowerCase();
 
+    const telefoneDigitos =
+      obterDigitosTelefone(formulario.telefone);
+
     if (!nome) {
       setErroLocal("Informe o nome.");
       return;
@@ -165,6 +199,17 @@ export default function MeusColaboradoresTela() {
 
     if (!email) {
       setErroLocal("Informe o e-mail.");
+      return;
+    }
+
+    if (
+      telefoneDigitos &&
+      telefoneDigitos.length !== 10 &&
+      telefoneDigitos.length !== 11
+    ) {
+      setErroLocal(
+        "Informe um telefone válido com DDD."
+      );
       return;
     }
 
@@ -184,7 +229,7 @@ export default function MeusColaboradoresTela() {
         nome,
         email,
         telefone:
-          formulario.telefone?.trim() || null,
+          telefoneDigitos || null,
         setor:
           formulario.setor?.trim() || null,
         cargo:
@@ -525,6 +570,9 @@ export default function MeusColaboradoresTela() {
 
                     <Campo
                       label="Telefone"
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={15}
                       disabled={processando}
                       valor={
                         formulario.telefone ?? ""
@@ -533,7 +581,7 @@ export default function MeusColaboradoresTela() {
                       onChange={(valor) =>
                         alterarCampo(
                           "telefone",
-                          valor
+                          formatarTelefone(valor)
                         )
                       }
                     />
@@ -827,6 +875,8 @@ function Campo({
   descricao,
   obrigatorio = false,
   disabled = false,
+  inputMode,
+  maxLength,
 }: {
   label: string;
   valor: string;
@@ -836,6 +886,16 @@ function Campo({
   descricao?: string;
   obrigatorio?: boolean;
   disabled?: boolean;
+  inputMode?:
+    | "none"
+    | "text"
+    | "tel"
+    | "url"
+    | "email"
+    | "numeric"
+    | "decimal"
+    | "search";
+  maxLength?: number;
 }) {
   return (
     <label className="block">
@@ -852,6 +912,8 @@ function Campo({
       <input
         type={type}
         value={valor}
+        inputMode={inputMode}
+        maxLength={maxLength}
         required={obrigatorio}
         disabled={disabled}
         placeholder={placeholder}
