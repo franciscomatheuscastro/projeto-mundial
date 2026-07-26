@@ -22,12 +22,27 @@ export default async function obterMinhasDenuncias() {
     throw new Error("Usuário sem cliente vinculado.");
   }
 
+  /*
+   * Cliente master:
+   * pode acompanhar somente protocolo,
+   * status e datas.
+   *
+   * Não recebe título, categoria,
+   * gravidade ou outros dados sensíveis.
+   */
   if (usuario.perfil === PerfilUsuario.CLIENTE) {
-    return RepositorioDenuncia.obterPorCliente(
+    return RepositorioDenuncia.obterPorClienteMaster(
       usuario.clienteId
     );
   }
 
+  /*
+   * Comitê:
+   * recebe denúncias nas quais é:
+   *
+   * 1. responsável principal; ou
+   * 2. visualizador adicional.
+   */
   if (
     usuario.perfil ===
     PerfilUsuario.COMITE_CLIENTE

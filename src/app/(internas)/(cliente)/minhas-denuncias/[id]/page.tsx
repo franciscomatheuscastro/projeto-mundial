@@ -31,8 +31,6 @@ export default async function ClienteDenunciaDetalhePage({
 
   const usuario = session.user as {
     id?: string;
-    name?: string | null;
-    nome?: string | null;
     perfil?: PerfilUsuario;
     clienteId?: string | null;
   };
@@ -51,31 +49,86 @@ export default async function ClienteDenunciaDetalhePage({
     redirect("/painel-controle");
   }
 
+  /*
+   * O cliente master pode acompanhar apenas
+   * protocolo, status e datas na listagem.
+   * Mesmo digitando a URL manualmente, ele
+   * não pode acessar os detalhes.
+   */
+  if (usuarioCliente) {
+    redirect("/minhas-denuncias");
+  }
+
+  if (!usuario.id) {
+    redirect("/painel-controle");
+  }
+
   const { id } = await params;
 
-  if (!id?.trim()) {
+  const denunciaId = id?.trim();
+
+  if (!denunciaId) {
     notFound();
   }
 
-  /*
-   * Confirma que a denúncia pertence ao cliente
-   * vinculado ao usuário autenticado e recupera
-   * o direcionamento oficial das tratativas.
-   */
-  const denuncia =
-    await prisma.denuncia.findFirst({
+  const colaborador =
+    await prisma.colaboradorCliente.findFirst({
       where: {
-        id,
+        usuarioId: usuario.id,
         clienteId: usuario.clienteId,
+        ativo: true,
       },
 
       select: {
         id: true,
+        podeVerDenuncias: true,
+        podeTratarDenuncias: true,
+      },
+    });
 
+  if (
+    !colaborador ||
+    !colaborador.podeVerDenuncias
+  ) {
+    redirect("/painel-controle");
+  }
+
+  /*
+   * O comitê pode abrir a denúncia quando:
+   *
+   * 1. for o responsável principal; ou
+   * 2. estiver na lista de visualizadores.
+   */
+  const denuncia =
+    await prisma.denuncia.findFirst({
+      where: {
+        id: denunciaId,
+        clienteId: usuario.clienteId,
         tratativaLiberada: true,
 
-        destinoTratativa: true,
+        OR: [
+          {
+            destinoTratativa:
+              DestinoTratativaDenuncia.COLABORADOR,
 
+            colaboradorResponsavelId:
+              colaborador.id,
+          },
+
+          {
+            visualizadores: {
+              some: {
+                colaboradorId:
+                  colaborador.id,
+              },
+            },
+          },
+        ],
+      },
+
+      select: {
+        id: true,
+        destinoTratativa: true,
         colaboradorResponsavelId: true,
       },
     });
@@ -84,92 +137,40 @@ export default async function ClienteDenunciaDetalhePage({
     notFound();
   }
 
-  let podeVerTratativas = false;
-  let podeTratar = false;
-  let podeEditarTratativas = false;
-
-  let colaboradorLogadoId:
-    | string
-    | null = null;
-
-  if (usuarioComite) {
-    if (!usuario.id) {
-      redirect("/painel-controle");
-    }
-
-    const colaborador =
-      await prisma.colaboradorCliente.findFirst({
-        where: {
-          usuarioId: usuario.id,
-
-          clienteId: usuario.clienteId,
-
-          ativo: true,
-        },
-
-        select: {
-          id: true,
-
-          podeVerDenuncias: true,
-
-          podeTratarDenuncias: true,
-        },
-      });
-
-    if (
-      !colaborador ||
-      !colaborador.podeVerDenuncias
-    ) {
-      redirect("/painel-controle");
-    }
-
-    colaboradorLogadoId =
+  const responsavelPrincipal =
+    denuncia.destinoTratativa ===
+      DestinoTratativaDenuncia.COLABORADOR &&
+    denuncia.colaboradorResponsavelId ===
       colaborador.id;
 
-    /*
-     * O colaborador somente pode acessar a denúncia
-     * quando ela estiver formalmente direcionada
-     * para ele.
-     */
-    const denunciaDirecionadaAoColaborador =
-      denuncia.tratativaLiberada === true &&
-      denuncia.destinoTratativa ===
-        DestinoTratativaDenuncia.COLABORADOR &&
-      denuncia.colaboradorResponsavelId ===
-        colaborador.id;
-
-    if (!denunciaDirecionadaAoColaborador) {
-      notFound();
-    }
-
-    podeVerTratativas =
-      colaborador.podeTratarDenuncias ===
-      true;
-
-    podeTratar =
-      colaborador.podeTratarDenuncias ===
-      true;
-
-    podeEditarTratativas =
-      colaborador.podeTratarDenuncias ===
-      true;
-  }
+  /*
+   * Somente o responsável principal pode
+   * ver, criar e editar tratativas.
+   *
+   * O visualizador adicional acessa os dados
+   * da denúncia em modo somente leitura.
+   */
+  const podeExecutarTratativas =
+    responsavelPrincipal &&
+    colaborador.podeTratarDenuncias === true;
 
   return (
     <DenunciaDetalheTela
-      id={id}
+      id={denunciaId}
       contexto="cliente"
       podeGerenciar={false}
       podeLiberarTratativa={false}
       podeVerTratativas={
-        podeVerTratativas
+        podeExecutarTratativas
       }
-      podeTratar={podeTratar}
+      podeTratar={
+        podeExecutarTratativas
+      }
       podeEditarTratativas={
-        podeEditarTratativas
+        podeExecutarTratativas
       }
       colaboradorLogadoId={
-        colaboradorLogadoId
+        colaborador.id
       }
       colaboradoresDisponiveis={[]}
     />

@@ -24,18 +24,22 @@ export default async function obterMinhaDenunciaPorId(
     throw new Error("Usuário sem cliente vinculado.");
   }
 
-  if (!id?.trim()) {
+  const denunciaId = id?.trim();
+
+  if (!denunciaId) {
     throw new Error("Denúncia não informada.");
   }
 
+  /*
+   * Cliente master não pode abrir
+   * os detalhes da denúncia.
+   *
+   * Esta trava precisa existir no backend,
+   * e não somente escondendo o botão.
+   */
   if (usuario.perfil === PerfilUsuario.CLIENTE) {
-    return RepositorioDenuncia.obterPorIdECliente(
-      id,
-      usuario.clienteId,
-      {
-        colaboradorId: null,
-        podeVerTratativas: false,
-      }
+    throw new Error(
+      "O perfil master do cliente não possui acesso aos detalhes das denúncias."
     );
   }
 
@@ -73,13 +77,36 @@ export default async function obterMinhaDenunciaPorId(
       );
     }
 
+    const acesso =
+      await RepositorioDenuncia.obterAcessoColaboradorNaDenuncia(
+        denunciaId,
+        usuario.clienteId,
+        colaborador.id
+      );
+
+    if (!acesso.possuiAcesso) {
+      throw new Error(
+        "Esta denúncia não foi disponibilizada para o seu usuário."
+      );
+    }
+
+    /*
+     * Somente o responsável principal
+     * pode visualizar e executar tratativas.
+     *
+     * Visualizadores adicionais recebem
+     * apenas os dados da denúncia.
+     */
+    const podeVerTratativas =
+      acesso.responsavelPrincipal &&
+      colaborador.podeTratarDenuncias;
+
     return RepositorioDenuncia.obterPorIdECliente(
-      id,
+      denunciaId,
       usuario.clienteId,
       {
         colaboradorId: colaborador.id,
-        podeVerTratativas:
-          colaborador.podeTratarDenuncias,
+        podeVerTratativas,
       }
     );
   }

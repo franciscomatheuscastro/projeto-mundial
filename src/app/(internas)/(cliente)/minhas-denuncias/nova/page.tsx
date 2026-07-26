@@ -28,5 +28,10 @@ export default async function MinhaNovaDenunciaPage() {
     redirect("/dashboard");
   }
 
+  /*
+   * A criação de denúncias pelo painel do cliente
+   * permanece bloqueada. O cadastro deve ocorrer
+   * pelo canal público ou pela Mundial.
+   */
   redirect("/minhas-denuncias");
 }

@@ -52,6 +52,10 @@ export default function CanalDenunciasPublicoTela({
 
   const [categoriaId, setCategoriaId] = useState("");
 
+  const [dataOcorrido, setDataOcorrido] = useState("");
+
+  const [naoLembraData, setNaoLembraData] = useState(false);
+
   const [protocolo, setProtocolo] = useState<string | null>(null);
 
   const [protocoloCopiado, setProtocoloCopiado] = useState(false);
@@ -196,13 +200,14 @@ export default function CanalDenunciasPublicoTela({
     const form = event.currentTarget;
     const formData = new FormData(form);
 
-    const dataOcorrido = String(
-      formData.get("dataOcorrido") || ""
-    ).trim();
+    const dataOcorridoNormalizada =
+      naoLembraData
+        ? ""
+        : dataOcorrido.trim();
 
     if (
-      dataOcorrido &&
-      dataOcorrido > hojeParaInput
+      dataOcorridoNormalizada &&
+      dataOcorridoNormalizada > hojeParaInput
     ) {
       setErroLocal(
         "A data do ocorrido não pode ser futura."
@@ -253,7 +258,7 @@ export default function CanalDenunciasPublicoTela({
           String(formData.get("localOcorrido") || "").trim() || null,
 
         dataOcorrido:
-          dataOcorrido || null,
+          dataOcorridoNormalizada || null,
 
         anonima,
 
@@ -305,6 +310,8 @@ export default function CanalDenunciasPublicoTela({
       setProtocolo(resultado.protocolo);
       setArquivos([]);
       setCategoriaId("");
+      setDataOcorrido("");
+      setNaoLembraData(false);
       setAceitouTermos(false);
 
       form.reset();
@@ -345,6 +352,8 @@ export default function CanalDenunciasPublicoTela({
     setAceitouTermos(false);
     setModalAberto(null);
     setCategoriaId("");
+    setDataOcorrido("");
+    setNaoLembraData(false);
     setArquivos([]);
     setAnonima(false);
     setTelefoneDenunciante("");
@@ -579,7 +588,7 @@ export default function CanalDenunciasPublicoTela({
             <div className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Categoria
+                  Selecione o tipo de conduta relacionada à denúncia.
                   <Obrigatorio />
                 </label>
 
@@ -590,7 +599,7 @@ export default function CanalDenunciasPublicoTela({
                   onChange={(event) => setCategoriaId(event.target.value)}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
                 >
-                  <option value="">Selecione a categoria</option>
+                  <option value="">Selecione</option>
 
                   {categorias.map((categoria) => (
                     <option key={categoria.id} value={categoria.id}>
@@ -619,10 +628,50 @@ export default function CanalDenunciasPublicoTela({
                   id="dataOcorrido"
                   name="dataOcorrido"
                   type="date"
+                  value={dataOcorrido}
                   max={hojeParaInput}
-                  disabled={enviando}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+                  disabled={
+                    enviando ||
+                    naoLembraData
+                  }
+                  onChange={(event) =>
+                    setDataOcorrido(
+                      event.target.value
+                    )
+                  }
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                 />
+
+                <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={naoLembraData}
+                    disabled={enviando}
+                    onChange={(event) => {
+                      const marcado =
+                        event.target.checked;
+
+                      setNaoLembraData(
+                        marcado
+                      );
+
+                      if (marcado) {
+                        setDataOcorrido("");
+                      }
+                    }}
+                    className="mt-1 h-4 w-4 shrink-0 accent-blue-600"
+                  />
+
+                  <span>
+                    <strong className="block text-slate-900">
+                      Não lembro a data
+                    </strong>
+
+                    <span className="mt-1 block text-xs leading-5 text-slate-500">
+                      A denúncia será registrada sem uma data específica para o ocorrido.
+                    </span>
+                  </span>
+                </label>
               </div>
 
               <div className="md:col-span-2">
@@ -636,7 +685,7 @@ export default function CanalDenunciasPublicoTela({
                   required
                   rows={7}
                   disabled={enviando}
-                  placeholder="Descreva o ocorrido, as pessoas envolvidas e outros detalhes relevantes."
+                  placeholder="Descreva a situação de forma detalhada, informando o que aconteceu, como os fatos ocorreram, quem participou e quais foram as possíveis consequências."
                   className="w-full resize-y rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
                 />
               </div>

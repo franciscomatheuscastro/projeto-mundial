@@ -512,6 +512,16 @@ function montarResumo(
           }
         : null,
 
+    visualizadores: Array.isArray(denuncia.visualizadores)
+      ? denuncia.visualizadores.map((vinculo: any) => ({
+          id: vinculo.colaborador.id,
+          nome: vinculo.colaborador.nome,
+          email: vinculo.colaborador.email,
+          cargo: vinculo.colaborador.cargo,
+          setor: vinculo.colaborador.setor,
+        }))
+      : [],
+
     criadoEm: denuncia.criadoEm,
     atualizadoEm: denuncia.atualizadoEm,
 
@@ -629,6 +639,14 @@ const includeDetalhadaMundial = {
   cliente: true,
   categoria: true,
   colaboradorResponsavel: true,
+  visualizadores: {
+    include: {
+      colaborador: true,
+    },
+    orderBy: {
+      criadoEm: "asc" as const,
+    },
+  },
 
   anexos: {
     orderBy: {
@@ -1149,6 +1167,11 @@ export default class RepositorioDenuncia {
         destinoTratativa: true,
         colaboradorResponsavelId: true,
         status: true,
+        visualizadores: {
+          select: {
+            colaboradorId: true,
+          },
+        },
         tratativas: {
           select: { id: true },
           take: 1,
@@ -1183,6 +1206,7 @@ export default class RepositorioDenuncia {
             clienteId: denuncia.clienteId,
             ativo: true,
             podeTratarDenuncias: true,
+            podeVerDenuncias: true,
           },
           select: {
             id: true,
@@ -1200,20 +1224,63 @@ export default class RepositorioDenuncia {
       colaboradorNome = colaborador.nome;
     }
 
+    const visualizadorIdsRecebidos = Array.from(
+      new Set(
+        (dados.visualizadorIds || [])
+          .map((id) => id?.trim())
+          .filter((id): id is string => Boolean(id))
+      )
+    ).filter((id) => id !== colaboradorId);
+
+    const visualizadores =
+      visualizadorIdsRecebidos.length > 0
+        ? await prisma.colaboradorCliente.findMany({
+            where: {
+              id: {
+                in: visualizadorIdsRecebidos,
+              },
+              clienteId: denuncia.clienteId,
+              ativo: true,
+              podeVerDenuncias: true,
+            },
+            select: {
+              id: true,
+              nome: true,
+            },
+          })
+        : [];
+
+    if (visualizadores.length !== visualizadorIdsRecebidos.length) {
+      throw new Error(
+        "Um ou mais colaboradores selecionados para visualização são inválidos ou não possuem permissão."
+      );
+    }
+
+    const visualizadorIdsAtuais = denuncia.visualizadores
+      .map((item) => item.colaboradorId)
+      .sort();
+
+    const visualizadorIdsNovos = visualizadores
+      .map((item) => item.id)
+      .sort();
+
+    const visualizadoresAlterados =
+      visualizadorIdsAtuais.length !== visualizadorIdsNovos.length ||
+      visualizadorIdsAtuais.some(
+        (id, indice) => id !== visualizadorIdsNovos[indice]
+      );
+
     const direcionamentoAlterado =
       denuncia.tratativaLiberada &&
       (
         denuncia.destinoTratativa !== dados.destino ||
-        denuncia.colaboradorResponsavelId !== colaboradorId
+        denuncia.colaboradorResponsavelId !== colaboradorId ||
+        visualizadoresAlterados
       );
 
-    const primeiraLiberacao =
-      !denuncia.tratativaLiberada;
+    const primeiraLiberacao = !denuncia.tratativaLiberada;
 
-    if (
-      !primeiraLiberacao &&
-      !direcionamentoAlterado
-    ) {
+    if (!primeiraLiberacao && !direcionamentoAlterado) {
       return this.obterPorId(denuncia.id);
     }
 
@@ -1235,6 +1302,25 @@ export default class RepositorioDenuncia {
         },
       });
 
+      await tx.denunciaVisualizador.deleteMany({
+        where: {
+          denunciaId: denuncia.id,
+        },
+      });
+
+      if (visualizadores.length > 0) {
+        await tx.denunciaVisualizador.createMany({
+          data: visualizadores.map((colaborador) => ({
+            denunciaId: denuncia.id,
+            colaboradorId: colaborador.id,
+          })),
+        });
+      }
+
+      const nomesVisualizadores = visualizadores
+        .map((colaborador) => colaborador.nome)
+        .join(", ");
+
       await tx.historicoDenuncia.create({
         data: {
           denunciaId: denuncia.id,
@@ -1243,17 +1329,15 @@ export default class RepositorioDenuncia {
             ? dados.destino === "MUNDIAL"
               ? "Tratativa liberada para a Mundial"
               : "Tratativa direcionada para colaborador"
-            : dados.destino === "MUNDIAL"
-              ? "Direcionamento alterado para a Mundial"
-              : "Direcionamento alterado para colaborador",
-          descricao:
+            : "Direcionamento da denúncia atualizado",
+          descricao: [
             dados.destino === "MUNDIAL"
-              ? primeiraLiberacao
-                ? "A Mundial será a responsável exclusiva pelas tratativas desta denúncia."
-                : "O direcionamento da denúncia foi alterado. A Mundial passa a ser a responsável exclusiva pelas tratativas."
-              : primeiraLiberacao
-                ? `${colaboradorNome} será o responsável exclusivo pelas tratativas desta denúncia.`
-                : `O direcionamento da denúncia foi alterado. ${colaboradorNome} passa a ser o responsável exclusivo pelas tratativas.`,
+              ? "A Mundial será a responsável exclusiva pelas tratativas desta denúncia."
+              : `${colaboradorNome} será o responsável exclusivo pelas tratativas desta denúncia.`,
+            visualizadores.length > 0
+              ? `Visualização adicional liberada para: ${nomesVisualizadores}.`
+              : "Nenhum colaborador adicional recebeu acesso de visualização.",
+          ].join(" "),
           statusNovo:
             denuncia.status === "CONCLUIDA" ||
             denuncia.status === "ARQUIVADA"
@@ -1328,6 +1412,7 @@ export default class RepositorioDenuncia {
       where: { id: denunciaId },
       select: {
         id: true,
+        clienteId: true,
         tratativaLiberada: true,
         destinoTratativa: true,
         colaboradorResponsavelId: true,
@@ -1395,6 +1480,20 @@ export default class RepositorioDenuncia {
       });
     });
 
+    if (
+      ator.origem === "COMITE_CLIENTE" &&
+      colaboradorId
+    ) {
+      return this.obterPorIdECliente(
+        denunciaId,
+        denuncia.clienteId,
+        {
+          colaboradorId,
+          podeVerTratativas: true,
+        }
+      );
+    }
+
     return this.obterPorId(denunciaId);
   }
 
@@ -1412,6 +1511,7 @@ export default class RepositorioDenuncia {
         include: {
           denuncia: {
             select: {
+              clienteId: true,
               tratativaLiberada: true,
               destinoTratativa: true,
               colaboradorResponsavelId: true,
@@ -1464,6 +1564,20 @@ export default class RepositorioDenuncia {
       });
     });
 
+    if (
+      ator.origem === "COMITE_CLIENTE" &&
+      colaboradorId
+    ) {
+      return this.obterPorIdECliente(
+        dados.denunciaId,
+        tratativaAtual.denuncia.clienteId,
+        {
+          colaboradorId,
+          podeVerTratativas: true,
+        }
+      );
+    }
+
     return this.obterPorId(dados.denunciaId);
   }
 
@@ -1483,6 +1597,11 @@ export default class RepositorioDenuncia {
         cliente: true,
         categoria: true,
         colaboradorResponsavel: true,
+        visualizadores: {
+          include: {
+            colaborador: true,
+          },
+        },
 
         _count: {
           select: {
@@ -1518,6 +1637,11 @@ export default class RepositorioDenuncia {
         cliente: true,
         categoria: true,
         colaboradorResponsavel: true,
+        visualizadores: {
+          include: {
+            colaborador: true,
+          },
+        },
 
         _count: {
           select: {
@@ -1610,10 +1734,21 @@ export default class RepositorioDenuncia {
           ...(filtro.colaboradorId
             ? {
                 tratativaLiberada: true,
-                destinoTratativa:
-                  "COLABORADOR",
-                colaboradorResponsavelId:
-                  filtro.colaboradorId,
+                OR: [
+                  {
+                    destinoTratativa: "COLABORADOR",
+                    colaboradorResponsavelId:
+                      filtro.colaboradorId,
+                  },
+                  {
+                    visualizadores: {
+                      some: {
+                        colaboradorId:
+                          filtro.colaboradorId,
+                      },
+                    },
+                  },
+                ],
               }
             : {}),
         },
@@ -1644,6 +1779,50 @@ export default class RepositorioDenuncia {
   }
 
 
+  static async obterPorClienteMaster(
+    clienteId: string
+  ): Promise<Array<{
+    id: string;
+    clienteId: string;
+    protocolo: string;
+    status: StatusDenuncia;
+    criadoEm: Date;
+    atualizadoEm: Date;
+    cliente: {
+      id: string;
+      nome: string;
+      empresa: string | null;
+    };
+  }>> {
+    if (!clienteId?.trim()) {
+      throw new Error("Cliente é obrigatório.");
+    }
+
+    return prisma.denuncia.findMany({
+      where: {
+        clienteId,
+      },
+      orderBy: {
+        criadoEm: "desc",
+      },
+      select: {
+        id: true,
+        clienteId: true,
+        protocolo: true,
+        status: true,
+        criadoEm: true,
+        atualizadoEm: true,
+        cliente: {
+          select: {
+            id: true,
+            nome: true,
+            empresa: true,
+          },
+        },
+      },
+    });
+  }
+
   static async obterPorClienteEColaborador(
     clienteId: string,
     colaboradorId: string
@@ -1661,8 +1840,19 @@ export default class RepositorioDenuncia {
         clienteId,
 
         tratativaLiberada: true,
-        destinoTratativa: "COLABORADOR",
-        colaboradorResponsavelId: colaboradorId,
+        OR: [
+          {
+            destinoTratativa: "COLABORADOR",
+            colaboradorResponsavelId: colaboradorId,
+          },
+          {
+            visualizadores: {
+              some: {
+                colaboradorId,
+              },
+            },
+          },
+        ],
       },
 
       orderBy: [
@@ -1678,6 +1868,11 @@ export default class RepositorioDenuncia {
         cliente: true,
         categoria: true,
         colaboradorResponsavel: true,
+        visualizadores: {
+          include: {
+            colaborador: true,
+          },
+        },
 
         _count: {
           select: {
@@ -1743,37 +1938,136 @@ export default class RepositorioDenuncia {
     });
   }
 
+  static async obterAcessoColaboradorNaDenuncia(
+    denunciaId: string,
+    clienteId: string,
+    colaboradorId: string
+  ): Promise<{
+    possuiAcesso: boolean;
+    responsavelPrincipal: boolean;
+    visualizadorAdicional: boolean;
+  }> {
+    if (!denunciaId?.trim()) {
+      throw new Error("Denúncia não informada.");
+    }
+
+    if (!clienteId?.trim()) {
+      throw new Error("Cliente não informado.");
+    }
+
+    if (!colaboradorId?.trim()) {
+      throw new Error("Colaborador não informado.");
+    }
+
+    const denuncia = await prisma.denuncia.findFirst({
+      where: {
+        id: denunciaId,
+        clienteId,
+        tratativaLiberada: true,
+      },
+      select: {
+        destinoTratativa: true,
+        colaboradorResponsavelId: true,
+        visualizadores: {
+          where: {
+            colaboradorId,
+          },
+          select: {
+            colaboradorId: true,
+          },
+          take: 1,
+        },
+      },
+    });
+
+    if (!denuncia) {
+      return {
+        possuiAcesso: false,
+        responsavelPrincipal: false,
+        visualizadorAdicional: false,
+      };
+    }
+
+    const responsavelPrincipal =
+      denuncia.destinoTratativa === "COLABORADOR" &&
+      denuncia.colaboradorResponsavelId === colaboradorId;
+
+    const visualizadorAdicional =
+      denuncia.visualizadores.length > 0;
+
+    return {
+      possuiAcesso:
+        responsavelPrincipal ||
+        visualizadorAdicional,
+      responsavelPrincipal,
+      visualizadorAdicional,
+    };
+  }
+
   static async obterPorIdECliente(
     id: string,
     clienteId: string,
     opcoes: OpcoesVisualizacaoCliente = {}
   ): Promise<DenunciaDetalhada> {
-    if (!id?.trim()) {
+    const denunciaId = id?.trim();
+    const clienteIdNormalizado = clienteId?.trim();
+    const colaboradorId =
+      opcoes.colaboradorId?.trim() || null;
+
+    if (!denunciaId) {
       throw new Error("Denúncia não encontrada.");
     }
 
-    if (!clienteId?.trim()) {
+    if (!clienteIdNormalizado) {
       throw new Error("Cliente é obrigatório.");
     }
 
-    const colaboradorId =
-      opcoes.colaboradorId || null;
+    if (!colaboradorId) {
+      throw new Error(
+        "O perfil master do cliente não possui acesso aos detalhes das denúncias."
+      );
+    }
 
+    const acesso =
+      await this.obterAcessoColaboradorNaDenuncia(
+        denunciaId,
+        clienteIdNormalizado,
+        colaboradorId
+      );
+
+    if (!acesso.possuiAcesso) {
+      throw new Error(
+        "Denúncia não encontrada ou não liberada para este colaborador."
+      );
+    }
+
+    /*
+     * Não confiamos apenas na flag recebida pela camada superior.
+     * Mesmo que podeVerTratativas=true seja enviado por engano,
+     * somente o responsável principal recebe as tratativas.
+     */
     const podeVerTratativas =
-      opcoes.podeVerTratativas === true;
+      opcoes.podeVerTratativas === true &&
+      acesso.responsavelPrincipal;
 
     const denuncia = await prisma.denuncia.findFirst({
       where: {
-        id,
-        clienteId,
-
-        ...(colaboradorId
-          ? {
-              tratativaLiberada: true,
-              destinoTratativa: "COLABORADOR",
-              colaboradorResponsavelId: colaboradorId,
-            }
-          : {}),
+        id: denunciaId,
+        clienteId: clienteIdNormalizado,
+        tratativaLiberada: true,
+        OR: [
+          {
+            destinoTratativa: "COLABORADOR",
+            colaboradorResponsavelId: colaboradorId,
+          },
+          {
+            visualizadores: {
+              some: {
+                colaboradorId,
+              },
+            },
+          },
+        ],
       },
 
       include: {
@@ -1781,28 +2075,35 @@ export default class RepositorioDenuncia {
         categoria: true,
         colaboradorResponsavel: true,
 
-        anexos: {
-          where: {
-            visibilidade:
-              "MUNDIAL_E_COMITE",
+        visualizadores: {
+          include: {
+            colaborador: true,
           },
           orderBy: {
             criadoEm: "asc",
           },
         },
 
-        tratativas:
-          colaboradorId && podeVerTratativas
-            ? {
-                orderBy: {
-                  criadoEm: "desc",
-                },
-              }
-            : {
-                where: {
-                  id: "__SEM_TRATATIVAS__",
-                },
+        anexos: {
+          where: {
+            visibilidade: "MUNDIAL_E_COMITE",
+          },
+          orderBy: {
+            criadoEm: "asc",
+          },
+        },
+
+        tratativas: podeVerTratativas
+          ? {
+              orderBy: {
+                criadoEm: "desc",
               },
+            }
+          : {
+              where: {
+                id: "__SEM_TRATATIVAS__",
+              },
+            },
 
         historico: {
           where: {
@@ -1823,8 +2124,7 @@ export default class RepositorioDenuncia {
           select: {
             anexos: {
               where: {
-                visibilidade:
-                  "MUNDIAL_E_COMITE",
+                visibilidade: "MUNDIAL_E_COMITE",
               },
             },
           },
@@ -1834,7 +2134,7 @@ export default class RepositorioDenuncia {
 
     if (!denuncia) {
       throw new Error(
-        "Denúncia não encontrada ou não direcionada para este colaborador."
+        "Denúncia não encontrada ou não liberada para este colaborador."
       );
     }
 

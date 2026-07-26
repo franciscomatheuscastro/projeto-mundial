@@ -96,12 +96,12 @@ export default function MeusColaboradoresTela() {
       cargo:
         colaboradorSelecionado.cargo ?? "",
       ativo: colaboradorSelecionado.ativo,
-      podeVerDenuncias:
-        colaboradorSelecionado
-          .podeVerDenuncias,
-      podeTratarDenuncias:
-        colaboradorSelecionado
-          .podeTratarDenuncias,
+      /*
+       * As permissões operacionais são definidas
+       * por denúncia pela Mundial.
+       */
+      podeVerDenuncias: true,
+      podeTratarDenuncias: true,
     });
 
     setErroLocal(null);
@@ -135,41 +135,6 @@ export default function MeusColaboradoresTela() {
     setFormulario((atual) => ({
       ...atual,
       [campo]: valor,
-    }));
-  }
-
-  function alterarPermissaoVisualizacao(
-    marcado: boolean
-  ) {
-    setFormulario((atual) => ({
-      ...atual,
-      podeVerDenuncias: marcado,
-
-      /*
-       * Sem permissão para visualizar, também
-       * não pode realizar tratativas.
-       */
-      podeTratarDenuncias: marcado
-        ? atual.podeTratarDenuncias
-        : false,
-    }));
-  }
-
-  function alterarPermissaoTratativa(
-    marcado: boolean
-  ) {
-    setFormulario((atual) => ({
-      ...atual,
-
-      /*
-       * Para tratar uma denúncia, o colaborador
-       * obrigatoriamente precisa visualizá-la.
-       */
-      podeVerDenuncias: marcado
-        ? true
-        : atual.podeVerDenuncias,
-
-      podeTratarDenuncias: marcado,
     }));
   }
 
@@ -238,12 +203,15 @@ export default function MeusColaboradoresTela() {
           formulario.senha?.trim() ||
           undefined,
         ativo: formulario.ativo ?? true,
-        podeVerDenuncias:
-          formulario.podeVerDenuncias ??
-          true,
-        podeTratarDenuncias:
-          formulario.podeTratarDenuncias ??
-          true,
+
+        /*
+         * Estes campos permanecem verdadeiros por
+         * compatibilidade com o backend. A autorização
+         * efetiva é definida no direcionamento de cada
+         * denúncia pela Mundial.
+         */
+        podeVerDenuncias: true,
+        podeTratarDenuncias: true,
       });
 
       fecharModal();
@@ -301,9 +269,9 @@ export default function MeusColaboradoresTela() {
             </h1>
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 sm:text-base">
-              Gerencie os integrantes responsáveis
-              pela análise e pelas tratativas das
-              denúncias da empresa.
+              Gerencie os integrantes que poderão
+              receber denúncias direcionadas pela
+              Mundial.
             </p>
           </div>
 
@@ -331,14 +299,6 @@ export default function MeusColaboradoresTela() {
             colaboradores.filter(
               (colaborador) =>
                 colaborador.ativo
-            ).length
-          }
-          podemTratar={
-            colaboradores.filter(
-              (colaborador) =>
-                colaborador.ativo &&
-                colaborador
-                  .podeTratarDenuncias
             ).length
           }
         />
@@ -395,28 +355,6 @@ export default function MeusColaboradoresTela() {
                         colaborador.telefone ||
                         "Não informado"
                       }
-                    />
-                  </div>
-
-                  <div className="mt-6 flex flex-wrap gap-2">
-                    <PermissaoBadge
-                      ativa={
-                        colaborador
-                          .podeVerDenuncias
-                      }
-                      textoAtivo="Visualiza denúncias"
-                      textoInativo="Sem visualização"
-                      tipo="visualizacao"
-                    />
-
-                    <PermissaoBadge
-                      ativa={
-                        colaborador
-                          .podeTratarDenuncias
-                      }
-                      textoAtivo="Realiza tratativas"
-                      textoInativo="Sem tratativas"
-                      tipo="tratativa"
                     />
                   </div>
 
@@ -480,8 +418,8 @@ export default function MeusColaboradoresTela() {
                   </h2>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    Configure os dados de acesso e
-                    as permissões do integrante.
+                    Configure os dados de acesso do
+                    integrante do comitê.
                   </p>
                 </div>
 
@@ -620,13 +558,14 @@ export default function MeusColaboradoresTela() {
 
                 <section className="border-t border-slate-200 pt-6">
                   <h3 className="text-base font-black text-slate-900">
-                    Acesso e permissões
+                    Acesso à plataforma
                   </h3>
 
-                  <p className="mt-1 text-sm text-slate-500">
-                    Defina o escopo de atuação do
-                    integrante dentro do canal de
-                    denúncias.
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    A Mundial define, em cada denúncia,
+                    quem será o responsável pela tratativa
+                    e quem terá acesso somente para
+                    visualização.
                   </p>
 
                   <div className="mt-4 grid gap-3">
@@ -642,34 +581,6 @@ export default function MeusColaboradoresTela() {
                           "ativo",
                           valor
                         )
-                      }
-                    />
-
-                    <Checkbox
-                      label="Visualizar denúncias"
-                      descricao="Permite consultar denúncias, anexos, histórico e resposta final."
-                      marcado={
-                        formulario
-                          .podeVerDenuncias ??
-                        true
-                      }
-                      disabled={processando}
-                      onChange={
-                        alterarPermissaoVisualizacao
-                      }
-                    />
-
-                    <Checkbox
-                      label="Realizar tratativas"
-                      descricao="Permite registrar tratativas internas nas denúncias da empresa."
-                      marcado={
-                        formulario
-                          .podeTratarDenuncias ??
-                        true
-                      }
-                      disabled={processando}
-                      onChange={
-                        alterarPermissaoTratativa
                       }
                     />
                   </div>
@@ -709,14 +620,12 @@ export default function MeusColaboradoresTela() {
 function ResumoColaboradores({
   total,
   ativos,
-  podemTratar,
 }: {
   total: number;
   ativos: number;
-  podemTratar: number;
 }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2">
       <CardResumo
         titulo="Colaboradores"
         valor={total}
@@ -725,11 +634,6 @@ function ResumoColaboradores({
       <CardResumo
         titulo="Usuários ativos"
         valor={ativos}
-      />
-
-      <CardResumo
-        titulo="Com permissão de tratativa"
-        valor={podemTratar}
       />
     </div>
   );
@@ -783,9 +687,9 @@ function EstadoVazio({
       </h2>
 
       <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">
-        Cadastre os integrantes que farão
-        parte do comitê responsável pelas
-        tratativas das denúncias.
+        Cadastre os integrantes que poderão
+        receber acesso às denúncias conforme o
+        direcionamento realizado pela Mundial.
       </p>
 
       <button
@@ -813,35 +717,6 @@ function StatusBadge({
       }`}
     >
       {ativo ? "Ativo" : "Inativo"}
-    </span>
-  );
-}
-
-function PermissaoBadge({
-  ativa,
-  textoAtivo,
-  textoInativo,
-  tipo,
-}: {
-  ativa: boolean;
-  textoAtivo: string;
-  textoInativo: string;
-  tipo: "visualizacao" | "tratativa";
-}) {
-  const classeAtiva =
-    tipo === "visualizacao"
-      ? "bg-blue-50 text-blue-700"
-      : "bg-violet-50 text-violet-700";
-
-  return (
-    <span
-      className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
-        ativa
-          ? classeAtiva
-          : "bg-slate-100 text-slate-500"
-      }`}
-    >
-      {ativa ? textoAtivo : textoInativo}
     </span>
   );
 }

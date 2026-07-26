@@ -115,6 +115,8 @@ export default function DenunciaDetalheTela({
     useState<DestinoTratativaDenuncia>("MUNDIAL");
   const [colaboradorId, setColaboradorId] =
     useState("");
+  const [visualizadorIds, setVisualizadorIds] =
+    useState<string[]>([]);
 
   const [tratativaEditandoId, setTratativaEditandoId] =
     useState<string | null>(null);
@@ -146,6 +148,12 @@ export default function DenunciaDetalheTela({
         setColaboradorId(
           denuncia.colaboradorResponsavelId ||
             ""
+        );
+
+        setVisualizadorIds(
+          (denuncia.visualizadores || []).map(
+            (colaborador) => colaborador.id
+          )
         );
       })
       .catch(() => {});
@@ -267,6 +275,7 @@ export default function DenunciaDetalheTela({
             destino === "COLABORADOR"
               ? colaboradorId
               : null,
+          visualizadorIds,
         });
 
       setStatus(resultado.status);
@@ -279,6 +288,12 @@ export default function DenunciaDetalheTela({
       setColaboradorId(
         resultado.colaboradorResponsavelId ||
           ""
+      );
+
+      setVisualizadorIds(
+        (resultado.visualizadores || []).map(
+          (colaborador) => colaborador.id
+        )
       );
 
       setMensagem(
@@ -377,6 +392,14 @@ export default function DenunciaDetalheTela({
     }
   }
 
+  function alternarVisualizador(idColaborador: string) {
+    setVisualizadorIds((atuais) =>
+      atuais.includes(idColaborador)
+        ? atuais.filter((id) => id !== idColaborador)
+        : [...atuais, idColaborador]
+    );
+  }
+
   if (carregando) {
     return <Estado texto="Carregando denúncia..." />;
   }
@@ -451,6 +474,16 @@ export default function DenunciaDetalheTela({
                 denunciaSelecionada.tratativaLiberada
                   ? "Sim"
                   : "Não"
+              }
+            />
+            <Info
+              label="Visualizadores adicionais"
+              valor={
+                denunciaSelecionada.visualizadores?.length
+                  ? denunciaSelecionada.visualizadores
+                      .map((colaborador) => colaborador.nome)
+                      .join(", ")
+                  : "Nenhum"
               }
             />
           </div>
@@ -581,8 +614,8 @@ export default function DenunciaDetalheTela({
 
               <p className="mt-1 text-sm leading-6 text-amber-800">
                 {denunciaSelecionada.tratativaLiberada
-                  ? "Altere o responsável exclusivo enquanto ainda não houver tratativas registradas."
-                  : "Defina quem ficará responsável por todas as tratativas desta denúncia. Mundial e colaborador não poderão atuar simultaneamente."}
+                  ? "Altere o responsável pela tratativa e os acessos somente leitura enquanto ainda não houver tratativas registradas."
+                  : "Defina o responsável exclusivo pelas tratativas e, opcionalmente, colaboradores adicionais com acesso somente para visualização."}
               </p>
 
               <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -627,6 +660,53 @@ export default function DenunciaDetalheTela({
                     )}
                   </CampoSelect>
                 )}
+              </div>
+
+              <div className="mt-5">
+                <p className="text-sm font-semibold text-amber-950">
+                  Colaboradores com acesso somente para visualização
+                </p>
+                <p className="mt-1 text-xs leading-5 text-amber-800">
+                  Eles poderão abrir e visualizar a denúncia, mas não poderão
+                  registrar nem editar tratativas. O responsável principal já
+                  possui acesso e não precisa ser selecionado novamente.
+                </p>
+
+                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {colaboradoresDisponiveis
+                    .filter(
+                      (colaborador) =>
+                        colaborador.id !== colaboradorId
+                    )
+                    .map((colaborador) => (
+                      <label
+                        key={colaborador.id}
+                        className="flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-white px-3 py-3 text-sm text-slate-700"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={visualizadorIds.includes(
+                            colaborador.id
+                          )}
+                          disabled={processando}
+                          onChange={() =>
+                            alternarVisualizador(colaborador.id)
+                          }
+                          className="mt-1"
+                        />
+                        <span>
+                          <strong className="block text-slate-900">
+                            {colaborador.nome}
+                          </strong>
+                          <span className="text-xs text-slate-500">
+                            {[colaborador.cargo, colaborador.setor]
+                              .filter(Boolean)
+                              .join(" • ") || "Colaborador"}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                </div>
               </div>
 
               <button

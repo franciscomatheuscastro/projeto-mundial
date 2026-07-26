@@ -31,6 +31,82 @@ type ResultadoCriacaoDenunciaPublica = {
 
 const LIMITE_ANEXOS = 5;
 
+type DenunciaResumoRestrito = {
+  id: string;
+  clienteId: string;
+  protocolo: string;
+  status: DenunciaResumo["status"];
+  criadoEm: Date | string;
+  atualizadoEm: Date | string;
+  cliente: DenunciaResumo["cliente"];
+};
+
+function ehDenunciaResumoCompleto(
+  denuncia:
+    | DenunciaResumo
+    | DenunciaResumoRestrito
+): denuncia is DenunciaResumo {
+  return (
+    "titulo" in denuncia &&
+    "categoria" in denuncia &&
+    "gravidade" in denuncia
+  );
+}
+
+function normalizarDenunciaResumo(
+  denuncia:
+    | DenunciaResumo
+    | DenunciaResumoRestrito
+): DenunciaResumo {
+  if (ehDenunciaResumoCompleto(denuncia)) {
+    return denuncia;
+  }
+
+  /*
+   * O cliente master recebe do backend apenas
+   * protocolo, status e datas. Os campos abaixo
+   * são preenchidos somente para compatibilidade
+   * estrutural com o estado do hook.
+   *
+   * Nenhum conteúdo sensível é reconstruído.
+   */
+  return {
+    id: denuncia.id,
+    clienteId: denuncia.clienteId,
+    protocolo: denuncia.protocolo,
+
+    titulo: "",
+    categoriaId: "",
+
+    categoria: {
+      id: "",
+      nome: "",
+      descricao: null,
+      gravidade: "BAIXA",
+      ativo: false,
+      ordem: 0,
+    },
+
+    anonima: true,
+    status: denuncia.status,
+    gravidade: "BAIXA",
+
+    quantidadeAnexos: 0,
+
+    tratativaLiberada: false,
+    destinoTratativa: null,
+    colaboradorResponsavelId: null,
+    colaboradorResponsavel: null,
+
+    visualizadores: [],
+
+    criadoEm: denuncia.criadoEm,
+    atualizadoEm: denuncia.atualizadoEm,
+
+    cliente: denuncia.cliente,
+  };
+}
+
 function identificarMime(
   arquivo: File
 ): string {
@@ -196,10 +272,15 @@ export function useDenuncias(
         setCarregando(true);
         setErro(null);
 
-        const dados =
+        const dadosBrutos =
           contexto === "cliente"
             ? await Backend.denuncias.obterMinhas()
             : await Backend.denuncias.obterTodos();
+
+        const dados =
+          dadosBrutos.map(
+            normalizarDenunciaResumo
+          );
 
         setDenuncias(dados);
 

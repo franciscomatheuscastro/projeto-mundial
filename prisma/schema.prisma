@@ -163,6 +163,8 @@ model ColaboradorCliente {
   denunciasResponsavelTratativa Denuncia[]          @relation("ResponsavelTratativaDenuncia")
   tratativasResponsavel         TratativaDenuncia[] @relation("ResponsavelTratativa")
 
+  denunciasVisualizadas DenunciaVisualizador[] @relation("DenunciasVisualizadasColaborador")
+
   @@index([clienteId])
   @@index([ativo])
 }
@@ -203,6 +205,8 @@ model Denuncia {
   planosAcao                    PlanoAcao[]
   respostasPerguntasCanal       RespostaPerguntaCanalDenuncia[]
   tratativas                    TratativaDenuncia[]
+
+  visualizadores DenunciaVisualizador[] @relation("VisualizadoresDenuncia")
 
   @@index([clienteId])
   @@index([categoriaId])
@@ -290,6 +294,19 @@ model CategoriaDenuncia {
 
   @@index([ativo, ordem])
   @@index([gravidade])
+}
+
+model DenunciaVisualizador {
+  denunciaId    String
+  colaboradorId String
+  criadoEm      DateTime @default(now())
+
+  denuncia    Denuncia            @relation("VisualizadoresDenuncia", fields: [denunciaId], references: [id], onDelete: Cascade, map: "DenunciaVisualizador_denunciaId_fkey")
+  colaborador ColaboradorCliente @relation("DenunciasVisualizadasColaborador", fields: [colaboradorId], references: [id], onDelete: Cascade, map: "DenunciaVisualizador_colaboradorId_fkey")
+
+  @@id([denunciaId, colaboradorId], map: "DenunciaVisualizador_pkey")
+  @@index([denunciaId], map: "DenunciaVisualizador_denunciaId_idx")
+  @@index([colaboradorId], map: "DenunciaVisualizador_colaboradorId_idx")
 }
 
 

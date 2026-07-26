@@ -25,7 +25,8 @@ export default async function ClienteDenunciasPage() {
     usuario.perfil === PerfilUsuario.CLIENTE;
 
   const usuarioComite =
-    usuario.perfil === PerfilUsuario.COMITE_CLIENTE;
+    usuario.perfil ===
+    PerfilUsuario.COMITE_CLIENTE;
 
   if (
     (!usuarioCliente && !usuarioComite) ||
@@ -61,6 +62,7 @@ export default async function ClienteDenunciasPage() {
     <DenunciasTela
       contexto="cliente"
       podeCriar={false}
+      perfilUsuario={usuario.perfil}
     />
   );
 }

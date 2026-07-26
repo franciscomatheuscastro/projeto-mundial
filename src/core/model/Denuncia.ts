@@ -6,8 +6,8 @@ import {
   StatusDenuncia,
   TipoAnexoDenuncia,
   TipoEventoDenuncia,
-  VisibilidadeAnexoDenuncia,
   TipoPerguntaCanalDenuncia,
+  VisibilidadeAnexoDenuncia,
 } from "@prisma/client";
 
 import type {
@@ -24,9 +24,7 @@ export type CategoriaDenuncia = {
   id: string;
   nome: string;
   descricao?: string | null;
-
   gravidade: GravidadeDenuncia;
-
   ativo?: boolean;
   ordem?: number;
 };
@@ -43,6 +41,7 @@ export type LiberarTratativaInput = {
   denunciaId: string;
   destino: DestinoTratativaDenuncia;
   colaboradorId?: string | null;
+  visualizadorIds?: string[];
 };
 
 export type TratativaDenuncia = {
@@ -50,30 +49,21 @@ export type TratativaDenuncia = {
   denunciaId?: string;
   titulo: string;
   descricao: string;
-
   criadoPorUsuarioId?: string | null;
   criadoPorNome: string;
   criadoPorPerfil?: PerfilUsuario | null;
-
   atualizadoPorUsuarioId?: string | null;
   atualizadoPorNome?: string | null;
-
   criadoEm: Date | string;
   atualizadoEm: Date | string;
 };
 
 export type RespostaPerguntaCanalDenuncia = {
   id: string;
-
   perguntaId?: string | null;
-
   perguntaEnunciado: string;
-
-  perguntaTipo:
-    TipoPerguntaCanalDenuncia;
-
+  perguntaTipo: TipoPerguntaCanalDenuncia;
   resposta: unknown;
-
   criadoEm: Date | string;
 };
 
@@ -124,23 +114,16 @@ export type AnexoDenuncia = AnexoDenunciaInput & {
 
 export type DenunciaPublica = {
   clienteId: string;
-
   titulo: string;
   descricao: string;
-
   categoriaId: string;
-
   localOcorrido?: string | null;
   dataOcorrido?: string | null;
-
   anonima: boolean;
-
   nomeDenunciante?: string | null;
   emailDenunciante?: string | null;
   telefoneDenunciante?: string | null;
-
   respostasPersonalizadas?: RespostaPerguntaCanalInput[];
-
   aceitouTermos: boolean;
   versaoTermosAceitos: string;
 };
@@ -164,13 +147,12 @@ export type Denuncia = {
   status: StatusDenuncia;
   gravidade: GravidadeDenuncia;
   respostaPublica?: string | null;
-
   tratativaLiberada?: boolean;
   destinoTratativa?: DestinoTratativaDenuncia | null;
   colaboradorResponsavelId?: string | null;
   colaboradorResponsavel?: ColaboradorResponsavelTratativa | null;
+  visualizadores?: ColaboradorResponsavelTratativa[];
   tratativaLiberadaEm?: Date | string | null;
-
   aceiteTermosEm?: Date | string;
   versaoTermosAceitos?: string;
   tratativas?: TratativaDenuncia[];
@@ -179,8 +161,7 @@ export type Denuncia = {
   criadoEm?: Date | string;
   atualizadoEm?: Date | string;
   cliente: ClienteDenuncia;
-  respostasPerguntasCanal?:
-    RespostaPerguntaCanalDenuncia[];
+  respostasPerguntasCanal?: RespostaPerguntaCanalDenuncia[];
 };
 
 export type DenunciaResumo = {
@@ -194,55 +175,40 @@ export type DenunciaResumo = {
   status: StatusDenuncia;
   gravidade: GravidadeDenuncia;
   quantidadeAnexos: number;
-
   tratativaLiberada: boolean;
   destinoTratativa: DestinoTratativaDenuncia | null;
   colaboradorResponsavelId: string | null;
   colaboradorResponsavel: ColaboradorResponsavelTratativa | null;
-
+  visualizadores: ColaboradorResponsavelTratativa[];
   criadoEm: Date | string;
   atualizadoEm: Date | string;
   cliente: ClienteDenuncia;
 };
 
-export type DenunciaDetalhada =
-  DenunciaResumo & {
-    descricao: string;
+export type DenunciaResumoMaster = {
+  id: string;
+  clienteId: string;
+  protocolo: string;
+  status: StatusDenuncia;
+  criadoEm: Date | string;
+  atualizadoEm: Date | string;
+  cliente: ClienteDenuncia;
+};
 
-    localOcorrido: string | null;
-
-    dataOcorrido:
-      | Date
-      | string
-      | null;
-
-    nomeDenunciante: string | null;
-
-    emailDenunciante: string | null;
-
-    telefoneDenunciante:
-      | string
-      | null;
-
-    respostaPublica: string | null;
-
-    tratativaLiberadaEm:
-      | Date
-      | string
-      | null;
-
-    tratativas:
-      TratativaDenuncia[];
-
-    historico:
-      HistoricoDenuncia[];
-
-    anexos:
-      AnexoDenuncia[];
-
-    respostasPerguntasCanal:
-      RespostaPerguntaCanalDenuncia[];
-  };
+export type DenunciaDetalhada = DenunciaResumo & {
+  descricao: string;
+  localOcorrido: string | null;
+  dataOcorrido: Date | string | null;
+  nomeDenunciante: string | null;
+  emailDenunciante: string | null;
+  telefoneDenunciante: string | null;
+  respostaPublica: string | null;
+  tratativaLiberadaEm: Date | string | null;
+  tratativas: TratativaDenuncia[];
+  historico: HistoricoDenuncia[];
+  anexos: AnexoDenuncia[];
+  respostasPerguntasCanal: RespostaPerguntaCanalDenuncia[];
+};
 
 export type ConsultaDenunciaPublica = {
   protocolo: string;

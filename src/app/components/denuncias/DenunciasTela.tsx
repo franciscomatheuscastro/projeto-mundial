@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 
 import Link from "next/link";
 
+import { PerfilUsuario } from "@prisma/client";
+
 import {
   useEffect,
   useMemo,
@@ -16,11 +18,13 @@ import { useClientes } from "@/src/app/data/hooks/useClientes";
 type Props = {
   contexto?: "mundial" | "cliente";
   podeCriar?: boolean;
+  perfilUsuario?: PerfilUsuario | null;
 };
 
 export default function DenunciasTela({
   contexto = "mundial",
   podeCriar,
+  perfilUsuario = null,
 }: Props) {
   const {
     denuncias,
@@ -55,6 +59,22 @@ export default function DenunciasTela({
   const usuarioMundial =
     contexto === "mundial";
 
+  const usuarioComite =
+    contexto === "cliente" &&
+    perfilUsuario ===
+      PerfilUsuario.COMITE_CLIENTE;
+
+  const clienteMaster =
+    contexto === "cliente" &&
+    perfilUsuario ===
+      PerfilUsuario.CLIENTE;
+
+  const podeAbrirDetalhes =
+    usuarioMundial || usuarioComite;
+
+  const exibirConteudoSensivel =
+    usuarioMundial || usuarioComite;
+
   const exibirBotaoNovaDenuncia =
     podeCriar ?? usuarioMundial;
 
@@ -64,7 +84,7 @@ export default function DenunciasTela({
 
   useEffect(() => {
     if (usuarioMundial) {
-      carregarClientes();
+      void carregarClientes();
     }
   }, [
     usuarioMundial,
@@ -143,6 +163,13 @@ export default function DenunciasTela({
       (denuncia) =>
         denuncia.status === "CONCLUIDA"
     ).length;
+
+  const quantidadeColunas =
+    usuarioMundial
+      ? 8
+      : usuarioComite
+        ? 7
+        : 3;
 
   function validarPeriodo() {
     if (
@@ -252,7 +279,9 @@ export default function DenunciasTela({
             <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
               {usuarioMundial
                 ? "Gestão, direcionamento e acompanhamento das denúncias recebidas pelos canais das empresas."
-                : "Acompanhe as denúncias da sua empresa conforme as permissões do seu perfil."}
+                : clienteMaster
+                  ? "Acompanhe os protocolos e o andamento geral. Os detalhes permanecem restritos ao Comitê de Denúncias."
+                  : "Acompanhe as denúncias liberadas para o seu perfil."}
             </p>
           </div>
 
@@ -285,7 +314,8 @@ export default function DenunciasTela({
               {usuarioMundial
                 ? " e o cliente"
                 : ""}
-              {" "}para consultar ou gerar o relatório.
+              {" "}
+              para consultar ou gerar o relatório.
             </p>
           </div>
 
@@ -408,7 +438,15 @@ export default function DenunciasTela({
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] border-collapse">
+            <table
+              className={`w-full border-collapse ${
+                usuarioMundial
+                  ? "min-w-[1100px]"
+                  : usuarioComite
+                    ? "min-w-[900px]"
+                    : "min-w-[650px]"
+              }`}
+            >
               <thead className="bg-slate-50">
                 <tr>
                   <Th>Data</Th>
@@ -418,28 +456,31 @@ export default function DenunciasTela({
                     <Th>Empresa</Th>
                   )}
 
-                  <Th>Categoria</Th>
-                  <Th>Título</Th>
-                  <Th>Gravidade</Th>
+                  {exibirConteudoSensivel && (
+                    <>
+                      <Th>Categoria</Th>
+                      <Th>Título</Th>
+                      <Th>Gravidade</Th>
+                    </>
+                  )}
+
                   <Th>Status</Th>
-                  <Th direita>Opções</Th>
+
+                  {podeAbrirDetalhes && (
+                    <Th direita>Opções</Th>
+                  )}
                 </tr>
               </thead>
 
               <tbody>
                 {carregando ? (
                   <LinhaVazia
-                    colunas={
-                      usuarioMundial ? 8 : 7
-                    }
+                    colunas={quantidadeColunas}
                     texto="Carregando denúncias..."
                   />
-                ) : denunciasFiltradas.length ===
-                  0 ? (
+                ) : denunciasFiltradas.length === 0 ? (
                   <LinhaVazia
-                    colunas={
-                      usuarioMundial ? 8 : 7
-                    }
+                    colunas={quantidadeColunas}
                     texto="Nenhuma denúncia encontrada para os filtros selecionados."
                   />
                 ) : (
@@ -470,28 +511,31 @@ export default function DenunciasTela({
                           </td>
                         )}
 
-                        <td className="px-4 py-4 text-sm text-slate-700">
-                          <div className="max-w-[200px] truncate">
-                            {denuncia.categoria
-                              ?.nome ||
-                              "Sem categoria"}
-                          </div>
-                        </td>
+                        {exibirConteudoSensivel && (
+                          <>
+                            <td className="px-4 py-4 text-sm text-slate-700">
+                              <div className="max-w-[200px] truncate">
+                                {denuncia.categoria?.nome ||
+                                  "Sem categoria"}
+                              </div>
+                            </td>
 
-                        <td className="px-4 py-4 text-sm text-slate-700">
-                          <div className="max-w-xs truncate">
-                            {denuncia.titulo}
-                          </div>
-                        </td>
+                            <td className="px-4 py-4 text-sm text-slate-700">
+                              <div className="max-w-xs truncate">
+                                {denuncia.titulo}
+                              </div>
+                            </td>
 
-                        <td className="px-4 py-4">
-                          <Badge
-                            tipo="gravidade"
-                            texto={
-                              denuncia.gravidade
-                            }
-                          />
-                        </td>
+                            <td className="px-4 py-4">
+                              <Badge
+                                tipo="gravidade"
+                                texto={
+                                  denuncia.gravidade
+                                }
+                              />
+                            </td>
+                          </>
+                        )}
 
                         <td className="px-4 py-4">
                           <Badge
@@ -502,14 +546,16 @@ export default function DenunciasTela({
                           />
                         </td>
 
-                        <td className="px-4 py-4 text-right">
-                          <Link
-                            href={`${baseHref}/${denuncia.id}`}
-                            className="inline-flex rounded-lg px-3 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-50 hover:text-blue-800"
-                          >
-                            Abrir
-                          </Link>
-                        </td>
+                        {podeAbrirDetalhes && (
+                          <td className="px-4 py-4 text-right">
+                            <Link
+                              href={`${baseHref}/${denuncia.id}`}
+                              className="inline-flex rounded-lg px-3 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-50 hover:text-blue-800"
+                            >
+                              Abrir
+                            </Link>
+                          </td>
+                        )}
                       </tr>
                     )
                   )
