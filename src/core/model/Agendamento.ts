@@ -3,14 +3,33 @@ import {
   TipoAgendamento,
   StatusPlanoAcao,
   StatusPesquisaCliente,
+  StatusDenuncia,
+  TipoOrigemPlanoAcao,
 } from "@prisma/client";
+
+export type TipoParticipanteAgendamento = "INTERNO" | "CLIENTE" | "OUTRO";
+export type OrigemParticipanteAgendamento =
+  | "CLIENTE_MASTER"
+  | "COLABORADOR"
+  | "MANUAL";
 
 export type ParticipanteAgendamento = {
   id: string;
   nome: string;
   email?: string | null;
   telefone?: string | null;
-  tipo?: "INTERNO" | "CLIENTE" | "OUTRO";
+  tipo?: TipoParticipanteAgendamento;
+  origem?: OrigemParticipanteAgendamento;
+  origemId?: string | null;
+};
+
+export type ParticipanteClienteDisponivel = {
+  id: string;
+  nome: string;
+  email: string | null;
+  telefone: string | null;
+  origem: "CLIENTE_MASTER" | "COLABORADOR";
+  descricao: string;
 };
 
 export type Agendamento = {
@@ -25,8 +44,12 @@ export type Agendamento = {
   tipo?: TipoAgendamento;
   status?: StatusAgendamento;
   participantes?: ParticipanteAgendamento[];
-  criadoEm?: Date;
-  atualizadoEm?: Date;
+};
+
+export type ClienteResumoAgendamento = {
+  id: string;
+  nome: string;
+  empresa: string | null;
 };
 
 export type AgendamentoResumo = {
@@ -43,20 +66,24 @@ export type AgendamentoResumo = {
   participantes: ParticipanteAgendamento[];
   criadoEm: Date;
   atualizadoEm: Date;
+  avisoEmail?: string | null;
   planoAcao?: {
     id: string;
     titulo: string;
     status: StatusPlanoAcao;
+    tipoOrigem: TipoOrigemPlanoAcao;
     pesquisa: {
       id: string;
       titulo: string;
       status: StatusPesquisaCliente;
-      cliente: {
-        id: string;
-        nome: string;
-        empresa: string | null;
-      };
-    };
+      cliente: ClienteResumoAgendamento;
+    } | null;
+    denuncia: {
+      id: string;
+      protocolo: string;
+      status: StatusDenuncia;
+      cliente: ClienteResumoAgendamento;
+    } | null;
   } | null;
 };
 

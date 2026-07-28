@@ -47,6 +47,7 @@ import obterAgendamentoPorId from "./agendamento/obterPorId";
 import excluirAgendamento from "./agendamento/excluirAgendamento";
 import obterMeusAgendamentos from "./agendamento/obterMeus";
 import obterMeuAgendamentoPorId from "./agendamento/obterMeuPorId";
+import obterParticipantesCliente from "./agendamento/obterParticipantesCliente";
 
 import criarDenunciaPublica from "./denuncia/criarDenunciaPublica";
 import consultarDenunciaPublica from "./denuncia/consultarDenunciaPublica";
@@ -160,7 +161,7 @@ export default class Backend {
     obterTodos: obterTodosAgendamentos,
     obterPorId: obterAgendamentoPorId,
     excluir: excluirAgendamento,
-
+    obterParticipantesCliente,
     obterMeus: obterMeusAgendamentos,
     obterMeuPorId: obterMeuAgendamentoPorId,
   };

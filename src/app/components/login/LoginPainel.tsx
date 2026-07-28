@@ -35,8 +35,21 @@ export default function LoginPainel({
     useState<AbaLogin>("ENTRAR");
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-800 via-blue-600 to-cyan-400 px-4 py-8">
-      <section className="grid w-full max-w-5xl overflow-hidden rounded-[28px] bg-white/10 shadow-2xl backdrop-blur md:grid-cols-2 md:rounded-[36px]">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8">
+      <Image
+        src="/fundo-login-mundial.png"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover object-center"
+      />
+
+      <div className="absolute inset-0 bg-slate-950/45" />
+
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-950/35 via-blue-800/15 to-cyan-700/20" />
+
+      <section className="relative z-10 grid w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/20 bg-white/10 shadow-2xl backdrop-blur-md md:grid-cols-2 md:rounded-[36px]">
         <PainelInstitucional />
 
         <div className="min-h-[620px] rounded-[28px] bg-white p-6 sm:p-8 md:rounded-[32px] md:p-12">

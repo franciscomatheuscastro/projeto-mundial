@@ -392,3 +392,111 @@ export async function enviarEmailNovoCliente({
     tipoAcesso: "CLIENTE",
   });
 }
+
+type EnviarEmailAgendamentoInput = {
+  titulo: string;
+  descricao?: string | null;
+  dataHora: Date | string;
+  duracaoMin: number;
+  local?: string | null;
+  linkReuniao?: string | null;
+  status: string;
+  participantes: Array<{
+    nome: string;
+    email?: string | null;
+  }>;
+};
+
+function formatarDataHoraAgendamento(dataHora: Date | string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(dataHora));
+}
+
+export async function enviarEmailAgendamento({
+  titulo,
+  descricao,
+  dataHora,
+  duracaoMin,
+  local,
+  linkReuniao,
+  status,
+  participantes,
+}: EnviarEmailAgendamentoInput): Promise<void> {
+  validarConfiguracaoEmail();
+
+  const destinatarios = participantes
+    .filter((participante) => participante.email?.trim())
+    .map((participante) => ({
+      name: participante.nome,
+      address: participante.email!.trim().toLowerCase(),
+    }));
+
+  if (destinatarios.length === 0) return;
+
+  const dataFormatada = formatarDataHoraAgendamento(dataHora);
+  const tituloSeguro = escaparHtml(titulo);
+  const descricaoSegura = descricao ? escaparHtml(descricao) : "";
+  const localSeguro = local ? escaparHtml(local) : "Não informado";
+  const linkSeguro = linkReuniao ? escaparHtml(linkReuniao) : "";
+
+  await transporter.sendMail({
+    from: { name: SMTP_FROM_NAME, address: SMTP_FROM! },
+    to: destinatarios,
+    subject: `Agendamento: ${titulo}`,
+    text: [
+      "Olá!",
+      "",
+      "Um agendamento foi registrado na Mundial Connect.",
+      "",
+      `Título: ${titulo}`,
+      `Data e hora: ${dataFormatada}`,
+      `Duração: ${duracaoMin} minutos`,
+      `Local: ${local || "Não informado"}`,
+      `Status: ${status}`,
+      descricao ? `Descrição: ${descricao}` : "",
+      linkReuniao ? `Link da reunião: ${linkReuniao}` : "",
+      "",
+      "Mundial Connect",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    html: `
+      <!doctype html>
+      <html lang="pt-BR">
+        <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1f5f9;padding:32px 16px;">
+            <tr><td align="center">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border:1px solid #e2e8f0;border-radius:20px;overflow:hidden;">
+                <tr><td style="padding:24px 28px;background:#0f3fce;color:#fff;">
+                  <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Mundial Connect</p>
+                  <h1 style="margin:8px 0 0;font-size:24px;line-height:1.3;">Novo agendamento</h1>
+                </td></tr>
+                <tr><td style="padding:28px;">
+                  <h2 style="margin:0 0 18px;font-size:20px;">${tituloSeguro}</h2>
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;">
+                    <tr><td style="padding:18px;font-size:15px;line-height:1.8;">
+                      <strong>Data e hora:</strong> ${escaparHtml(dataFormatada)}<br />
+                      <strong>Duração:</strong> ${duracaoMin} minutos<br />
+                      <strong>Local:</strong> ${localSeguro}<br />
+                      <strong>Status:</strong> ${escaparHtml(status)}
+                    </td></tr>
+                  </table>
+                  ${descricaoSegura ? `<p style="margin:20px 0 0;color:#475569;line-height:1.6;">${descricaoSegura}</p>` : ""}
+                  ${linkSeguro ? `<p style="margin:24px 0 0;"><a href="${linkSeguro}" style="display:inline-block;padding:13px 22px;border-radius:12px;background:#2563eb;color:#fff;font-size:14px;font-weight:700;text-decoration:none;">Acessar reunião</a></p>` : ""}
+                  <p style="margin:24px 0 0;color:#64748b;font-size:13px;line-height:1.6;">Este aviso foi enviado automaticamente pela Mundial Connect.</p>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+      </html>
+    `,
+  });
+}

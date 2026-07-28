@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAgendamentos } from "@/src/app/data/hooks/useAgendamentos";
 
@@ -90,6 +90,23 @@ export default function AgendamentosTela({ contexto = "mundial" }: Props) {
   );
 
   const [diaSelecionado, setDiaSelecionado] = useState(chaveData(hoje));
+  const [mensagem, setMensagem] = useState<string | null>(null);
+  const [tipoMensagem, setTipoMensagem] = useState<"sucesso" | "aviso">("sucesso");
+
+  useEffect(() => {
+    const texto = sessionStorage.getItem("mensagem-agendamento");
+    const tipo = sessionStorage.getItem("tipo-mensagem-agendamento");
+
+    if (texto) {
+      setMensagem(texto);
+      setTipoMensagem(tipo === "aviso" ? "aviso" : "sucesso");
+      sessionStorage.removeItem("mensagem-agendamento");
+      sessionStorage.removeItem("tipo-mensagem-agendamento");
+
+      const timer = window.setTimeout(() => setMensagem(null), 6000);
+      return () => window.clearTimeout(timer);
+    }
+  }, []);
 
   const diasCalendario = useMemo(() => criarDiasCalendario(mesAtual), [mesAtual]);
 
@@ -163,6 +180,18 @@ export default function AgendamentosTela({ contexto = "mundial" }: Props) {
       </header>
 
       <section className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+        {mensagem && (
+          <div
+            className={`rounded-2xl border px-4 py-3 text-sm font-medium ${
+              tipoMensagem === "aviso"
+                ? "border-amber-200 bg-amber-50 text-amber-800"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800"
+            }`}
+          >
+            {mensagem}
+          </div>
+        )}
+
         {erro && (
           <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
             {erro}
@@ -324,8 +353,10 @@ export default function AgendamentosTela({ contexto = "mundial" }: Props) {
 
                     {usuarioMundial && (
                       <p className="mt-2 text-sm text-slate-600">
-                        {agendamento.planoAcao?.pesquisa.cliente.empresa ||
-                          agendamento.planoAcao?.pesquisa.cliente.nome ||
+                        {agendamento.planoAcao?.pesquisa?.cliente.empresa ||
+                          agendamento.planoAcao?.pesquisa?.cliente.nome ||
+                          agendamento.planoAcao?.denuncia?.cliente.empresa ||
+                          agendamento.planoAcao?.denuncia?.cliente.nome ||
                           "Sem cliente vinculado"}
                       </p>
                     )}
