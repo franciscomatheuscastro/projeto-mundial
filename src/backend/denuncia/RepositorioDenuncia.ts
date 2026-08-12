@@ -101,6 +101,57 @@ function formatarStatus(status: StatusDenuncia) {
     .replace(/\b\w/g, (letra) => letra.toUpperCase());
 }
 
+function obterMensagemPublicaStatus(
+  status: StatusDenuncia
+): {
+  titulo: string;
+  descricao: string;
+} {
+  switch (status) {
+    case "RECEBIDA":
+      return {
+        titulo: "Denúncia recebida",
+        descricao:
+          "A denúncia foi recebida com sucesso e aguarda análise inicial.",
+      };
+
+    case "EM_ANALISE":
+      return {
+        titulo: "Denúncia em análise",
+        descricao:
+          "A denúncia está sendo analisada pela equipe responsável.",
+      };
+
+    case "EM_TRATATIVA":
+      return {
+        titulo: "Denúncia em tratativa",
+        descricao:
+          "A análise inicial foi realizada e a denúncia está em processo de tratativa.",
+      };
+
+    case "CONCLUIDA":
+      return {
+        titulo: "Denúncia concluída",
+        descricao:
+          "A análise e as tratativas foram concluídas. Consulte a resposta pública disponibilizada.",
+      };
+
+    case "ARQUIVADA":
+      return {
+        titulo: "Denúncia arquivada",
+        descricao:
+          "O processamento desta denúncia foi encerrado e o registro foi arquivado.",
+      };
+
+    default:
+      return {
+        titulo: `Status alterado para ${formatarStatus(status)}`,
+        descricao:
+          "O andamento da denúncia foi atualizado.",
+      };
+  }
+}
+
 function classificarAnexo(tipoMime: string): {
   tipo: TipoAnexoDenuncia;
   visibilidade: VisibilidadeAnexoDenuncia;
@@ -244,6 +295,7 @@ type RespostaPersonalizadaValidada = {
     | "SIM_NAO"
     | "MULTIPLA_ESCOLHA";
   resposta: string | boolean;
+  complemento?: string | null;
 };
 
 async function validarRespostasPersonalizadas(
@@ -251,13 +303,13 @@ async function validarRespostasPersonalizadas(
   respostasRecebidas: Array<{
     perguntaId: string;
     resposta: string | boolean | null;
+    complemento?: string | null;
   }> = []
 ): Promise<RespostaPersonalizadaValidada[]> {
   const perguntas =
     await prisma.perguntaCanalDenuncia.findMany({
       where: {
         ativo: true,
-
         clientes: {
           some: {
             clienteId,
@@ -279,19 +331,21 @@ async function validarRespostasPersonalizadas(
         enunciado: true,
         tipo: true,
         obrigatoria: true,
+        abrirComplementoSim: true,
         opcoes: true,
       },
     });
 
   const idsPermitidos = new Set(
-    perguntas.map(
-      (pergunta) => pergunta.id
-    )
+    perguntas.map((pergunta) => pergunta.id)
   );
 
   const mapaRespostas = new Map<
     string,
-    string | boolean | null
+    {
+      resposta: string | boolean | null;
+      complemento?: string | null;
+    }
   >();
 
   for (const item of respostasRecebidas) {
@@ -301,48 +355,35 @@ async function validarRespostasPersonalizadas(
       );
     }
 
-    if (
-      !idsPermitidos.has(
-        item.perguntaId
-      )
-    ) {
+    if (!idsPermitidos.has(item.perguntaId)) {
       throw new Error(
         "Uma das perguntas enviadas não pertence ao canal deste cliente ou está inativa."
       );
     }
 
-    if (
-      mapaRespostas.has(
-        item.perguntaId
-      )
-    ) {
+    if (mapaRespostas.has(item.perguntaId)) {
       throw new Error(
         "Foi enviada mais de uma resposta para a mesma pergunta."
       );
     }
 
-    mapaRespostas.set(
-      item.perguntaId,
-      item.resposta
-    );
+    mapaRespostas.set(item.perguntaId, {
+      resposta: item.resposta,
+      complemento: textoOpcional(item.complemento),
+    });
   }
 
-  const respostasValidadas:
-    RespostaPersonalizadaValidada[] = [];
+  const respostasValidadas: RespostaPersonalizadaValidada[] = [];
 
   for (const pergunta of perguntas) {
-    const resposta =
-      mapaRespostas.get(
-        pergunta.id
-      ) ?? null;
+    const itemRecebido = mapaRespostas.get(pergunta.id);
 
-    const vazia =
-      respostaVazia(resposta);
+    const resposta = itemRecebido?.resposta ?? null;
+    const complemento = textoOpcional(itemRecebido?.complemento);
 
-    if (
-      pergunta.obrigatoria &&
-      vazia
-    ) {
+    const vazia = respostaVazia(resposta);
+
+    if (pergunta.obrigatoria && vazia) {
       throw new Error(
         `Responda à pergunta obrigatória: ${pergunta.enunciado}`
       );
@@ -354,8 +395,7 @@ async function validarRespostasPersonalizadas(
 
     if (
       pergunta.tipo === "TEXTO" ||
-      pergunta.tipo ===
-        "TEXTO_LONGO"
+      pergunta.tipo === "TEXTO_LONGO"
     ) {
       if (
         typeof resposta !== "string" ||
@@ -367,57 +407,39 @@ async function validarRespostasPersonalizadas(
       }
 
       respostasValidadas.push({
-        perguntaId:
-          pergunta.id,
-
-        perguntaEnunciado:
-          pergunta.enunciado,
-
-        perguntaTipo:
-          pergunta.tipo,
-
-        resposta:
-          resposta.trim(),
+        perguntaId: pergunta.id,
+        perguntaEnunciado: pergunta.enunciado,
+        perguntaTipo: pergunta.tipo,
+        resposta: resposta.trim(),
+        complemento: null,
       });
 
       continue;
     }
 
-    if (
-      pergunta.tipo === "SIM_NAO"
-    ) {
-      if (
-        typeof resposta !== "boolean"
-      ) {
+    if (pergunta.tipo === "SIM_NAO") {
+      if (typeof resposta !== "boolean") {
         throw new Error(
           `Resposta inválida para: ${pergunta.enunciado}`
         );
       }
 
       respostasValidadas.push({
-        perguntaId:
-          pergunta.id,
-
-        perguntaEnunciado:
-          pergunta.enunciado,
-
-        perguntaTipo:
-          pergunta.tipo,
-
+        perguntaId: pergunta.id,
+        perguntaEnunciado: pergunta.enunciado,
+        perguntaTipo: pergunta.tipo,
         resposta,
+        complemento:
+          resposta && pergunta.abrirComplementoSim
+            ? complemento
+            : null,
       });
 
       continue;
     }
 
-    if (
-      pergunta.tipo ===
-        "MULTIPLA_ESCOLHA"
-    ) {
-      const opcoes =
-        converterOpcoesJson(
-          pergunta.opcoes
-        );
+    if (pergunta.tipo === "MULTIPLA_ESCOLHA") {
+      const opcoes = converterOpcoesJson(pergunta.opcoes);
 
       if (
         typeof resposta !== "string" ||
@@ -429,16 +451,11 @@ async function validarRespostasPersonalizadas(
       }
 
       respostasValidadas.push({
-        perguntaId:
-          pergunta.id,
-
-        perguntaEnunciado:
-          pergunta.enunciado,
-
-        perguntaTipo:
-          pergunta.tipo,
-
+        perguntaId: pergunta.id,
+        perguntaEnunciado: pergunta.enunciado,
+        perguntaTipo: pergunta.tipo,
         resposta,
+        complemento: null,
       });
 
       continue;
@@ -574,6 +591,7 @@ async function montarDetalhada(
     ...montarResumo(denuncia),
 
     descricao: denuncia.descricao,
+    pessoaOuSetorDenunciado: denuncia.pessoaOuSetorDenunciado,
     localOcorrido: denuncia.localOcorrido,
     dataOcorrido: denuncia.dataOcorrido,
 
@@ -626,6 +644,7 @@ async function montarDetalhada(
               perguntaTipo:
                 resposta.perguntaTipo,
               resposta: resposta.resposta,
+              complemento: resposta.complemento,
               criadoEm: resposta.criadoEm,
             })
           )
@@ -724,6 +743,10 @@ export default class RepositorioDenuncia {
         descricao,
         categoriaId: categoria.id,
 
+        pessoaOuSetorDenunciado: textoOpcional(
+          dados.pessoaOuSetorDenunciado
+        ),
+
         localOcorrido: textoOpcional(
           dados.localOcorrido
         ),
@@ -770,7 +793,7 @@ export default class RepositorioDenuncia {
             tipo: "DENUNCIA_REGISTRADA",
             titulo: "Denúncia registrada",
             descricao:
-              "A denúncia foi recebida e será encaminhada para análise.",
+              "A denúncia foi recebida com sucesso e aguarda análise inicial.",
             statusNovo: "RECEBIDA",
             origemAtor: "PUBLICO",
             atorNome: dados.anonima
@@ -819,6 +842,10 @@ export default class RepositorioDenuncia {
         titulo,
         descricao,
         categoriaId: categoria.id,
+
+        pessoaOuSetorDenunciado: textoOpcional(
+          dados.pessoaOuSetorDenunciado
+        ),
 
         localOcorrido: textoOpcional(
           dados.localOcorrido
@@ -988,6 +1015,11 @@ export default class RepositorioDenuncia {
       categoriaId === denunciaAtual.categoriaId
     );
 
+    const pessoaOuSetorDenunciado =
+      denuncia.pessoaOuSetorDenunciado === undefined
+        ? denunciaAtual.pessoaOuSetorDenunciado
+        : textoOpcional(denuncia.pessoaOuSetorDenunciado);
+
     const localOcorrido =
       denuncia.localOcorrido === undefined
         ? denunciaAtual.localOcorrido
@@ -1044,6 +1076,7 @@ export default class RepositorioDenuncia {
           titulo,
           descricao,
           categoriaId: categoria.id,
+          pessoaOuSetorDenunciado,
           localOcorrido,
           dataOcorrido,
           anonima,
@@ -1079,16 +1112,18 @@ export default class RepositorioDenuncia {
       });
 
       if (denunciaAtual.status !== status) {
+        const mensagemPublica =
+          obterMensagemPublicaStatus(status);
+
         await tx.historicoDenuncia.create({
           data: {
             denunciaId: denuncia.id!,
             tipo: "STATUS_ALTERADO",
-            titulo: `Status alterado para ${formatarStatus(
-              status
-            )}`,
+            titulo: mensagemPublica.titulo,
             descricao:
-              respostaPublica ||
-              "O andamento da denúncia foi atualizado.",
+              status === "CONCLUIDA" && respostaPublica
+                ? respostaPublica
+                : mensagemPublica.descricao,
             statusAnterior: denunciaAtual.status,
             statusNovo: status,
             origemAtor: ator.origem,
@@ -1284,6 +1319,12 @@ export default class RepositorioDenuncia {
       return this.obterPorId(denuncia.id);
     }
 
+    const novoStatus: StatusDenuncia =
+      denuncia.status === "CONCLUIDA" ||
+      denuncia.status === "ARQUIVADA"
+        ? denuncia.status
+        : "EM_TRATATIVA";
+
     await prisma.$transaction(async (tx) => {
       await tx.denuncia.update({
         where: { id: denuncia.id },
@@ -1294,11 +1335,7 @@ export default class RepositorioDenuncia {
           tratativaLiberadaEm: new Date(),
           tratativaLiberadaPorUsuarioId:
             ator.usuarioId || null,
-          status:
-            denuncia.status === "CONCLUIDA" ||
-            denuncia.status === "ARQUIVADA"
-              ? denuncia.status
-              : "EM_TRATATIVA",
+          status: novoStatus,
         },
       });
 
@@ -1338,17 +1375,33 @@ export default class RepositorioDenuncia {
               ? `Visualização adicional liberada para: ${nomesVisualizadores}.`
               : "Nenhum colaborador adicional recebeu acesso de visualização.",
           ].join(" "),
-          statusNovo:
-            denuncia.status === "CONCLUIDA" ||
-            denuncia.status === "ARQUIVADA"
-              ? denuncia.status
-              : "EM_TRATATIVA",
+          statusNovo: novoStatus,
           origemAtor: ator.origem,
           atorId: ator.usuarioId,
           atorNome: ator.nome,
           visivelPublicamente: false,
         },
       });
+
+      if (denuncia.status !== novoStatus) {
+        const mensagemPublica =
+          obterMensagemPublicaStatus(novoStatus);
+
+        await tx.historicoDenuncia.create({
+          data: {
+            denunciaId: denuncia.id,
+            tipo: "STATUS_ALTERADO",
+            titulo: mensagemPublica.titulo,
+            descricao: mensagemPublica.descricao,
+            statusAnterior: denuncia.status,
+            statusNovo: novoStatus,
+            origemAtor: ator.origem,
+            atorId: ator.usuarioId,
+            atorNome: ator.nome,
+            visivelPublicamente: true,
+          },
+        });
+      }
     });
 
     return this.obterPorId(denuncia.id);
@@ -1416,6 +1469,7 @@ export default class RepositorioDenuncia {
         tratativaLiberada: true,
         destinoTratativa: true,
         colaboradorResponsavelId: true,
+        status: true,
       },
     });
 
@@ -1478,6 +1532,26 @@ export default class RepositorioDenuncia {
           visivelPublicamente: false,
         },
       });
+
+      if (denuncia.status !== "EM_TRATATIVA") {
+        const mensagemPublica =
+          obterMensagemPublicaStatus("EM_TRATATIVA");
+
+        await tx.historicoDenuncia.create({
+          data: {
+            denunciaId,
+            tipo: "STATUS_ALTERADO",
+            titulo: mensagemPublica.titulo,
+            descricao: mensagemPublica.descricao,
+            statusAnterior: denuncia.status,
+            statusNovo: "EM_TRATATIVA",
+            origemAtor: ator.origem,
+            atorId: ator.usuarioId,
+            atorNome: ator.nome,
+            visivelPublicamente: true,
+          },
+        });
+      }
     });
 
     if (

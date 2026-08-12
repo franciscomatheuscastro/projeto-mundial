@@ -465,6 +465,27 @@ export default function DenunciaDetalheTela({
               valor={denunciaSelecionada.categoria?.nome || "-"}
             />
             <Info
+              label="Pessoa ou setor denunciado"
+              valor={
+                denunciaSelecionada.pessoaOuSetorDenunciado ||
+                "Não informado"
+              }
+            />
+            <Info
+              label="Local do ocorrido"
+              valor={denunciaSelecionada.localOcorrido || "Não informado"}
+            />
+            <Info
+              label="Data do ocorrido"
+              valor={
+                denunciaSelecionada.dataOcorrido
+                  ? new Date(
+                      denunciaSelecionada.dataOcorrido
+                    ).toLocaleDateString("pt-BR")
+                  : "Não informada"
+              }
+            />
+            <Info
               label="Responsável pelas tratativas"
               valor={responsavelExclusivo}
             />
@@ -522,6 +543,18 @@ export default function DenunciaDetalheTela({
                         item.resposta
                       )}
                     </p>
+
+                    {item.complemento && (
+                      <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                          Complemento
+                        </p>
+
+                        <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                          {item.complemento}
+                        </p>
+                      </div>
+                    )}
 
                     <p className="mt-3 text-xs text-slate-400">
                       {formatarTexto(

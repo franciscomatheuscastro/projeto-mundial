@@ -64,6 +64,7 @@ export type RespostaPerguntaCanalDenuncia = {
   perguntaEnunciado: string;
   perguntaTipo: TipoPerguntaCanalDenuncia;
   resposta: unknown;
+  complemento?: string | null;
   criadoEm: Date | string;
 };
 
@@ -117,13 +118,19 @@ export type DenunciaPublica = {
   titulo: string;
   descricao: string;
   categoriaId: string;
+
+  pessoaOuSetorDenunciado?: string | null;
+
   localOcorrido?: string | null;
   dataOcorrido?: string | null;
+
   anonima: boolean;
   nomeDenunciante?: string | null;
   emailDenunciante?: string | null;
   telefoneDenunciante?: string | null;
+
   respostasPersonalizadas?: RespostaPerguntaCanalInput[];
+
   aceitouTermos: boolean;
   versaoTermosAceitos: string;
 };
@@ -134,10 +141,15 @@ export type Denuncia = {
   id?: string;
   clienteId: string;
   protocolo?: string;
+
   titulo: string;
   descricao: string;
   categoriaId: string;
+
   categoria?: CategoriaDenuncia;
+
+  pessoaOuSetorDenunciado?: string | null;
+
   localOcorrido?: string | null;
   dataOcorrido?: Date | string | null;
   anonima: boolean;
@@ -197,13 +209,19 @@ export type DenunciaResumoMaster = {
 
 export type DenunciaDetalhada = DenunciaResumo & {
   descricao: string;
+
+  pessoaOuSetorDenunciado: string | null;
+
   localOcorrido: string | null;
   dataOcorrido: Date | string | null;
+
   nomeDenunciante: string | null;
   emailDenunciante: string | null;
   telefoneDenunciante: string | null;
+
   respostaPublica: string | null;
   tratativaLiberadaEm: Date | string | null;
+
   tratativas: TratativaDenuncia[];
   historico: HistoricoDenuncia[];
   anexos: AnexoDenuncia[];

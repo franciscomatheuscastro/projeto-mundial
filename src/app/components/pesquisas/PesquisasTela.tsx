@@ -189,12 +189,21 @@ export default function PesquisasTela({
             </div>
 
             {usuarioMundial && (
-              <Link
-                href="/pesquisas/nova"
-                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
-              >
-                + Nova pesquisa
-              </Link>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link
+                  href="/pesquisas/relatorio"
+                  className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Relatório de clima
+                </Link>
+
+                <Link
+                  href="/pesquisas/nova"
+                  className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
+                >
+                  + Nova pesquisa
+                </Link>
+              </div>
             )}
           </div>
         </header>

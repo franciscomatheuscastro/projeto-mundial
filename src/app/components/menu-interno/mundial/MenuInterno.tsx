@@ -1,13 +1,16 @@
 import Link from "next/link";
 
-import { signOut } from "@/src/auth";
+import {
+  signOut,
+} from "@/src/auth";
 
 export function MenuInterno() {
   async function sair() {
     "use server";
 
     await signOut({
-      redirectTo: "/login",
+      redirectTo:
+        "/login",
     });
   }
 
@@ -33,7 +36,11 @@ export function MenuInterno() {
           </summary>
 
           <div className="absolute right-0 mt-3 max-h-[calc(100vh-90px)] w-[min(18rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl ring-1 ring-slate-200 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <MenuMobile sair={sair} />
+            <MenuMobile
+              sair={
+                sair
+              }
+            />
           </div>
         </details>
       </header>
@@ -62,7 +69,11 @@ export function MenuInterno() {
           </div>
 
           <div className="shrink-0 border-t border-white/10 bg-cyan-600/95 px-5 py-4 backdrop-blur-sm">
-            <form action={sair}>
+            <form
+              action={
+                sair
+              }
+            >
               <button
                 type="submit"
                 className="w-full rounded-xl border border-white/20 bg-white/95 px-4 py-3 text-sm font-bold text-blue-700 shadow-sm transition hover:bg-white hover:shadow-md"
@@ -85,101 +96,187 @@ function MenuNavegacao({
   return (
     <nav
       className={`flex flex-col gap-7 ${
-        mobile ? "text-slate-900" : ""
+        mobile
+          ? "text-slate-900"
+          : ""
       }`}
     >
       <GrupoMenu
         titulo="Visão geral"
-        mobile={mobile}
+        mobile={
+          mobile
+        }
       >
         <MenuLink
           href="/dashboard"
-          mobile={mobile}
+          mobile={
+            mobile
+          }
         >
           Dashboard
         </MenuLink>
 
         <MenuLink
           href="/clientes"
-          mobile={mobile}
+          mobile={
+            mobile
+          }
         >
           Clientes
         </MenuLink>
 
         <MenuLink
           href="/agendamentos"
-          mobile={mobile}
+          mobile={
+            mobile
+          }
         >
           Agendamentos
         </MenuLink>
 
         <MenuLink
           href="/planos-acao"
-          mobile={mobile}
+          mobile={
+            mobile
+          }
         >
           Planos de ação
         </MenuLink>
 
-        
+        <MenuLink
+          href="/modelos-pesquisa"
+          mobile={
+            mobile
+          }
+        >
+          Construtor de Modelos
+        </MenuLink>
       </GrupoMenu>
 
       <GrupoMenu
         titulo="Canal de Denúncias"
-        mobile={mobile}
+        mobile={
+          mobile
+        }
       >
         <MenuLink
           href="/denuncias"
-          mobile={mobile}
+          mobile={
+            mobile
+          }
         >
           Denúncias
         </MenuLink>
 
         <MenuLink
           href="/categorias-denuncias"
-          mobile={mobile}
+          mobile={
+            mobile
+          }
         >
           Categorias
         </MenuLink>
 
         <MenuLink
           href="/denuncias/perguntas"
-          mobile={mobile}
+          mobile={
+            mobile
+          }
         >
           Perguntas
         </MenuLink>
-
-        
       </GrupoMenu>
 
       <GrupoMenu
         titulo="Pesquisa de Clima"
-        mobile={mobile}
+        mobile={
+          mobile
+        }
       >
         <MenuLink
-          href="/modelos-pesquisa"
-          mobile={mobile}
-        >
-          Modelos de Pesquisas
-        </MenuLink>
-
-        <MenuLink
           href="/pesquisas"
-          mobile={mobile}
+          mobile={
+            mobile
+          }
         >
           Pesquisas
         </MenuLink>
+
+        <MenuLink
+          href="/pesquisas/relatorio"
+          mobile={
+            mobile
+          }
+        >
+          Relatório de Clima
+        </MenuLink>
       </GrupoMenu>
 
-      <GrupoMenu titulo="Suporte" mobile={mobile}>
+      <GrupoMenu
+        titulo="Diagnóstico Organizacional"
+        mobile={
+          mobile
+        }
+      >
+        <MenuLink
+          href="/diagnostico-organizacional"
+          mobile={
+            mobile
+          }
+        >
+          Diagnósticos
+        </MenuLink>
+
+        <MenuLink
+          href="/diagnostico-organizacional/relatorio"
+          mobile={
+            mobile
+          }
+        >
+          Relatório Organizacional
+        </MenuLink>
+      </GrupoMenu>
+
+      <GrupoMenu
+        titulo="Avaliação Psicossocial"
+        mobile={
+          mobile
+        }
+      >
+        <MenuLink
+          href="/avaliacao-psicossocial"
+          mobile={
+            mobile
+          }
+        >
+          Avaliações
+        </MenuLink>
+
+        <MenuLink
+          href="/avaliacao-psicossocial/relatorio"
+          mobile={
+            mobile
+          }
+        >
+          Relatório Psicossocial
+        </MenuLink>
+      </GrupoMenu>
+
+      <GrupoMenu
+        titulo="Suporte"
+        mobile={
+          mobile
+        }
+      >
         <MenuLink
           href="/central-ajuda"
-          mobile={mobile}
+          mobile={
+            mobile
+          }
         >
           Central de ajuda
         </MenuLink>
       </GrupoMenu>
-
-      
     </nav>
   );
 }
@@ -191,10 +288,14 @@ function MenuMobile({
 }) {
   return (
     <div>
-      <MenuNavegacao mobile />
+      <MenuNavegacao
+        mobile
+      />
 
       <form
-        action={sair}
+        action={
+          sair
+        }
         className="mt-7 border-t border-slate-200 pt-4"
       >
         <button
@@ -213,9 +314,14 @@ function GrupoMenu({
   children,
   mobile = false,
 }: {
-  titulo: string;
-  children: React.ReactNode;
-  mobile?: boolean;
+  titulo:
+    string;
+
+  children:
+    React.ReactNode;
+
+  mobile?:
+    boolean;
 }) {
   return (
     <section>
@@ -226,7 +332,9 @@ function GrupoMenu({
             : "text-blue-100/80"
         }`}
       >
-        {titulo}
+        {
+          titulo
+        }
       </p>
 
       <div
@@ -236,7 +344,9 @@ function GrupoMenu({
             : "border-white/20"
         }`}
       >
-        {children}
+        {
+          children
+        }
       </div>
     </section>
   );
@@ -247,20 +357,29 @@ function MenuLink({
   children,
   mobile = false,
 }: {
-  href: string;
-  children: React.ReactNode;
-  mobile?: boolean;
+  href:
+    string;
+
+  children:
+    React.ReactNode;
+
+  mobile?:
+    boolean;
 }) {
   return (
     <Link
-      href={href}
+      href={
+        href
+      }
       className={`block rounded-xl px-3 py-2.5 text-sm font-medium transition ${
         mobile
           ? "text-slate-700 hover:bg-slate-100 hover:text-slate-950"
           : "text-blue-50/90 hover:bg-white/10 hover:text-white"
       }`}
     >
-      {children}
+      {
+        children
+      }
     </Link>
   );
 }

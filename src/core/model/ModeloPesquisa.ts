@@ -1,4 +1,7 @@
-import { TipoPergunta } from "@prisma/client";
+import {
+  TipoModuloPesquisa,
+  TipoPergunta,
+} from "@prisma/client";
 
 export type PerguntaModelo = {
   id: string;
@@ -14,19 +17,29 @@ export type ModeloPesquisa = {
   id?: string;
   titulo: string;
   descricao?: string | null;
+
+  tipo?: TipoModuloPesquisa;
+
   ativo?: boolean;
   modeloPadrao?: boolean;
+
   perguntas: PerguntaModelo[];
+
   criadoEm?: Date;
   atualizadoEm?: Date;
 };
 
-export type ModeloPesquisaComResumo = ModeloPesquisa & {
-  id: string;
-  totalPerguntas: number;
-  totalPesquisas: number;
-};
+export type ModeloPesquisaComResumo =
+  ModeloPesquisa & {
+    id: string;
+    tipo: TipoModuloPesquisa;
 
-export type ModeloPesquisaDetalhado = ModeloPesquisa & {
-  id: string;
-};
+    totalPerguntas: number;
+    totalPesquisas: number;
+  };
+
+export type ModeloPesquisaDetalhado =
+  ModeloPesquisa & {
+    id: string;
+    tipo: TipoModuloPesquisa;
+  };

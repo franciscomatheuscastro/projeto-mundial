@@ -4,13 +4,12 @@ import type { FormEvent } from "react";
 
 import { useEffect, useState } from "react";
 
-import { GravidadeDenuncia } from "@prisma/client";
 import { useRouter } from "next/navigation";
 
 import { useDenuncias } from "@/src/app/data/hooks/useDenuncias";
 import { useClientes } from "@/src/app/data/hooks/useClientes";
 
-import { Denuncia } from "@/src/core/model/Denuncia";
+import type { Denuncia } from "@/src/core/model/Denuncia";
 
 import CampoAnexos from "@/src/app/components/denuncias/CampoAnexos";
 
@@ -51,9 +50,6 @@ export default function DenunciaFormularioTela({
   const [categoriaId, setCategoriaId] =
     useState("");
 
-  const [gravidade, setGravidade] =
-    useState<GravidadeDenuncia>("MEDIA");
-
   const [arquivos, setArquivos] =
     useState<File[]>([]);
 
@@ -74,6 +70,15 @@ export default function DenunciaFormularioTela({
 
   const enviando =
     processando || enviandoArquivos;
+
+  const hojeParaInput = (() => {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+    const dia = String(hoje.getDate()).padStart(2, "0");
+
+    return `${ano}-${mes}-${dia}`;
+  })();
 
   useEffect(() => {
     if (usuarioMundial) {
@@ -126,6 +131,11 @@ export default function DenunciaFormularioTela({
 
       categoriaId,
 
+      pessoaOuSetorDenunciado:
+        String(
+          form.get("pessoaOuSetorDenunciado") || ""
+        ).trim() || null,
+
       localOcorrido:
         String(
           form.get("local") || ""
@@ -156,8 +166,8 @@ export default function DenunciaFormularioTela({
             form.get("telefone") || ""
           ).trim() || null,
 
-      gravidade,
       status: "RECEBIDA",
+      gravidade: "MEDIA",
       respostaPublica: null,
       tratativas: [],
 
@@ -323,6 +333,20 @@ export default function DenunciaFormularioTela({
               </select>
             </div>
 
+            <div className="lg:col-span-2">
+              <Campo
+                label="Pessoa ou setor denunciado"
+                name="pessoaOuSetorDenunciado"
+                disabled={enviando}
+                placeholder="Ex.: João da Silva, Setor Financeiro, Gestão..."
+              />
+
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                Informe, se souber, o nome da pessoa envolvida ou o setor
+                relacionado ao fato.
+              </p>
+            </div>
+
             <Campo
               label="Local do ocorrido"
               name="local"
@@ -333,38 +357,20 @@ export default function DenunciaFormularioTela({
               label="Data do ocorrido"
               name="data"
               type="date"
+              max={hojeParaInput}
               disabled={enviando}
             />
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Gravidade
-              </label>
+            <div className="lg:col-span-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
+              <p className="text-sm font-semibold text-blue-900">
+                Gravidade definida pela categoria
+              </p>
 
-              <select
-                value={gravidade}
-                disabled={enviando}
-                onChange={(event) =>
-                  setGravidade(
-                    event.target
-                      .value as GravidadeDenuncia
-                  )
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
-              >
-                <option value="BAIXA">
-                  Baixa
-                </option>
-                <option value="MEDIA">
-                  Média
-                </option>
-                <option value="ALTA">
-                  Alta
-                </option>
-                <option value="CRITICA">
-                  Crítica
-                </option>
-              </select>
+              <p className="mt-1 text-xs leading-5 text-blue-700">
+                A classificação de gravidade é aplicada automaticamente conforme
+                a categoria selecionada, mantendo o mesmo critério utilizado no
+                canal público.
+              </p>
             </div>
 
             <div className="lg:col-span-2">
@@ -479,12 +485,16 @@ function Campo({
   required,
   type = "text",
   disabled = false,
+  placeholder,
+  max,
 }: {
   label: string;
   name: string;
   required?: boolean;
   type?: string;
   disabled?: boolean;
+  placeholder?: string;
+  max?: string;
 }) {
   return (
     <div>
@@ -497,6 +507,8 @@ function Campo({
         type={type}
         required={required}
         disabled={disabled}
+        placeholder={placeholder}
+        max={max}
         className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
       />
     </div>

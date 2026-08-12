@@ -136,9 +136,18 @@ export default function CanalDenunciasPublicoTela({
       const valor = formData.get(`pergunta_${pergunta.id}`);
 
       if (pergunta.tipo === "SIM_NAO") {
+        const complemento = formData.get(
+          `pergunta_${pergunta.id}_complemento`
+        );
+
         return {
           perguntaId: pergunta.id,
           resposta: valor === "SIM" ? true : valor === "NAO" ? false : null,
+          complemento:
+            valor === "SIM" &&
+            typeof complemento === "string"
+              ? complemento.trim() || null
+              : null,
         };
       }
 
@@ -253,6 +262,11 @@ export default function CanalDenunciasPublicoTela({
         descricao: String(formData.get("descricao") || "").trim(),
 
         categoriaId,
+
+        pessoaOuSetorDenunciado:
+          String(
+            formData.get("pessoaOuSetorDenunciado") || ""
+          ).trim() || null,
 
         localOcorrido:
           String(formData.get("localOcorrido") || "").trim() || null,
@@ -607,6 +621,18 @@ export default function CanalDenunciasPublicoTela({
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="md:col-span-2">
+                <Campo
+                  name="pessoaOuSetorDenunciado"
+                  label="Pessoa ou setor denunciado"
+                  placeholder="Ex.: João da Silva, Setor Financeiro, Gestão..."
+                  disabled={enviando}
+                />
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  Se souber, informe o nome da pessoa envolvida ou o setor relacionado ao fato.
+                </p>
               </div>
 
               <Campo
@@ -1075,6 +1101,7 @@ function CampoPerguntaPersonalizada({
   disabled: boolean;
 }) {
   const nomeCampo = `pergunta_${pergunta.id}`;
+  const [respostaSimNao, setRespostaSimNao] = useState("");
 
   return (
     <div>
@@ -1115,20 +1142,80 @@ function CampoPerguntaPersonalizada({
       )}
 
       {pergunta.tipo === "SIM_NAO" && (
-        <select
-          id={nomeCampo}
-          name={nomeCampo}
-          required={pergunta.obrigatoria}
-          disabled={disabled}
-          defaultValue=""
-          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
-        >
-          <option value="">Selecione</option>
+        <div className="space-y-3">
+          <div className="flex gap-3">
+            <label
+              className={`flex flex-1 cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                respostaSimNao === "SIM"
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-slate-200 bg-white hover:bg-slate-50"
+              }`}
+            >
+              <input
+                type="radio"
+                name={nomeCampo}
+                value="SIM"
+                checked={respostaSimNao === "SIM"}
+                required={pergunta.obrigatoria}
+                disabled={disabled}
+                onChange={() =>
+                  setRespostaSimNao("SIM")
+                }
+                className="h-4 w-4 accent-blue-600"
+              />
 
-          <option value="SIM">Sim</option>
+              <span className="text-sm font-semibold text-slate-800">
+                Sim
+              </span>
+            </label>
 
-          <option value="NAO">Não</option>
-        </select>
+            <label
+              className={`flex flex-1 cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                respostaSimNao === "NAO"
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-slate-200 bg-white hover:bg-slate-50"
+              }`}
+            >
+              <input
+                type="radio"
+                name={nomeCampo}
+                value="NAO"
+                checked={respostaSimNao === "NAO"}
+                required={pergunta.obrigatoria}
+                disabled={disabled}
+                onChange={() =>
+                  setRespostaSimNao("NAO")
+                }
+                className="h-4 w-4 accent-blue-600"
+              />
+
+              <span className="text-sm font-semibold text-slate-800">
+                Não
+              </span>
+            </label>
+          </div>
+
+          {pergunta.abrirComplementoSim &&
+            respostaSimNao === "SIM" && (
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                <label
+                  htmlFor={`${nomeCampo}_complemento`}
+                  className="mb-2 block text-sm font-semibold text-slate-700"
+                >
+                  Conte um pouco mais
+                </label>
+
+                <textarea
+                  id={`${nomeCampo}_complemento`}
+                  name={`${nomeCampo}_complemento`}
+                  rows={3}
+                  disabled={disabled}
+                  placeholder="Se desejar, detalhe sua resposta."
+                  className="w-full resize-y rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
+                />
+              </div>
+            )}
+        </div>
       )}
 
       {pergunta.tipo === "MULTIPLA_ESCOLHA" && (

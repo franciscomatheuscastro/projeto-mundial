@@ -1,4 +1,8 @@
-import { StatusPesquisaCliente, TipoPergunta } from "@prisma/client";
+import {
+  StatusPesquisaCliente,
+  TipoModuloPesquisa,
+  TipoPergunta,
+} from "@prisma/client";
 
 export type PerguntaPesquisaCliente = {
   id: string;
@@ -31,31 +35,41 @@ export type PesquisaCliente = {
   id?: string;
   clienteId: string;
   modeloId: string;
+
+  tipo?: TipoModuloPesquisa;
+
   titulo: string;
   descricao?: string | null;
   token?: string;
   status?: StatusPesquisaCliente;
   perguntas?: PerguntaPesquisaCliente[];
+
   criadoEm?: Date;
   atualizadoEm?: Date;
 };
 
 export type PesquisaClienteResumo = {
   id: string;
+
+  tipo: TipoModuloPesquisa;
+
   titulo: string;
   descricao: string | null;
   token: string;
   status: StatusPesquisaCliente;
   criadoEm: Date;
   atualizadoEm: Date;
+
   cliente: {
     id: string;
     nome: string;
   };
+
   modelo: {
     id: string;
     titulo: string;
   };
+
   totalRespostas: number;
 };
 
@@ -63,23 +77,31 @@ export type PesquisaClienteDetalhada = {
   id: string;
   clienteId: string;
   modeloId: string;
+
+  tipo: TipoModuloPesquisa;
+
   titulo: string;
   descricao: string | null;
   token: string;
   status: StatusPesquisaCliente;
+
   perguntas: PerguntaPesquisaCliente[];
+
   criadoEm: Date;
   atualizadoEm: Date;
+
   cliente: {
     id: string;
     nome: string;
     empresa?: string | null;
   };
+
   modelo: {
     id: string;
     titulo: string;
     perguntas: PerguntaPesquisaCliente[];
   };
+
   respostas: RespostaPesquisaCliente[];
   totalRespostas: number;
 
@@ -106,36 +128,43 @@ export type DadosFormularioPesquisaCliente = {
     id: string;
     titulo: string;
     descricao?: string | null;
+
+    tipo: TipoModuloPesquisa;
+
     ativo?: boolean;
     modeloPadrao?: boolean;
     criadoEm?: Date;
     atualizadoEm?: Date;
+
     perguntas: PerguntaPesquisaCliente[];
   }[];
 };
 
-export type PesquisaClienteRelatorio = PesquisaClienteDetalhada & {
-  perguntasComResumo: {
-    pergunta: PerguntaPesquisaCliente;
-    totalRespostas: number;
-    media: number;
-    respostas: RespostaPesquisaItem[];
-  }[];
-  mediaGeral: number;
-};
+export type PesquisaClienteRelatorio =
+  PesquisaClienteDetalhada & {
+    perguntasComResumo: {
+      pergunta: PerguntaPesquisaCliente;
+      totalRespostas: number;
+      media: number;
+      respostas: RespostaPesquisaItem[];
+    }[];
 
-
+    mediaGeral: number;
+  };
 
 export type ConvitePesquisaCliente = {
   id: string;
   pesquisaId: string;
   token: string;
+
   nome?: string | null;
   email?: string | null;
   setor?: string | null;
   cargo?: string | null;
+
   respondido: boolean;
   respondidoEm?: Date | null;
+
   criadoEm: Date;
   atualizadoEm: Date;
 };

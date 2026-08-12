@@ -29,6 +29,7 @@ import obterMinhasPesquisasCliente from "./pesquisaCliente/obterMinhas";
 import obterMinhaPesquisaClientePorId from "./pesquisaCliente/obterMinhaPorId";
 import obterMeuRelatorioPesquisaCliente from "./pesquisaCliente/obterMeuRelatorio";
 import gerarConvitesPesquisaCliente from "./pesquisaCliente/gerarConvites";
+import obterDadosRelatorioPesquisasCliente from "./pesquisaCliente/obterDadosRelatorio";
 
 import obterPesquisaPublicaPorToken from "./respostaPesquisa/obterPorToken";
 import salvarRespostaPesquisa from "./respostaPesquisa/salvarRespostaPesquisa";
@@ -130,14 +131,22 @@ export default class Backend {
     obterPorId: obterPesquisaClientePorId,
     obterRelatorio: obterRelatorioPesquisaCliente,
     alterarStatus: alterarStatusPesquisaCliente,
-    obterDadosFormulario: obterDadosFormularioPesquisaCliente,
+    obterDadosFormulario:
+      obterDadosFormularioPesquisaCliente,
     excluir: excluirPesquisaCliente,
 
-    obterMinhas: obterMinhasPesquisasCliente,
-    obterMinhaPorId: obterMinhaPesquisaClientePorId,
-    obterMeuRelatorio: obterMeuRelatorioPesquisaCliente,
+    obterMinhas:
+      obterMinhasPesquisasCliente,
+    obterMinhaPorId:
+      obterMinhaPesquisaClientePorId,
+    obterMeuRelatorio:
+      obterMeuRelatorioPesquisaCliente,
 
-    gerarConvites: gerarConvitesPesquisaCliente,
+    gerarConvites:
+      gerarConvitesPesquisaCliente,
+
+    obterDadosRelatorio:
+      obterDadosRelatorioPesquisasCliente,
   };
 
   static readonly respostasPesquisa = {

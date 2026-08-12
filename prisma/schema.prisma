@@ -46,21 +46,26 @@ model Cliente {
 }
 
 model ModeloPesquisa {
-  id           String            @id @default(cuid())
+  id           String             @id @default(cuid())
   titulo       String
   descricao    String?
-  ativo        Boolean           @default(true)
-  modeloPadrao Boolean           @default(false)
-  criadoEm     DateTime          @default(now())
-  atualizadoEm DateTime          @updatedAt
-  perguntas    Json              @default("[]")
+  tipo         TipoModuloPesquisa @default(CLIMA)
+  ativo        Boolean            @default(true)
+  modeloPadrao Boolean            @default(false)
+  criadoEm     DateTime           @default(now())
+  atualizadoEm DateTime           @updatedAt
+  perguntas    Json               @default("[]")
   pesquisas    PesquisaCliente[]
+
+  @@index([tipo])
+  @@index([ativo])
 }
 
 model PesquisaCliente {
   id           String                @id @default(cuid())
   clienteId    String
   modeloId     String
+  tipo         TipoModuloPesquisa    @default(CLIMA)
   titulo       String
   descricao    String?
   token        String                @unique
@@ -68,11 +73,17 @@ model PesquisaCliente {
   criadoEm     DateTime              @default(now())
   atualizadoEm DateTime              @updatedAt
   perguntas    Json                  @default("[]")
+
   convites     ConvitePesquisa[]
   cliente      Cliente               @relation(fields: [clienteId], references: [id])
   modelo       ModeloPesquisa        @relation(fields: [modeloId], references: [id])
   planosAcao   PlanoAcao[]
   respostas    RespostaPesquisa[]
+
+  @@index([tipo])
+  @@index([clienteId, tipo])
+  @@index([status])
+  @@index([criadoEm])
 }
 
 model RespostaPesquisa {
@@ -175,6 +186,9 @@ model Denuncia {
   protocolo                     String                          @unique
   titulo                        String
   descricao                     String
+
+  pessoaOuSetorDenunciado        String?
+
   localOcorrido                 String?
   dataOcorrido                  DateTime?
   anonima                       Boolean                         @default(true)
@@ -311,18 +325,22 @@ model DenunciaVisualizador {
 
 
 model PerguntaCanalDenuncia {
-  id           String                          @id @default(cuid())
-  enunciado    String
-  descricao    String?
-  tipo         TipoPerguntaCanalDenuncia       @default(TEXTO)
-  obrigatoria  Boolean                         @default(false)
-  opcoes       Json                            @default("[]")
-  ativo        Boolean                         @default(true)
-  ordem        Int                             @default(0)
-  criadoEm     DateTime                        @default(now())
-  atualizadoEm DateTime                        @updatedAt
-  clientes     PerguntaCanalDenunciaCliente[]
-  respostas    RespostaPerguntaCanalDenuncia[]
+  id                  String                    @id @default(cuid())
+  enunciado           String
+  descricao           String?
+  tipo                TipoPerguntaCanalDenuncia @default(TEXTO)
+  obrigatoria         Boolean                   @default(false)
+
+  abrirComplementoSim Boolean                   @default(false)
+
+  opcoes              Json                      @default("[]")
+  ativo               Boolean                   @default(true)
+  ordem               Int                       @default(0)
+  criadoEm            DateTime                  @default(now())
+  atualizadoEm        DateTime                  @updatedAt
+
+  clientes            PerguntaCanalDenunciaCliente[]
+  respostas           RespostaPerguntaCanalDenuncia[]
 
   @@index([ativo, ordem])
 }
@@ -341,15 +359,19 @@ model PerguntaCanalDenunciaCliente {
 }
 
 model RespostaPerguntaCanalDenuncia {
-  id                String                    @id @default(cuid())
+  id                String                     @id @default(cuid())
   denunciaId        String
   perguntaId        String?
   perguntaEnunciado String
   perguntaTipo      TipoPerguntaCanalDenuncia
   resposta          Json
-  criadoEm          DateTime                  @default(now())
-  denuncia          Denuncia                  @relation(fields: [denunciaId], references: [id], onDelete: Cascade)
-  pergunta          PerguntaCanalDenuncia?    @relation(fields: [perguntaId], references: [id])
+
+  complemento       String?
+
+  criadoEm          DateTime                   @default(now())
+
+  denuncia          Denuncia                   @relation(fields: [denunciaId], references: [id], onDelete: Cascade)
+  pergunta          PerguntaCanalDenuncia?     @relation(fields: [perguntaId], references: [id])
 
   @@index([denunciaId])
   @@index([perguntaId])
@@ -462,4 +484,12 @@ enum TipoPerguntaCanalDenuncia {
   TEXTO_LONGO
   SIM_NAO
   MULTIPLA_ESCOLHA
+}
+
+
+
+enum TipoModuloPesquisa {
+  CLIMA
+  DIAGNOSTICO_ORGANIZACIONAL
+  AVALIACAO_PSICOSSOCIAL
 }

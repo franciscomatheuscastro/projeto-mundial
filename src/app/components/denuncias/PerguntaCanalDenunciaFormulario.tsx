@@ -46,6 +46,13 @@ export default function PerguntaCanalDenunciaFormulario({
       perguntaInicial?.obrigatoria || false
     );
 
+  const [
+    abrirComplementoSim,
+    setAbrirComplementoSim,
+  ] = useState(
+    perguntaInicial?.abrirComplementoSim ?? false
+  );
+
   const [ativo, setAtivo] =
     useState(
       perguntaInicial?.ativo ?? true
@@ -182,6 +189,10 @@ export default function PerguntaCanalDenunciaFormulario({
 
         tipo,
         obrigatoria,
+        abrirComplementoSim:
+          tipo === "SIM_NAO"
+            ? abrirComplementoSim
+            : false,
         ativo,
         ordem,
 
@@ -277,12 +288,16 @@ export default function PerguntaCanalDenunciaFormulario({
               <select
                 value={tipo}
                 disabled={salvando}
-                onChange={(event) =>
-                  setTipo(
-                    event.target
-                      .value as TipoPerguntaCanalDenuncia
-                  )
-                }
+                onChange={(event) => {
+                  const novoTipo =
+                    event.target.value as TipoPerguntaCanalDenuncia;
+
+                  setTipo(novoTipo);
+
+                  if (novoTipo !== "SIM_NAO") {
+                    setAbrirComplementoSim(false);
+                  }
+                }}
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
               >
                 <option value="TEXTO">
@@ -344,6 +359,32 @@ export default function PerguntaCanalDenunciaFormulario({
                   className="w-full resize-y rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
                 />
               </div>
+            )}
+
+            {tipo === "SIM_NAO" && (
+              <label className="md:col-span-2 flex cursor-pointer items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                <input
+                  type="checkbox"
+                  checked={abrirComplementoSim}
+                  disabled={salvando}
+                  onChange={(event) =>
+                    setAbrirComplementoSim(
+                      event.target.checked
+                    )
+                  }
+                  className="mt-1 h-4 w-4 accent-blue-600"
+                />
+
+                <span>
+                  <strong className="block text-sm text-blue-900">
+                    Abrir campo de texto quando a resposta for “Sim”
+                  </strong>
+
+                  <span className="mt-1 block text-xs leading-5 text-blue-700">
+                    Ao selecionar “Sim”, o denunciante poderá complementar a resposta com um texto livre. Ao selecionar “Não”, nenhum campo adicional será exibido.
+                  </span>
+                </span>
+              </label>
             )}
 
             <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-4">
