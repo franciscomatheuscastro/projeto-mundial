@@ -9,8 +9,10 @@ import {
   signOut,
 } from "@/src/auth";
 
+
 export async function MenuCliente() {
-  const session = await auth();
+  const session =
+    await auth();
 
   const perfil = (
     session?.user as
@@ -20,13 +22,16 @@ export async function MenuCliente() {
       | undefined
   )?.perfil;
 
+
   async function sair() {
     "use server";
 
     await signOut({
-      redirectTo: "/login",
+      redirectTo:
+        "/login",
     });
   }
+
 
   return (
     <>
@@ -44,6 +49,7 @@ export async function MenuCliente() {
           </h1>
         </div>
 
+
         <details className="group relative">
           <summary className="cursor-pointer list-none rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700">
             Menu
@@ -51,12 +57,17 @@ export async function MenuCliente() {
 
           <div className="absolute right-0 mt-3 max-h-[calc(100vh-90px)] w-[min(18rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl ring-1 ring-slate-200 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <MenuMobile
-              sair={sair}
-              perfil={perfil}
+              sair={
+                sair
+              }
+              perfil={
+                perfil
+              }
             />
           </div>
         </details>
       </header>
+
 
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-72 overflow-hidden bg-gradient-to-b from-slate-950 via-blue-900 to-cyan-700 text-white shadow-xl lg:block">
         <div className="flex h-full flex-col">
@@ -73,18 +84,26 @@ export async function MenuCliente() {
             </h1>
           </div>
 
+
           <div className="relative min-h-0 flex-1">
             <div className="h-full overflow-y-auto px-5 pb-24 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <MenuNavegacao
-                perfil={perfil}
+                perfil={
+                  perfil
+                }
               />
             </div>
 
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-cyan-700 via-cyan-700/90 to-transparent" />
           </div>
 
+
           <div className="shrink-0 border-t border-white/10 bg-cyan-700/95 px-5 py-4 backdrop-blur-sm">
-            <form action={sair}>
+            <form
+              action={
+                sair
+              }
+            >
               <button
                 type="submit"
                 className="w-full rounded-xl border border-white/20 bg-white/95 px-4 py-3 text-sm font-bold text-blue-700 shadow-sm transition hover:bg-white hover:shadow-md"
@@ -99,6 +118,7 @@ export async function MenuCliente() {
   );
 }
 
+
 function MenuNavegacao({
   perfil,
   mobile = false,
@@ -107,50 +127,66 @@ function MenuNavegacao({
   mobile?: boolean;
 }) {
   const administradorCliente =
-    perfil === PerfilUsuario.CLIENTE;
+    perfil ===
+    PerfilUsuario.CLIENTE;
 
   const membroComite =
     perfil ===
     PerfilUsuario.COMITE_CLIENTE;
 
+
   return (
     <nav
       className={`flex flex-col gap-7 ${
-        mobile ? "text-slate-900" : ""
+        mobile
+          ? "text-slate-900"
+          : ""
       }`}
     >
       <GrupoMenu
         titulo="Visão geral"
-        mobile={mobile}
+        mobile={
+          mobile
+        }
       >
         <MenuLink
           href="/painel-controle"
-          mobile={mobile}
+          mobile={
+            mobile
+          }
         >
           Dashboard
         </MenuLink>
 
+
         {administradorCliente && (
           <>
+
             <MenuLink
-              href="/meus-agendamentos"
-              mobile={mobile}
+              href="/meus-colaboradores"
+              mobile={
+                mobile
+              }
             >
-              Agendamentos
-            </MenuLink>
+              Colaboradores
+            </MenuLink>            
 
             <MenuLink
               href="/meus-planos-acao"
-              mobile={mobile}
+              mobile={
+                mobile
+              }
             >
               Planos de ação
             </MenuLink>
 
             <MenuLink
-              href="/meus-colaboradores"
-              mobile={mobile}
+              href="/meus-agendamentos"
+              mobile={
+                mobile
+              }
             >
-              Colaboradores
+              Agendamentos
             </MenuLink>
 
             
@@ -158,59 +194,110 @@ function MenuNavegacao({
         )}
       </GrupoMenu>
 
+
       {(administradorCliente ||
         membroComite) && (
         <GrupoMenu
           titulo="Canal de Denúncias"
-          mobile={mobile}
+          mobile={
+            mobile
+          }
         >
           <MenuLink
             href="/minhas-denuncias"
-            mobile={mobile}
+            mobile={
+              mobile
+            }
           >
             Denúncias
           </MenuLink>
         </GrupoMenu>
       )}
 
+
       {administradorCliente && (
-        <GrupoMenu
-          titulo="Pesquisa de Clima"
-          mobile={mobile}
-        >
-          <MenuLink
-            href="/minhas-pesquisas"
-            mobile={mobile}
+        <>
+          <GrupoMenu
+            titulo="Pesquisa de Clima"
+            mobile={
+              mobile
+            }
           >
-            Pesquisas
-          </MenuLink>
-        </GrupoMenu>
+            <MenuLink
+              href="/minhas-pesquisas"
+              mobile={
+                mobile
+              }
+            >
+              Pesquisas
+            </MenuLink>
+          </GrupoMenu>
+
+
+          <GrupoMenu
+            titulo="Diagnóstico Organizacional"
+            mobile={
+              mobile
+            }
+          >
+            <MenuLink
+              href="/meus-diagnosticos"
+              mobile={
+                mobile
+              }
+            >
+              Diagnósticos
+            </MenuLink>
+          </GrupoMenu>
+
+
+          <GrupoMenu
+            titulo="Avaliação Psicossocial"
+            mobile={
+              mobile
+            }
+          >
+            <MenuLink
+              href="/minhas-avaliacoes-psicossociais"
+              mobile={
+                mobile
+              }
+            >
+              Avaliações
+            </MenuLink>
+          </GrupoMenu>
+        </>
       )}
 
-      <GrupoMenu titulo="Suporte" mobile={mobile}>
 
+      <GrupoMenu
+        titulo="Suporte"
+        mobile={
+          mobile
+        }
+      >
         <MenuLink
           href="/minha-conta"
-          mobile={mobile}
+          mobile={
+            mobile
+          }
         >
           Minha conta
         </MenuLink>
-        
+
         <MenuLink
           href="/minha-central-ajuda"
-          mobile={mobile}
+          mobile={
+            mobile
+          }
         >
           Central de ajuda
         </MenuLink>
-
-        
-
       </GrupoMenu>
-
-      
     </nav>
   );
 }
+
 
 function MenuMobile({
   sair,
@@ -222,12 +309,16 @@ function MenuMobile({
   return (
     <div>
       <MenuNavegacao
-        perfil={perfil}
+        perfil={
+          perfil
+        }
         mobile
       />
 
       <form
-        action={sair}
+        action={
+          sair
+        }
         className="mt-7 border-t border-slate-200 pt-4"
       >
         <button
@@ -241,13 +332,15 @@ function MenuMobile({
   );
 }
 
+
 function GrupoMenu({
   titulo,
   children,
   mobile = false,
 }: {
   titulo: string;
-  children: React.ReactNode;
+  children:
+    React.ReactNode;
   mobile?: boolean;
 }) {
   return (
@@ -259,7 +352,9 @@ function GrupoMenu({
             : "text-blue-100/80"
         }`}
       >
-        {titulo}
+        {
+          titulo
+        }
       </p>
 
       <div
@@ -269,11 +364,14 @@ function GrupoMenu({
             : "border-white/20"
         }`}
       >
-        {children}
+        {
+          children
+        }
       </div>
     </section>
   );
 }
+
 
 function MenuLink({
   href,
@@ -281,19 +379,24 @@ function MenuLink({
   mobile = false,
 }: {
   href: string;
-  children: React.ReactNode;
+  children:
+    React.ReactNode;
   mobile?: boolean;
 }) {
   return (
     <Link
-      href={href}
+      href={
+        href
+      }
       className={`block rounded-xl px-3 py-2.5 text-sm font-medium transition ${
         mobile
           ? "text-slate-700 hover:bg-slate-100 hover:text-slate-950"
           : "text-blue-50/90 hover:bg-white/10 hover:text-white"
       }`}
     >
-      {children}
+      {
+        children
+      }
     </Link>
   );
 }

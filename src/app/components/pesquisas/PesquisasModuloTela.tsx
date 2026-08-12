@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import {
   FormEvent,
+  ReactNode,
   useEffect,
   useMemo,
   useState,
@@ -22,6 +23,7 @@ import {
   useModuloPesquisa,
 } from "@/src/app/data/hooks/useModuloPesquisa";
 
+
 type Props = {
   modo:
     | "lista"
@@ -38,11 +40,18 @@ type Props = {
   baseHref:
     string;
 
-  pesquisaId?: string;
+  pesquisaId?:
+    string;
+
+  contexto?:
+    | "mundial"
+    | "cliente";
 };
+
 
 const inputClass =
   "min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
+
 
 function montarLink(
   token?: string | null
@@ -61,27 +70,36 @@ function montarLink(
   return `${window.location.origin}/pesquisa/${token}`;
 }
 
+
 export default function PesquisasModuloTela({
   modo,
   tipo,
   tituloModulo,
   baseHref,
   pesquisaId,
+  contexto = "mundial",
 }: Props) {
   const router =
     useRouter();
+
+  const mundial =
+    contexto ===
+    "mundial";
 
   const {
     pesquisas,
     pesquisaSelecionada,
     relatorio,
     dadosFormulario,
+
     carregando,
     processando,
     erro,
+
     carregarDadosFormulario,
     carregarPesquisaPorId,
     carregarRelatorio,
+
     salvar,
     excluir,
     alterarStatus,
@@ -89,8 +107,10 @@ export default function PesquisasModuloTela({
   } =
     useModuloPesquisa(
       tipo,
-      modo === "lista"
+      modo === "lista",
+      contexto
     );
+
 
   const [
     titulo,
@@ -122,9 +142,11 @@ export default function PesquisasModuloTela({
   ] =
     useState(30);
 
+
   useEffect(() => {
     if (
-      modo === "nova"
+      modo === "nova" &&
+      mundial
     ) {
       void carregarDadosFormulario();
     }
@@ -149,10 +171,12 @@ export default function PesquisasModuloTela({
   }, [
     modo,
     pesquisaId,
+    mundial,
     carregarDadosFormulario,
     carregarPesquisaPorId,
     carregarRelatorio,
   ]);
+
 
   const linkPublico =
     useMemo(
@@ -165,10 +189,15 @@ export default function PesquisasModuloTela({
       ]
     );
 
+
   async function enviar(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
+
+    if (!mundial) {
+      return;
+    }
 
     const resultado =
       await salvar({
@@ -190,16 +219,18 @@ export default function PesquisasModuloTela({
     router.refresh();
   }
 
+
   async function excluirAtual(
     id: string
   ) {
-    const confirmado =
-      confirm(
-        "Excluir esta aplicação e todas as respostas?"
-      );
+    if (!mundial) {
+      return;
+    }
 
     if (
-      !confirmado
+      !confirm(
+        "Excluir esta aplicação e todas as respostas?"
+      )
     ) {
       return;
     }
@@ -215,8 +246,10 @@ export default function PesquisasModuloTela({
     router.refresh();
   }
 
+
   async function alternarStatus() {
     if (
+      !mundial ||
       !pesquisaSelecionada
     ) {
       return;
@@ -232,16 +265,12 @@ export default function PesquisasModuloTela({
       pesquisaSelecionada.id,
       novo
     );
-
-    await carregarPesquisaPorId(
-      pesquisaSelecionada.id
-    );
-
-    router.refresh();
   }
+
 
   async function gerarLinks() {
     if (
+      !mundial ||
       !pesquisaSelecionada
     ) {
       return;
@@ -258,22 +287,16 @@ export default function PesquisasModuloTela({
         )
       );
 
-    setQuantidadeConvites(
-      quantidade
-    );
-
     await gerarConvites(
       pesquisaSelecionada.id,
       quantidade
     );
-
-    await carregarPesquisaPorId(
-      pesquisaSelecionada.id
-    );
-
-    router.refresh();
   }
 
+
+  /*
+   * LISTA
+   */
   if (
     modo === "lista"
   ) {
@@ -298,9 +321,11 @@ export default function PesquisasModuloTela({
           item
         ) =>
           total +
-          item.totalRespostas,
+          (item.totalRespostas ||
+            0),
         0
       );
+
 
     return (
       <main className="min-h-screen bg-slate-100">
@@ -308,23 +333,36 @@ export default function PesquisasModuloTela({
           modulo={
             tituloModulo
           }
-          titulo="Aplicações"
-          descricao={`Gerencie questionários e resultados de ${tituloModulo.toLowerCase()}.`}
+          titulo={
+            mundial
+              ? "Aplicações"
+              : tituloModulo
+          }
+          descricao={
+            mundial
+              ? `Gerencie questionários e resultados de ${tituloModulo.toLowerCase()}.`
+              : `Acompanhe os resultados de ${tituloModulo.toLowerCase()} da sua empresa.`
+          }
         >
-          <Link
-            href={`${baseHref}/relatorio`}
-            className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700"
-          >
-            Relatório
-          </Link>
+          {mundial && (
+            <>
+              <Link
+                href={`${baseHref}/relatorio`}
+                className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+              >
+                Relatório
+              </Link>
 
-          <Link
-            href={`${baseHref}/nova`}
-            className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white"
-          >
-            + Nova aplicação
-          </Link>
+              <Link
+                href={`${baseHref}/nova`}
+                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
+              >
+                + Nova aplicação
+              </Link>
+            </>
+          )}
         </Header>
+
 
         <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <Erro
@@ -332,6 +370,7 @@ export default function PesquisasModuloTela({
               erro
             }
           />
+
 
           <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Card
@@ -363,17 +402,20 @@ export default function PesquisasModuloTela({
             />
           </div>
 
+
           <div className="overflow-x-auto rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-            <table className="w-full min-w-[900px]">
+            <table className="w-full min-w-[850px]">
               <thead className="bg-slate-50">
                 <tr>
                   <Th>
                     Aplicação
                   </Th>
 
-                  <Th>
-                    Cliente
-                  </Th>
+                  {mundial && (
+                    <Th>
+                      Cliente
+                    </Th>
+                  )}
 
                   <Th>
                     Modelo
@@ -397,7 +439,9 @@ export default function PesquisasModuloTela({
                 {carregando ? (
                   <Vazia
                     colSpan={
-                      6
+                      mundial
+                        ? 6
+                        : 5
                     }
                     texto="Carregando..."
                   />
@@ -405,9 +449,11 @@ export default function PesquisasModuloTela({
                   0 ? (
                   <Vazia
                     colSpan={
-                      6
+                      mundial
+                        ? 6
+                        : 5
                     }
-                    texto="Nenhuma aplicação cadastrada."
+                    texto="Nenhuma aplicação encontrada."
                   />
                 ) : (
                   pesquisas.map(
@@ -426,15 +472,19 @@ export default function PesquisasModuloTela({
                           }
                         </td>
 
-                        <td className="px-4 py-4 text-sm text-slate-700">
-                          {
-                            pesquisa.cliente.nome
-                          }
-                        </td>
+                        {mundial && (
+                          <td className="px-4 py-4 text-sm text-slate-700">
+                            {
+                              pesquisa.cliente
+                                ?.nome
+                            }
+                          </td>
+                        )}
 
                         <td className="px-4 py-4 text-sm text-slate-700">
                           {
-                            pesquisa.modelo.titulo
+                            pesquisa.modelo
+                              ?.titulo
                           }
                         </td>
 
@@ -455,32 +505,34 @@ export default function PesquisasModuloTela({
                         <td className="px-4 py-4 text-right">
                           <Link
                             href={`${baseHref}/${pesquisa.id}`}
-                            className="text-sm font-bold text-blue-600"
+                            className="text-sm font-bold text-blue-600 hover:text-blue-700"
                           >
                             Abrir
                           </Link>
 
                           <Link
                             href={`${baseHref}/${pesquisa.id}/relatorio`}
-                            className="ml-4 text-sm font-bold text-slate-700"
+                            className="ml-4 text-sm font-bold text-slate-700 hover:text-slate-900"
                           >
                             Relatório
                           </Link>
 
-                          <button
-                            type="button"
-                            disabled={
-                              processando
-                            }
-                            onClick={() =>
-                              void excluirAtual(
-                                pesquisa.id
-                              )
-                            }
-                            className="ml-4 text-sm font-bold text-red-600"
-                          >
-                            Excluir
-                          </button>
+                          {mundial && (
+                            <button
+                              type="button"
+                              disabled={
+                                processando
+                              }
+                              onClick={() =>
+                                void excluirAtual(
+                                  pesquisa.id
+                                )
+                              }
+                              className="ml-4 text-sm font-bold text-red-600 hover:text-red-700 disabled:opacity-50"
+                            >
+                              Excluir
+                            </button>
+                          )}
                         </td>
                       </tr>
                     )
@@ -494,9 +546,37 @@ export default function PesquisasModuloTela({
     );
   }
 
+
+  /*
+   * NOVA
+   */
   if (
     modo === "nova"
   ) {
+    if (!mundial) {
+      return (
+        <main className="min-h-screen bg-slate-100">
+          <Header
+            modulo={
+              tituloModulo
+            }
+            titulo="Acesso restrito"
+            descricao="A criação de aplicações é realizada pela Mundial RH."
+          >
+            <Link
+              href={
+                baseHref
+              }
+              className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700"
+            >
+              Voltar
+            </Link>
+          </Header>
+        </main>
+      );
+    }
+
+
     return (
       <main className="min-h-screen bg-slate-100">
         <Header
@@ -515,6 +595,7 @@ export default function PesquisasModuloTela({
             Voltar
           </Link>
         </Header>
+
 
         <section className="mx-auto max-w-3xl px-4 py-6">
           <form
@@ -602,7 +683,9 @@ export default function PesquisasModuloTela({
                     }{" "}
                     (
                     {
-                      modelo.perguntas.length
+                      modelo.perguntas
+                        ?.length ||
+                      0
                     }{" "}
                     perguntas)
                   </option>
@@ -629,6 +712,7 @@ export default function PesquisasModuloTela({
               )}
 
             <button
+              type="submit"
               disabled={
                 processando ||
                 !titulo ||
@@ -647,26 +731,13 @@ export default function PesquisasModuloTela({
     );
   }
 
+
+  /*
+   * DETALHE
+   */
   if (
     modo === "detalhe"
   ) {
-    const convites =
-      pesquisaSelecionada?.convites ||
-      [];
-
-    const totalConvites =
-      pesquisaSelecionada?.totalConvites ??
-      convites.length;
-
-    const totalConvitesRespondidos =
-      pesquisaSelecionada?.totalConvitesRespondidos ??
-      convites.filter(
-        (
-          convite: any
-        ) =>
-          convite.respondido
-      ).length;
-
     return (
       <main className="min-h-screen bg-slate-100">
         <Header
@@ -674,12 +745,16 @@ export default function PesquisasModuloTela({
             tituloModulo
           }
           titulo={
-            pesquisaSelecionada?.titulo ||
+            pesquisaSelecionada
+              ?.titulo ||
             "Carregando..."
           }
           descricao={
             pesquisaSelecionada
-              ? `${pesquisaSelecionada.cliente.nome} · ${pesquisaSelecionada.modelo.titulo}`
+              ? mundial
+                ? `${pesquisaSelecionada.cliente?.nome || ""} · ${pesquisaSelecionada.modelo?.titulo || ""}`
+                : pesquisaSelecionada.modelo?.titulo ||
+                  tituloModulo
               : "Carregando aplicação..."
           }
         >
@@ -693,45 +768,51 @@ export default function PesquisasModuloTela({
           </Link>
         </Header>
 
-        <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[380px_1fr]">
-          <div className="lg:col-span-2">
-            <Erro
-              mensagem={
-                erro
-              }
-            />
-          </div>
 
-          {!pesquisaSelecionada ||
-          carregando ? (
-            <div className="lg:col-span-2 rounded-3xl bg-white p-10 text-center">
-              Carregando...
+        <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[380px_1fr]">
+          <Erro
+            mensagem={
+              erro
+            }
+          />
+
+          {!pesquisaSelecionada ? (
+            <div className="rounded-3xl bg-white p-10 text-center lg:col-span-2">
+              {carregando
+                ? "Carregando..."
+                : "Aplicação não encontrada."}
             </div>
           ) : (
             <>
               <aside className="h-fit rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                <h2 className="mb-4 text-lg font-black">
-                  Painel
+                <h2 className="mb-4 text-lg font-black text-slate-900">
+                  {mundial
+                    ? "Painel"
+                    : "Resumo"}
                 </h2>
 
-                <div className="mb-4 break-all rounded-2xl bg-slate-50 p-4 text-sm">
-                  {
-                    linkPublico
-                  }
-                </div>
 
-                {linkPublico && (
-                  <a
-                    href={
-                      linkPublico
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mb-3 block rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-bold text-white"
-                  >
-                    Abrir questionário
-                  </a>
+                {mundial && (
+                  <>
+                    <div className="mb-4 break-all rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+                      {
+                        linkPublico
+                      }
+                    </div>
+
+                    <a
+                      href={
+                        linkPublico
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mb-3 block rounded-2xl bg-blue-600 px-4 py-3 text-center text-sm font-bold text-white"
+                    >
+                      Abrir questionário
+                    </a>
+                  </>
                 )}
+
 
                 <Link
                   href={`${baseHref}/${pesquisaSelecionada.id}/relatorio`}
@@ -740,90 +821,88 @@ export default function PesquisasModuloTela({
                   Ver relatório
                 </Link>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <Info
-                    titulo="Status"
-                    valor={
-                      pesquisaSelecionada.status
-                    }
-                  />
 
+                <div className="grid grid-cols-2 gap-3">
                   <Info
                     titulo="Respostas"
                     valor={String(
-                      pesquisaSelecionada.totalRespostas
+                      pesquisaSelecionada.totalRespostas ||
+                        0
                     )}
                   />
 
-                  <Info
-                    titulo="Convites"
-                    valor={String(
-                      totalConvites
-                    )}
-                  />
+                  {mundial && (
+                    <>
+                      <Info
+                        titulo="Convites"
+                        valor={String(
+                          pesquisaSelecionada.totalConvites ||
+                            0
+                        )}
+                      />
 
-                  <Info
-                    titulo="Respondidos"
-                    valor={String(
-                      totalConvitesRespondidos
-                    )}
-                  />
+                      <Info
+                        titulo="Respondidos"
+                        valor={String(
+                          pesquisaSelecionada.totalConvitesRespondidos ||
+                            0
+                        )}
+                      />
+                    </>
+                  )}
 
                   <Info
                     titulo="Perguntas"
                     valor={String(
-                      pesquisaSelecionada.perguntas.length
+                      pesquisaSelecionada.perguntas
+                        ?.length ||
+                        0
                     )}
                   />
 
-                  <Info
-                    titulo="Cliente"
-                    valor={
-                      pesquisaSelecionada.cliente.nome
-                    }
-                  />
+                  {!mundial && (
+                    <Info
+                      titulo="Status"
+                      valor={
+                        pesquisaSelecionada.status
+                      }
+                    />
+                  )}
                 </div>
 
-                <button
-                  type="button"
-                  disabled={
-                    processando
-                  }
-                  onClick={() =>
-                    void alternarStatus()
-                  }
-                  className={`mt-5 min-h-12 w-full rounded-2xl px-4 py-3 text-sm font-bold text-white disabled:opacity-60 ${
-                    pesquisaSelecionada.status ===
-                    StatusPesquisaCliente.ABERTA
-                      ? "bg-red-600 hover:bg-red-700"
-                      : "bg-green-600 hover:bg-green-700"
-                  }`}
-                >
-                  {pesquisaSelecionada.status ===
-                  StatusPesquisaCliente.ABERTA
-                    ? "Fechar aplicação"
-                    : "Reabrir aplicação"}
-                </button>
+
+                {mundial && (
+                  <button
+                    type="button"
+                    disabled={
+                      processando
+                    }
+                    onClick={() =>
+                      void alternarStatus()
+                    }
+                    className="mt-5 min-h-12 w-full rounded-2xl bg-slate-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+                  >
+                    {pesquisaSelecionada.status ===
+                    "ABERTA"
+                      ? "Fechar aplicação"
+                      : "Reabrir aplicação"}
+                  </button>
+                )}
               </aside>
 
+
               <div className="space-y-6">
-                <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-                  <div className="mb-4">
+                {mundial && (
+                  <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
                     <h2 className="text-lg font-black text-slate-900">
                       Links individuais
                     </h2>
 
                     <p className="mt-1 text-sm text-slate-500">
-                      Cada link individual só pode ser respondido uma vez.
+                      Cada link individual pode ser respondido uma única vez.
                     </p>
-                  </div>
 
-                  <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end">
-                    <div className="flex-1">
-                      <label className="mb-2 block text-sm font-semibold text-slate-700">
-                        Quantidade de links
-                      </label>
-
+                    <div className="mt-4 flex gap-3">
                       <input
                         type="number"
                         min={
@@ -839,14 +918,9 @@ export default function PesquisasModuloTela({
                           event
                         ) =>
                           setQuantidadeConvites(
-                            Math.min(
-                              500,
-                              Math.max(
-                                1,
-                                Number(
-                                  event.target.value
-                                ) || 1
-                              )
+                            Number(
+                              event.target
+                                .value
                             )
                           )
                         }
@@ -854,188 +928,135 @@ export default function PesquisasModuloTela({
                           inputClass
                         }
                       />
+
+                      <button
+                        type="button"
+                        disabled={
+                          processando
+                        }
+                        onClick={() =>
+                          void gerarLinks()
+                        }
+                        className="rounded-2xl bg-blue-600 px-5 font-bold text-white disabled:opacity-50"
+                      >
+                        {processando
+                          ? "Gerando..."
+                          : "Gerar"}
+                      </button>
                     </div>
 
-                    <button
-                      type="button"
-                      disabled={
-                        processando
-                      }
-                      onClick={() =>
-                        void gerarLinks()
-                      }
-                      className="min-h-12 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {processando
-                        ? "Gerando..."
-                        : "Gerar links"}
-                    </button>
-                  </div>
 
-                  {convites.length ===
-                  0 ? (
-                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
-                      Nenhum link individual foi gerado para esta aplicação.
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                      <table className="w-full min-w-[720px] border-collapse">
-                        <thead className="bg-slate-50">
-                          <tr>
-                            <Th>
-                              Participante
-                            </Th>
-
-                            <Th>
-                              Status
-                            </Th>
-
-                            <Th>
-                              Link
-                            </Th>
-                          </tr>
-                        </thead>
-
-                        <tbody>
-                          {convites.map(
-                            (
-                              convite: any
-                            ) => {
-                              const linkConvite =
-                                montarLink(
-                                  convite.token
-                                );
-
-                              return (
-                                <tr
-                                  key={
-                                    convite.id
-                                  }
-                                  className="border-t border-slate-100"
-                                >
-                                  <td className="px-4 py-4">
-                                    <div className="text-sm font-bold text-slate-900">
-                                      {convite.nome ||
-                                        "Participante"}
-                                    </div>
-
-                                    <div className="text-xs text-slate-500">
-                                      {convite.email ||
-                                        convite.setor ||
-                                        "Sem identificação"}
-                                    </div>
-                                  </td>
-
-                                  <td className="px-4 py-4">
-                                    <span
-                                      className={`rounded-full px-3 py-1 text-xs font-bold ${
-                                        convite.respondido
-                                          ? "bg-green-100 text-green-700"
-                                          : "bg-yellow-100 text-yellow-700"
-                                      }`}
-                                    >
-                                      {convite.respondido
-                                        ? "Respondido"
-                                        : "Pendente"}
-                                    </span>
-                                  </td>
-
-                                  <td className="px-4 py-4">
-                                    <div className="flex items-center gap-3">
-                                      <div className="max-w-[380px] truncate text-xs text-slate-500">
-                                        {
-                                          linkConvite
-                                        }
-                                      </div>
-
-                                      <a
-                                        href={
-                                          linkConvite
-                                        }
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="shrink-0 text-sm font-bold text-blue-600 hover:text-blue-800"
-                                      >
-                                        Abrir
-                                      </a>
-                                    </div>
-                                  </td>
-                                </tr>
+                    {pesquisaSelecionada
+                      .convites
+                      ?.length >
+                      0 && (
+                      <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
+                        {pesquisaSelecionada.convites.map(
+                          (
+                            convite: any
+                          ) => {
+                            const link =
+                              montarLink(
+                                convite.token
                               );
-                            }
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+
+                            return (
+                              <div
+                                key={
+                                  convite.id
+                                }
+                                className="flex items-center gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm text-slate-600">
+                                    {
+                                      link
+                                    }
+                                  </p>
+                                </div>
+
+                                <span
+                                  className={`rounded-full px-3 py-1 text-xs font-bold ${
+                                    convite.respondido
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-yellow-100 text-yellow-700"
+                                  }`}
+                                >
+                                  {convite.respondido
+                                    ? "Respondido"
+                                    : "Pendente"}
+                                </span>
+
+                                <a
+                                  href={
+                                    link
+                                  }
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm font-bold text-blue-600"
+                                >
+                                  Abrir
+                                </a>
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
 
                 <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                  <h2 className="mb-4 text-lg font-black">
+                  <h2 className="mb-4 text-lg font-black text-slate-900">
                     Perguntas
                   </h2>
 
                   <div className="space-y-3">
-                    {pesquisaSelecionada.perguntas.map(
-                      (
-                        pergunta: any
-                      ) => (
-                        <div
-                          key={
-                            pergunta.id
-                          }
-                          className="rounded-2xl border border-slate-200 p-4"
-                        >
-                          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                            Pergunta{" "}
-                            {
-                              pergunta.ordem
-                            }{" "}
-                            ·{" "}
-                            {
-                              pergunta.tipo
+                    {pesquisaSelecionada.perguntas
+                      ?.length >
+                    0 ? (
+                      pesquisaSelecionada.perguntas.map(
+                        (
+                          pergunta: any
+                        ) => (
+                          <div
+                            key={
+                              pergunta.id
                             }
-                          </p>
-
-                          <p className="mt-1 font-bold text-slate-900">
-                            {
-                              pergunta.titulo
-                            }
-                          </p>
-
-                          {pergunta.descricao && (
-                            <p className="mt-1 text-sm text-slate-500">
+                            className="rounded-2xl border border-slate-200 p-4"
+                          >
+                            <p className="text-xs font-bold text-slate-400">
+                              Pergunta{" "}
                               {
-                                pergunta.descricao
+                                pergunta.ordem
+                              }{" "}
+                              ·{" "}
+                              {
+                                pergunta.tipo
                               }
                             </p>
-                          )}
 
-                          {Array.isArray(
-                            pergunta.opcoes
-                          ) &&
-                            pergunta.opcoes.length >
-                              0 && (
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                {pergunta.opcoes.map(
-                                  (
-                                    opcao: string,
-                                    index: number
-                                  ) => (
-                                    <span
-                                      key={`${pergunta.id}-${index}`}
-                                      className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
-                                    >
-                                      {
-                                        opcao
-                                      }
-                                    </span>
-                                  )
-                                )}
-                              </div>
+                            <p className="mt-1 font-bold text-slate-900">
+                              {
+                                pergunta.titulo
+                              }
+                            </p>
+
+                            {pergunta.descricao && (
+                              <p className="mt-2 text-sm text-slate-500">
+                                {
+                                  pergunta.descricao
+                                }
+                              </p>
                             )}
-                        </div>
+                          </div>
+                        )
                       )
+                    ) : (
+                      <p className="text-sm text-slate-500">
+                        Nenhuma pergunta encontrada.
+                      </p>
                     )}
                   </div>
                 </div>
@@ -1047,6 +1068,10 @@ export default function PesquisasModuloTela({
     );
   }
 
+
+  /*
+   * RELATÓRIO INDIVIDUAL
+   */
   return (
     <main className="min-h-screen bg-slate-100">
       <Header
@@ -1056,7 +1081,9 @@ export default function PesquisasModuloTela({
         titulo="Relatório da aplicação"
         descricao={
           relatorio
-            ? `${relatorio.titulo} · ${relatorio.cliente.nome}`
+            ? mundial
+              ? `${relatorio.titulo} · ${relatorio.cliente?.nome || ""}`
+              : relatorio.titulo
             : "Carregando relatório..."
         }
       >
@@ -1068,17 +1095,19 @@ export default function PesquisasModuloTela({
         </Link>
       </Header>
 
-      <section className="mx-auto max-w-7xl px-4 py-6">
+
+      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <Erro
           mensagem={
             erro
           }
         />
 
-        {!relatorio ||
-        carregando ? (
-          <div className="rounded-3xl bg-white p-10 text-center">
-            Carregando...
+        {!relatorio ? (
+          <div className="rounded-3xl bg-white p-10 text-center shadow-sm ring-1 ring-slate-200">
+            {carregando
+              ? "Carregando..."
+              : "Relatório não encontrado."}
           </div>
         ) : (
           <>
@@ -1086,14 +1115,17 @@ export default function PesquisasModuloTela({
               <Card
                 titulo="Respostas"
                 valor={
-                  relatorio.totalRespostas
+                  relatorio.totalRespostas ||
+                  0
                 }
               />
 
               <Card
                 titulo="Perguntas"
                 valor={
-                  relatorio.perguntas.length
+                  relatorio.perguntas
+                    ?.length ||
+                  0
                 }
               />
 
@@ -1101,7 +1133,8 @@ export default function PesquisasModuloTela({
                 titulo="Média geral"
                 valor={
                   Number(
-                    relatorio.mediaGeral
+                    relatorio.mediaGeral ||
+                      0
                   ).toFixed(
                     1
                   )
@@ -1109,73 +1142,111 @@ export default function PesquisasModuloTela({
               />
             </div>
 
+
             <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-              <h2 className="mb-2 text-lg font-black">
-                Indicadores consolidados
+              <h2 className="mb-5 text-lg font-black text-slate-900">
+                Resultado por pergunta
               </h2>
 
-              <p className="mb-6 text-sm text-slate-500">
-                Resultados agregados para preservar a confidencialidade dos participantes.
-              </p>
 
-              <div className="space-y-5">
-                {relatorio.perguntasComResumo.map(
-                  (
-                    item: any,
-                    index: number
-                  ) => (
-                    <div
-                      key={
-                        item.pergunta.id
-                      }
-                      className="rounded-2xl border border-slate-200 p-5"
-                    >
-                      <div className="flex justify-between gap-4">
-                        <div>
-                          <p className="font-black">
-                            {index +
-                              1}
-                            .{" "}
-                            {
-                              item.pergunta.titulo
-                            }
-                          </p>
+              {relatorio.perguntasComResumo
+                ?.length >
+              0 ? (
+                <div className="space-y-4">
+                  {relatorio.perguntasComResumo.map(
+                    (
+                      item: any
+                    ) => (
+                      <div
+                        key={
+                          item.pergunta.id
+                        }
+                        className="rounded-2xl border border-slate-200 p-5"
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                              Pergunta{" "}
+                              {
+                                item.pergunta
+                                  .ordem
+                              }{" "}
+                              ·{" "}
+                              {
+                                item.pergunta
+                                  .tipo
+                              }
+                            </p>
 
-                          <p className="text-sm text-slate-500">
-                            {
-                              item.totalRespostas
-                            }{" "}
-                            respostas
-                          </p>
-                        </div>
+                            <h3 className="mt-1 font-bold text-slate-900">
+                              {
+                                item.pergunta
+                                  .titulo
+                              }
+                            </h3>
+                          </div>
 
-                        {item.pergunta.tipo ===
-                          "NOTA" && (
-                          <div className="rounded-xl bg-slate-50 px-4 py-2">
-                            <span className="text-xs text-slate-500">
-                              Média
+                          <div className="flex gap-2">
+                            <span className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600">
+                              {
+                                item.totalRespostas
+                              }{" "}
+                              respostas
                             </span>
 
-                            <strong className="block text-xl">
-                              {Number(
-                                item.media
-                              ).toFixed(
-                                1
-                              )}
-                            </strong>
+                            {item.pergunta
+                              .tipo ===
+                              "NOTA" && (
+                              <span className="rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">
+                                Média{" "}
+                                {Number(
+                                  item.media ||
+                                    0
+                                ).toFixed(
+                                  1
+                                )}
+                              </span>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </div>
 
-                      <Distribuicao
-                        respostas={
+
+                        {item.pergunta
+                          .tipo !==
+                          "NOTA" &&
                           item.respostas
-                        }
-                      />
-                    </div>
-                  )
-                )}
-              </div>
+                            ?.length >
+                            0 && (
+                            <div className="mt-4 space-y-2">
+                              {item.respostas.map(
+                                (
+                                  resposta: any,
+                                  index: number
+                                ) => (
+                                  <div
+                                    key={
+                                      resposta.id ||
+                                      index
+                                    }
+                                    className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700"
+                                  >
+                                    {
+                                      resposta.valor
+                                    }
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          )}
+                      </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  Ainda não existem respostas para esta aplicação.
+                </p>
+              )}
             </div>
           </>
         )}
@@ -1184,91 +1255,6 @@ export default function PesquisasModuloTela({
   );
 }
 
-function Distribuicao({
-  respostas,
-}: {
-  respostas: {
-    valor: string;
-  }[];
-}) {
-  const mapa =
-    new Map<
-      string,
-      number
-    >();
-
-  respostas.forEach(
-    (
-      item
-    ) => {
-      const valor =
-        item.valor ||
-        "Sem resposta";
-
-      mapa.set(
-        valor,
-        (mapa.get(
-          valor
-        ) ||
-          0) +
-          1
-      );
-    }
-  );
-
-  return (
-    <div className="mt-4 space-y-2">
-      {Array.from(
-        mapa.entries()
-      ).map(
-        ([
-          valor,
-          quantidade,
-        ]) => {
-          const percentual =
-            respostas.length >
-            0
-              ? (quantidade /
-                  respostas.length) *
-                100
-              : 0;
-
-          return (
-            <div
-              key={
-                valor
-              }
-            >
-              <div className="flex justify-between text-sm">
-                <span>
-                  {
-                    valor
-                  }
-                </span>
-
-                <strong>
-                  {percentual.toFixed(
-                    1
-                  )}
-                  %
-                </strong>
-              </div>
-
-              <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-2 rounded-full bg-blue-600"
-                  style={{
-                    width: `${percentual}%`,
-                  }}
-                />
-              </div>
-            </div>
-          );
-        }
-      )}
-    </div>
-  );
-}
 
 function Header({
   modulo,
@@ -1279,19 +1265,19 @@ function Header({
   modulo: string;
   titulo: string;
   descricao: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }) {
   return (
-    <header className="bg-white px-4 py-5 shadow-sm sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <header className="border-b border-slate-200 bg-white">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
+          <p className="text-xs font-black uppercase tracking-[0.25em] text-blue-600">
             {
               modulo
             }
           </p>
 
-          <h1 className="mt-1 text-2xl font-black text-slate-900">
+          <h1 className="mt-2 text-2xl font-black text-slate-900">
             {
               titulo
             }
@@ -1304,31 +1290,182 @@ function Header({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          {
-            children
-          }
-        </div>
+        {children && (
+          <div className="flex flex-wrap gap-3">
+            {
+              children
+            }
+          </div>
+        )}
       </div>
     </header>
   );
 }
 
+
+function Card({
+  titulo,
+  valor,
+}: {
+  titulo: string;
+  valor:
+    | string
+    | number;
+}) {
+  return (
+    <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <p className="text-sm font-bold text-slate-500">
+        {
+          titulo
+        }
+      </p>
+
+      <p className="mt-2 text-3xl font-black text-slate-900">
+        {
+          valor
+        }
+      </p>
+    </div>
+  );
+}
+
+
+function Info({
+  titulo,
+  valor,
+}: {
+  titulo: string;
+  valor: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-slate-50 p-4">
+      <p className="text-xs font-bold text-slate-500">
+        {
+          titulo
+        }
+      </p>
+
+      <p className="mt-1 break-words font-black text-slate-900">
+        {
+          valor
+        }
+      </p>
+    </div>
+  );
+}
+
+
+function Status({
+  valor,
+}: {
+  valor: string;
+}) {
+  const classe =
+    valor === "ABERTA"
+      ? "bg-green-100 text-green-700"
+      : valor === "FECHADA"
+        ? "bg-slate-200 text-slate-700"
+        : "bg-yellow-100 text-yellow-700";
+
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-black ${classe}`}
+    >
+      {
+        valor
+      }
+    </span>
+  );
+}
+
+
+function Erro({
+  mensagem,
+}: {
+  mensagem?: string | null;
+}) {
+  if (!mensagem) {
+    return null;
+  }
+
+  return (
+    <div className="mb-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+      {
+        mensagem
+      }
+    </div>
+  );
+}
+
+
+function Th({
+  children,
+  direita = false,
+}: {
+  children: ReactNode;
+  direita?: boolean;
+}) {
+  return (
+    <th
+      className={`px-4 py-4 text-left text-sm font-bold text-slate-600 ${
+        direita
+          ? "text-right"
+          : ""
+      }`}
+    >
+      {
+        children
+      }
+    </th>
+  );
+}
+
+
+function Vazia({
+  colSpan,
+  texto,
+}: {
+  colSpan: number;
+  texto: string;
+}) {
+  return (
+    <tr>
+      <td
+        colSpan={
+          colSpan
+        }
+        className="px-6 py-12 text-center text-sm text-slate-500"
+      >
+        {
+          texto
+        }
+      </td>
+    </tr>
+  );
+}
+
+
 function Campo({
   label,
   value,
   onChange,
-}: any) {
+}: {
+  label: string;
+  value: string;
+  onChange:
+    (
+      valor: string
+    ) => void;
+}) {
   return (
-    <div className="mb-5">
-      <label className="mb-2 block text-sm font-semibold">
+    <label className="mb-5 block">
+      <span className="mb-2 block text-sm font-bold text-slate-700">
         {
           label
         }
-      </label>
+      </span>
 
       <input
-        required
         value={
           value
         }
@@ -1336,29 +1473,38 @@ function Campo({
           event
         ) =>
           onChange(
-            event.target.value
+            event.target
+              .value
           )
         }
         className={
           inputClass
         }
       />
-    </div>
+    </label>
   );
 }
+
 
 function Area({
   label,
   value,
   onChange,
-}: any) {
+}: {
+  label: string;
+  value: string;
+  onChange:
+    (
+      valor: string
+    ) => void;
+}) {
   return (
-    <div className="mb-5">
-      <label className="mb-2 block text-sm font-semibold">
+    <label className="mb-5 block">
+      <span className="mb-2 block text-sm font-bold text-slate-700">
         {
           label
         }
-      </label>
+      </span>
 
       <textarea
         rows={
@@ -1371,33 +1517,42 @@ function Area({
           event
         ) =>
           onChange(
-            event.target.value
+            event.target
+              .value
           )
         }
         className={
           inputClass
         }
       />
-    </div>
+    </label>
   );
 }
+
 
 function Select({
   label,
   value,
   onChange,
   children,
-}: any) {
+}: {
+  label: string;
+  value: string;
+  onChange:
+    (
+      valor: string
+    ) => void;
+  children: ReactNode;
+}) {
   return (
-    <div className="mb-5">
-      <label className="mb-2 block text-sm font-semibold">
+    <label className="mb-5 block">
+      <span className="mb-2 block text-sm font-bold text-slate-700">
         {
           label
         }
-      </label>
+      </span>
 
       <select
-        required
         value={
           value
         }
@@ -1405,7 +1560,8 @@ function Select({
           event
         ) =>
           onChange(
-            event.target.value
+            event.target
+              .value
           )
         }
         className={
@@ -1416,155 +1572,6 @@ function Select({
           children
         }
       </select>
-    </div>
-  );
-}
-
-function Card({
-  titulo,
-  valor,
-}: {
-  titulo: string;
-
-  valor:
-    | string
-    | number;
-}) {
-  return (
-    <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-      <p className="text-sm font-semibold text-slate-500">
-        {
-          titulo
-        }
-      </p>
-
-      <strong className="mt-2 block text-3xl font-black">
-        {
-          valor
-        }
-      </strong>
-    </div>
-  );
-}
-
-function Info({
-  titulo,
-  valor,
-}: {
-  titulo: string;
-  valor: string;
-}) {
-  return (
-    <div className="rounded-2xl bg-slate-50 p-3">
-      <p className="text-xs text-slate-500">
-        {
-          titulo
-        }
-      </p>
-
-      <strong className="break-words text-sm text-slate-900">
-        {
-          valor
-        }
-      </strong>
-    </div>
-  );
-}
-
-function Status({
-  valor,
-}: {
-  valor: string;
-}) {
-  const classes =
-    valor ===
-    "ABERTA"
-      ? "bg-green-100 text-green-700"
-      : valor ===
-        "FECHADA"
-      ? "bg-red-100 text-red-700"
-      : "bg-slate-100 text-slate-700";
-
-  return (
-    <span
-      className={`rounded-full px-3 py-1 text-xs font-bold ${classes}`}
-    >
-      {
-        valor
-      }
-    </span>
-  );
-}
-
-function Th({
-  children,
-  direita,
-}: {
-  children:
-    React.ReactNode;
-
-  direita?:
-    boolean;
-}) {
-  return (
-    <th
-      className={`px-4 py-3 text-sm font-bold text-slate-600 ${
-        direita
-          ? "text-right"
-          : "text-left"
-      }`}
-    >
-      {
-        children
-      }
-    </th>
-  );
-}
-
-function Vazia({
-  colSpan,
-  texto,
-}: {
-  colSpan:
-    number;
-
-  texto:
-    string;
-}) {
-  return (
-    <tr>
-      <td
-        colSpan={
-          colSpan
-        }
-        className="px-4 py-10 text-center text-sm text-slate-500"
-      >
-        {
-          texto
-        }
-      </td>
-    </tr>
-  );
-}
-
-function Erro({
-  mensagem,
-}: {
-  mensagem:
-    | string
-    | null;
-}) {
-  if (
-    !mensagem
-  ) {
-    return null;
-  }
-
-  return (
-    <div className="mb-4 rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">
-      {
-        mensagem
-      }
-    </div>
+    </label>
   );
 }

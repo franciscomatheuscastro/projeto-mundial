@@ -22,9 +22,22 @@ import {
   salvarPesquisaModulo,
 } from "@/src/backend/pesquisaCliente/acoesModuloPesquisa";
 
+import {
+  obterMinhasAplicacoesModulo,
+  obterMinhaAplicacaoModuloPorId,
+  obterMeuRelatorioModulo,
+} from "@/src/backend/pesquisaCliente/acoesModuloCliente";
+
+
+export type ContextoModuloPesquisa =
+  | "mundial"
+  | "cliente";
+
+
 export function useModuloPesquisa(
   tipo: TipoModuloPesquisa,
-  carregarInicial = true
+  carregarInicial = true,
+  contexto: ContextoModuloPesquisa = "mundial"
 ) {
   const [
     pesquisas,
@@ -79,6 +92,7 @@ export function useModuloPesquisa(
       string | null
     >(null);
 
+
   const tratarErro =
     useCallback(
       (
@@ -99,6 +113,7 @@ export function useModuloPesquisa(
       []
     );
 
+
   const carregarPesquisas =
     useCallback(
       async () => {
@@ -112,9 +127,14 @@ export function useModuloPesquisa(
           );
 
           const resultado =
-            await obterTodosModuloPesquisa(
-              tipo
-            );
+            contexto ===
+            "cliente"
+              ? await obterMinhasAplicacoesModulo(
+                  tipo
+                )
+              : await obterTodosModuloPesquisa(
+                  tipo
+                );
 
           setPesquisas(
             resultado
@@ -136,13 +156,24 @@ export function useModuloPesquisa(
       },
       [
         tipo,
+        contexto,
         tratarErro,
       ]
     );
 
+
   const carregarDadosFormulario =
     useCallback(
       async () => {
+        if (
+          contexto ===
+          "cliente"
+        ) {
+          throw new Error(
+            "O cliente não possui permissão para criar aplicações."
+          );
+        }
+
         try {
           setCarregando(
             true
@@ -177,9 +208,11 @@ export function useModuloPesquisa(
       },
       [
         tipo,
+        contexto,
         tratarErro,
       ]
     );
+
 
   const carregarPesquisaPorId =
     useCallback(
@@ -196,10 +229,16 @@ export function useModuloPesquisa(
           );
 
           const resultado =
-            await obterPesquisaModuloPorId(
-              id,
-              tipo
-            );
+            contexto ===
+            "cliente"
+              ? await obterMinhaAplicacaoModuloPorId(
+                  id,
+                  tipo
+                )
+              : await obterPesquisaModuloPorId(
+                  id,
+                  tipo
+                );
 
           setPesquisaSelecionada(
             resultado
@@ -221,9 +260,11 @@ export function useModuloPesquisa(
       },
       [
         tipo,
+        contexto,
         tratarErro,
       ]
     );
+
 
   const carregarRelatorio =
     useCallback(
@@ -240,10 +281,16 @@ export function useModuloPesquisa(
           );
 
           const resultado =
-            await obterRelatorioModuloPesquisa(
-              id,
-              tipo
-            );
+            contexto ===
+            "cliente"
+              ? await obterMeuRelatorioModulo(
+                  id,
+                  tipo
+                )
+              : await obterRelatorioModuloPesquisa(
+                  id,
+                  tipo
+                );
 
           setRelatorio(
             resultado
@@ -265,9 +312,11 @@ export function useModuloPesquisa(
       },
       [
         tipo,
+        contexto,
         tratarErro,
       ]
     );
+
 
   const salvar =
     useCallback(
@@ -279,6 +328,15 @@ export function useModuloPesquisa(
           modeloId: string;
         }
       ) => {
+        if (
+          contexto ===
+          "cliente"
+        ) {
+          throw new Error(
+            "O cliente não possui permissão para criar aplicações."
+          );
+        }
+
         try {
           setProcessando(
             true
@@ -307,15 +365,26 @@ export function useModuloPesquisa(
       },
       [
         tipo,
+        contexto,
         tratarErro,
       ]
     );
+
 
   const excluir =
     useCallback(
       async (
         id: string
       ) => {
+        if (
+          contexto ===
+          "cliente"
+        ) {
+          throw new Error(
+            "O cliente não possui permissão para excluir aplicações."
+          );
+        }
+
         try {
           setProcessando(
             true
@@ -353,9 +422,11 @@ export function useModuloPesquisa(
       },
       [
         tipo,
+        contexto,
         tratarErro,
       ]
     );
+
 
   const alterarStatus =
     useCallback(
@@ -363,6 +434,15 @@ export function useModuloPesquisa(
         id: string,
         status: StatusPesquisaCliente
       ) => {
+        if (
+          contexto ===
+          "cliente"
+        ) {
+          throw new Error(
+            "O cliente não possui permissão para alterar o status da aplicação."
+          );
+        }
+
         try {
           setProcessando(
             true
@@ -399,9 +479,11 @@ export function useModuloPesquisa(
       },
       [
         tipo,
+        contexto,
         tratarErro,
       ]
     );
+
 
   const gerarConvites =
     useCallback(
@@ -409,6 +491,15 @@ export function useModuloPesquisa(
         id: string,
         quantidade: number
       ) => {
+        if (
+          contexto ===
+          "cliente"
+        ) {
+          throw new Error(
+            "O cliente não possui permissão para gerar convites."
+          );
+        }
+
         try {
           setProcessando(
             true
@@ -445,9 +536,11 @@ export function useModuloPesquisa(
       },
       [
         tipo,
+        contexto,
         tratarErro,
       ]
     );
+
 
   useEffect(() => {
     if (
@@ -460,35 +553,29 @@ export function useModuloPesquisa(
     carregarPesquisas,
   ]);
 
+
   return {
     pesquisas,
 
     pesquisaSelecionada,
+    setPesquisaSelecionada,
 
     relatorio,
 
     dadosFormulario,
 
     carregando,
-
     processando,
-
     erro,
 
     carregarPesquisas,
-
     carregarDadosFormulario,
-
     carregarPesquisaPorId,
-
     carregarRelatorio,
 
     salvar,
-
     excluir,
-
     alterarStatus,
-
     gerarConvites,
   };
 }
