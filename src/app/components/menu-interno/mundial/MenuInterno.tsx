@@ -126,14 +126,14 @@ function MenuNavegacao({
         </MenuLink>
 
         <MenuLink
-          href="/agendamentos"
+          href="/modelos-pesquisa"
           mobile={
             mobile
           }
         >
-          Agendamentos
+          Construtor de Modelos
         </MenuLink>
-
+        
         <MenuLink
           href="/planos-acao"
           mobile={
@@ -144,13 +144,15 @@ function MenuNavegacao({
         </MenuLink>
 
         <MenuLink
-          href="/modelos-pesquisa"
+          href="/agendamentos"
           mobile={
             mobile
           }
         >
-          Construtor de Modelos
-        </MenuLink>
+          Agendamentos
+        </MenuLink>       
+
+        
       </GrupoMenu>
 
       <GrupoMenu

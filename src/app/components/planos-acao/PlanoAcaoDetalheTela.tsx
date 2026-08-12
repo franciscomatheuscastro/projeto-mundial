@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+
+import {
+  useEffect,
+} from "react";
+
 import PlanoAcaoFormularioTela from "./PlanoAcaoFormularioTela";
-import { usePlanosAcao } from "@/src/app/data/hooks/usePlanosAcao";
+
+import {
+  usePlanosAcao,
+} from "@/src/app/data/hooks/usePlanosAcao";
 
 type Props = {
   id: string;
@@ -14,21 +21,44 @@ export default function PlanoAcaoDetalheTela({
   id,
   contexto = "mundial",
 }: Props) {
-  const { planoSelecionado, carregando, erro, carregarPlanoPorId } =
-    usePlanosAcao(false, contexto);
+  const {
+    planoSelecionado,
+    carregando,
+    erro,
+    carregarPlanoPorId,
+  } =
+    usePlanosAcao(
+      false,
+      contexto
+    );
 
-  const baseHref = contexto === "cliente" ? "/meus-planos-acao" : "/planos-acao";
+  const baseHref =
+    contexto ===
+    "cliente"
+      ? "/meus-planos-acao"
+      : "/planos-acao";
 
   useEffect(() => {
-    carregarPlanoPorId(id);
-  }, [id, carregarPlanoPorId]);
+    void carregarPlanoPorId(
+      id
+    ).catch(
+      () =>
+        undefined
+    );
+  }, [
+    id,
+    carregarPlanoPorId,
+  ]);
 
-  if (contexto === "cliente") {
+  if (
+    contexto ===
+    "cliente"
+  ) {
     return (
       <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-            Pesquisa de Clima
+            Plano de ação
           </p>
 
           <h1 className="mt-2 text-xl font-bold text-slate-900">
@@ -50,7 +80,9 @@ export default function PlanoAcaoDetalheTela({
     );
   }
 
-  if (carregando) {
+  if (
+    carregando
+  ) {
     return (
       <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
@@ -60,17 +92,23 @@ export default function PlanoAcaoDetalheTela({
     );
   }
 
-  if (erro) {
+  if (
+    erro
+  ) {
     return (
       <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
         <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          {erro}
+          {
+            erro
+          }
         </div>
       </main>
     );
   }
 
-  if (!planoSelecionado) {
+  if (
+    !planoSelecionado
+  ) {
     return (
       <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
@@ -82,8 +120,12 @@ export default function PlanoAcaoDetalheTela({
 
   return (
     <PlanoAcaoFormularioTela
-      planoInicial={planoSelecionado}
-      contexto={contexto}
+      planoInicial={
+        planoSelecionado
+      }
+      contexto={
+        contexto
+      }
     />
   );
 }

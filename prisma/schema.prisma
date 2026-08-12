@@ -424,6 +424,8 @@ enum StatusPesquisaCliente {
 
 enum TipoOrigemPlanoAcao {
   PESQUISA_CLIMA
+  DIAGNOSTICO_ORGANIZACIONAL
+  AVALIACAO_PSICOSSOCIAL
   DENUNCIA
 }
 

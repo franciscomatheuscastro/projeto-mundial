@@ -1,9 +1,19 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type {
+  ReactNode,
+} from "react";
+
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { usePlanosAcao } from "@/src/app/data/hooks/usePlanosAcao";
+
+import {
+  useRouter,
+} from "next/navigation";
+
+import {
+  usePlanosAcao,
+} from "@/src/app/data/hooks/usePlanosAcao";
+
 import {
   obterClientePlano,
   obterOrigemPlano,
@@ -16,7 +26,8 @@ type Props = {
 export default function PlanosAcaoTela({
   contexto = "mundial",
 }: Props) {
-  const router = useRouter();
+  const router =
+    useRouter();
 
   const {
     planos,
@@ -24,26 +35,40 @@ export default function PlanosAcaoTela({
     erro,
     excluirPlano,
     processando,
-  } = usePlanosAcao(true, contexto);
+  } =
+    usePlanosAcao(
+      true,
+      contexto
+    );
 
   const baseHref =
-    contexto === "cliente"
+    contexto ===
+    "cliente"
       ? "/meus-planos-acao"
       : "/planos-acao";
 
   const usuarioMundial =
-    contexto === "mundial";
+    contexto ===
+    "mundial";
 
   async function excluirPlanoAtual(
     id: string
   ) {
-    const confirmado = confirm(
-      "Deseja excluir este plano de ação?"
+    const confirmado =
+      confirm(
+        "Deseja excluir este plano de ação?"
+      );
+
+    if (
+      !confirmado
+    ) {
+      return;
+    }
+
+    await excluirPlano(
+      id
     );
 
-    if (!confirmado) return;
-
-    await excluirPlano(id);
     router.refresh();
   }
 
@@ -62,7 +87,7 @@ export default function PlanosAcaoTela({
 
             <p className="mt-1 max-w-3xl text-sm text-slate-500">
               {usuarioMundial
-                ? "Gestão dos planos originados por pesquisas de clima e denúncias."
+                ? "Gestão dos planos originados por pesquisas de clima, diagnósticos organizacionais, avaliações psicossociais e denúncias."
                 : "Visualize os relatórios finais dos planos de ação da sua empresa."}
             </p>
           </div>
@@ -81,23 +106,55 @@ export default function PlanosAcaoTela({
       <section className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         {erro && (
           <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-            {erro}
+            {
+              erro
+            }
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
           <Card
             titulo="Planos"
-            valor={planos.length}
+            valor={
+              planos.length
+            }
           />
 
           <Card
-            titulo="Pesquisas"
+            titulo="Clima"
             valor={
               planos.filter(
-                (plano) =>
+                (
+                  plano
+                ) =>
                   plano.tipoOrigem ===
                   "PESQUISA_CLIMA"
+              ).length
+            }
+          />
+
+          <Card
+            titulo="Diagnósticos"
+            valor={
+              planos.filter(
+                (
+                  plano
+                ) =>
+                  plano.tipoOrigem ===
+                  "DIAGNOSTICO_ORGANIZACIONAL"
+              ).length
+            }
+          />
+
+          <Card
+            titulo="Psicossociais"
+            valor={
+              planos.filter(
+                (
+                  plano
+                ) =>
+                  plano.tipoOrigem ===
+                  "AVALIACAO_PSICOSSOCIAL"
               ).length
             }
           />
@@ -106,7 +163,9 @@ export default function PlanosAcaoTela({
             titulo="Denúncias"
             valor={
               planos.filter(
-                (plano) =>
+                (
+                  plano
+                ) =>
                   plano.tipoOrigem ===
                   "DENUNCIA"
               ).length
@@ -114,23 +173,18 @@ export default function PlanosAcaoTela({
           />
 
           <Card
-            titulo="Em andamento"
-            valor={
-              planos.filter(
-                (plano) =>
-                  plano.status ===
-                  "EM_ANDAMENTO"
-              ).length
-            }
-          />
-
-          <Card
             titulo="Ações"
-            valor={planos.reduce(
-              (total, plano) =>
-                total + plano.totalAcoes,
-              0
-            )}
+            valor={
+              planos.reduce(
+                (
+                  total,
+                  plano
+                ) =>
+                  total +
+                  plano.totalAcoes,
+                0
+              )
+            }
           />
         </div>
 
@@ -139,17 +193,35 @@ export default function PlanosAcaoTela({
             <table className="w-full min-w-[1050px] border-collapse">
               <thead className="bg-slate-50">
                 <tr>
-                  <Th>Plano</Th>
-                  <Th>Tipo</Th>
+                  <Th>
+                    Plano
+                  </Th>
+
+                  <Th>
+                    Tipo
+                  </Th>
 
                   {usuarioMundial && (
-                    <Th>Cliente</Th>
+                    <Th>
+                      Cliente
+                    </Th>
                   )}
 
-                  <Th>Origem</Th>
-                  <Th>Ações</Th>
-                  <Th>Status</Th>
-                  <Th direita>Opções</Th>
+                  <Th>
+                    Origem
+                  </Th>
+
+                  <Th>
+                    Ações
+                  </Th>
+
+                  <Th>
+                    Status
+                  </Th>
+
+                  <Th direita>
+                    Opções
+                  </Th>
                 </tr>
               </thead>
 
@@ -157,121 +229,142 @@ export default function PlanosAcaoTela({
                 {carregando ? (
                   <LinhaVazia
                     colunas={
-                      usuarioMundial ? 7 : 6
+                      usuarioMundial
+                        ? 7
+                        : 6
                     }
                     texto="Carregando planos de ação..."
                   />
-                ) : planos.length === 0 ? (
+                ) : planos.length ===
+                  0 ? (
                   <LinhaVazia
                     colunas={
-                      usuarioMundial ? 7 : 6
+                      usuarioMundial
+                        ? 7
+                        : 6
                     }
                     texto="Nenhum plano de ação cadastrado."
                   />
                 ) : (
-                  planos.map((plano) => {
-                    const cliente =
-                      obterClientePlano(plano);
+                  planos.map(
+                    (
+                      plano
+                    ) => {
+                      const cliente =
+                        obterClientePlano(
+                          plano
+                        );
 
-                    const origem =
-                      obterOrigemPlano(plano);
+                      const origem =
+                        obterOrigemPlano(
+                          plano
+                        );
 
-                    return (
-                      <tr
-                        key={plano.id}
-                        className="border-t border-slate-100 hover:bg-slate-50/70"
-                      >
-                        <td className="px-4 py-4">
-                          <div className="max-w-xs font-semibold text-slate-900">
-                            {plano.titulo}
-                          </div>
-                        </td>
-
-                        <td className="px-4 py-4">
-                          <TipoBadge
-                            tipo={
-                              plano.tipoOrigem
-                            }
-                          />
-                        </td>
-
-                        {usuarioMundial && (
-                          <td className="px-4 py-4 text-sm text-slate-700">
-                            {cliente
-                              ? cliente.empresa ||
-                                cliente.nome
-                              : "-"}
-                          </td>
-                        )}
-
-                        <td className="px-4 py-4 text-sm text-slate-700">
-                          <div className="max-w-sm">
-                            <div className="truncate font-medium">
-                              {origem?.titulo ||
-                                "-"}
+                      return (
+                        <tr
+                          key={
+                            plano.id
+                          }
+                          className="border-t border-slate-100 hover:bg-slate-50/70"
+                        >
+                          <td className="px-4 py-4">
+                            <div className="max-w-xs font-semibold text-slate-900">
+                              {
+                                plano.titulo
+                              }
                             </div>
+                          </td>
 
-                            {origem?.tipo ===
-                              "DENUNCIA" && (
-                              <div className="mt-1 text-xs text-slate-500">
-                                Protocolo:{" "}
-                                {
-                                  origem.identificador
-                                }
+                          <td className="px-4 py-4">
+                            <TipoBadge
+                              tipo={
+                                plano.tipoOrigem
+                              }
+                            />
+                          </td>
+
+                          {usuarioMundial && (
+                            <td className="px-4 py-4 text-sm text-slate-700">
+                              {cliente
+                                ? cliente.empresa ||
+                                  cliente.nome
+                                : "-"}
+                            </td>
+                          )}
+
+                          <td className="px-4 py-4 text-sm text-slate-700">
+                            <div className="max-w-sm">
+                              <div className="truncate font-medium">
+                                {origem?.titulo ||
+                                  "-"}
                               </div>
-                            )}
-                          </div>
-                        </td>
 
-                        <td className="px-4 py-4 text-sm font-medium text-slate-700">
-                          {plano.totalAcoes}
-                        </td>
+                              {origem?.tipo ===
+                                "DENUNCIA" && (
+                                <div className="mt-1 text-xs text-slate-500">
+                                  Protocolo:{" "}
+                                  {
+                                    origem.identificador
+                                  }
+                                </div>
+                              )}
+                            </div>
+                          </td>
 
-                        <td className="px-4 py-4">
-                          <StatusBadge
-                            status={plano.status}
-                          />
-                        </td>
+                          <td className="px-4 py-4 text-sm font-medium text-slate-700">
+                            {
+                              plano.totalAcoes
+                            }
+                          </td>
 
-                        <td className="px-4 py-4">
-                          <div className="flex justify-end gap-3 whitespace-nowrap">
-                            {usuarioMundial && (
+                          <td className="px-4 py-4">
+                            <StatusBadge
+                              status={
+                                plano.status
+                              }
+                            />
+                          </td>
+
+                          <td className="px-4 py-4">
+                            <div className="flex justify-end gap-3 whitespace-nowrap">
+                              {usuarioMundial && (
+                                <Link
+                                  href={`${baseHref}/${plano.id}`}
+                                  className="text-sm font-semibold text-blue-600 hover:text-blue-800"
+                                >
+                                  Editar
+                                </Link>
+                              )}
+
                               <Link
-                                href={`${baseHref}/${plano.id}`}
-                                className="text-sm font-semibold text-blue-600 hover:text-blue-800"
+                                href={`${baseHref}/${plano.id}/relatorio`}
+                                className="text-sm font-semibold text-slate-700 hover:text-slate-950"
                               >
-                                Editar
+                                Relatório
                               </Link>
-                            )}
 
-                            <Link
-                              href={`${baseHref}/${plano.id}/relatorio`}
-                              className="text-sm font-semibold text-slate-700 hover:text-slate-950"
-                            >
-                              Relatório
-                            </Link>
-
-                            {usuarioMundial && (
-                              <button
-                                type="button"
-                                disabled={
-                                  processando
-                                }
-                                onClick={() =>
-                                  excluirPlanoAtual(
-                                    plano.id
-                                  )
-                                }
-                                className="text-sm font-semibold text-red-600 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                Excluir
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                              {usuarioMundial && (
+                                <button
+                                  type="button"
+                                  disabled={
+                                    processando
+                                  }
+                                  onClick={() =>
+                                    void excluirPlanoAtual(
+                                      plano.id
+                                    )
+                                  }
+                                  className="text-sm font-semibold text-red-600 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  Excluir
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+                  )
                 )}
               </tbody>
             </table>
@@ -292,11 +385,15 @@ function Card({
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-sm font-medium text-slate-500">
-        {titulo}
+        {
+          titulo
+        }
       </p>
 
       <strong className="mt-2 block text-3xl font-bold text-slate-900">
-        {valor}
+        {
+          valor
+        }
       </strong>
     </div>
   );
@@ -307,20 +404,52 @@ function TipoBadge({
 }: {
   tipo: string;
 }) {
-  const denuncia =
-    tipo === "DENUNCIA";
+  let classe =
+    "bg-cyan-100 text-cyan-700";
+
+  let texto =
+    "Pesquisa de clima";
+
+  if (
+    tipo ===
+    "DIAGNOSTICO_ORGANIZACIONAL"
+  ) {
+    classe =
+      "bg-violet-100 text-violet-700";
+
+    texto =
+      "Diagnóstico organizacional";
+  }
+
+  if (
+    tipo ===
+    "AVALIACAO_PSICOSSOCIAL"
+  ) {
+    classe =
+      "bg-orange-100 text-orange-700";
+
+    texto =
+      "Avaliação psicossocial";
+  }
+
+  if (
+    tipo ===
+    "DENUNCIA"
+  ) {
+    classe =
+      "bg-purple-100 text-purple-700";
+
+    texto =
+      "Denúncia";
+  }
 
   return (
     <span
-      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-        denuncia
-          ? "bg-purple-100 text-purple-700"
-          : "bg-cyan-100 text-cyan-700"
-      }`}
+      className={`rounded-full px-3 py-1 text-xs font-semibold ${classe}`}
     >
-      {denuncia
-        ? "Denúncia"
-        : "Pesquisa de clima"}
+      {
+        texto
+      }
     </span>
   );
 }
@@ -331,11 +460,14 @@ function StatusBadge({
   status: string;
 }) {
   const classe =
-    status === "CONCLUIDO"
+    status ===
+    "CONCLUIDO"
       ? "bg-green-100 text-green-700"
-      : status === "EM_ANDAMENTO"
+      : status ===
+        "EM_ANDAMENTO"
       ? "bg-blue-100 text-blue-700"
-      : status === "ARQUIVADO"
+      : status ===
+        "ARQUIVADO"
       ? "bg-slate-200 text-slate-700"
       : "bg-yellow-100 text-yellow-700";
 
@@ -343,7 +475,11 @@ function StatusBadge({
     <span
       className={`rounded-full px-3 py-1 text-xs font-semibold ${classe}`}
     >
-      {formatarStatus(status)}
+      {
+        formatarStatus(
+          status
+        )
+      }
     </span>
   );
 }
@@ -363,7 +499,9 @@ function Th({
           : "text-left"
       }`}
     >
-      {children}
+      {
+        children
+      }
     </th>
   );
 }
@@ -378,20 +516,33 @@ function LinhaVazia({
   return (
     <tr>
       <td
-        colSpan={colunas}
+        colSpan={
+          colunas
+        }
         className="px-4 py-12 text-center text-sm text-slate-500"
       >
-        {texto}
+        {
+          texto
+        }
       </td>
     </tr>
   );
 }
 
-function formatarStatus(valor: string) {
+function formatarStatus(
+  valor: string
+) {
   return valor
-    .replaceAll("_", " ")
+    .replaceAll(
+      "_",
+      " "
+    )
     .toLowerCase()
-    .replace(/\b\w/g, (letra) =>
-      letra.toUpperCase()
+    .replace(
+      /\b\w/g,
+      (
+        letra
+      ) =>
+        letra.toUpperCase()
     );
 }
