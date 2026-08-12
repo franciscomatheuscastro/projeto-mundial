@@ -1,26 +1,57 @@
 "use client";
 
-import { useEffect } from "react";
+import {
+  useEffect,
+} from "react";
+
 import AgendamentoFormularioTela from "./AgendamentoFormularioTela";
-import { useAgendamentos } from "@/src/app/data/hooks/useAgendamentos";
+
+import {
+  useAgendamentos,
+} from "@/src/app/data/hooks/useAgendamentos";
+
 
 type Props = {
   id: string;
-  contexto?: "mundial" | "cliente";
+
+  contexto?:
+    | "mundial"
+    | "cliente";
 };
+
 
 export default function AgendamentoDetalheTela({
   id,
   contexto = "mundial",
 }: Props) {
-  const { agendamentoSelecionado, carregando, erro, carregarAgendamentoPorId } =
-    useAgendamentos(false, contexto);
+  const {
+    agendamentoSelecionado,
+    carregando,
+    erro,
+    carregarAgendamentoPorId,
+  } =
+    useAgendamentos(
+      false,
+      contexto
+    );
+
 
   useEffect(() => {
-    carregarAgendamentoPorId(id);
-  }, [id, carregarAgendamentoPorId]);
+    void carregarAgendamentoPorId(
+      id
+    ).catch(
+      () =>
+        undefined
+    );
+  }, [
+    id,
+    carregarAgendamentoPorId,
+  ]);
 
-  if (carregando) {
+
+  if (
+    carregando
+  ) {
     return (
       <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
@@ -30,17 +61,25 @@ export default function AgendamentoDetalheTela({
     );
   }
 
-  if (erro) {
+
+  if (
+    erro
+  ) {
     return (
       <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
         <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          {erro}
+          {
+            erro
+          }
         </div>
       </main>
     );
   }
 
-  if (!agendamentoSelecionado) {
+
+  if (
+    !agendamentoSelecionado
+  ) {
     return (
       <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
@@ -50,10 +89,15 @@ export default function AgendamentoDetalheTela({
     );
   }
 
+
   return (
     <AgendamentoFormularioTela
-      agendamentoInicial={agendamentoSelecionado}
-      contexto={contexto}
+      agendamentoInicial={
+        agendamentoSelecionado
+      }
+      contexto={
+        contexto
+      }
     />
   );
 }
