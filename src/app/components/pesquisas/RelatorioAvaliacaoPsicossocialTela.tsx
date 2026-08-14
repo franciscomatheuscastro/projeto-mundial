@@ -15,50 +15,56 @@ export type FatorPsicossocial = {
   classificacao: string | null;
 
   totalRespostas: number;
-
-  bloqueadoAnonimato?: boolean;
 };
 
 
 export type AnalisePsicossocial = {
   fatores: FatorPsicossocial[];
-
-  anonimatoMinimo: number;
-
-  totalGruposBloqueados?: number;
 };
 
 
 export type DadosRelatorioPsicossocial = {
   tipo?: string;
 
+
   filtros: {
     dataInicio: string | null;
+
     dataFim: string | null;
+
     clienteId: string | null;
   };
 
+
   clientes: {
     id: string;
+
     nome: string;
+
     empresa: string | null;
   }[];
 
+
   resumo: {
     totalPesquisas: number;
+
     totalAbertas: number;
+
     totalFechadas: number;
+
     totalArquivadas: number;
 
     totalRespostas: number;
 
     totalConvites: number;
+
     totalConvitesRespondidos: number;
 
     taxaParticipacao: number | null;
 
     mediaGeral: number | null;
   };
+
 
   porCliente: {
     clienteId: string;
@@ -80,6 +86,7 @@ export type DadosRelatorioPsicossocial = {
     mediaGeral: number | null;
   }[];
 
+
   pesquisas: {
     id: string;
 
@@ -89,16 +96,22 @@ export type DadosRelatorioPsicossocial = {
 
     criadoEm: Date | string;
 
+
     cliente: {
       id: string;
+
       nome: string;
+
       empresa: string | null;
     };
 
+
     modelo: {
       id: string;
+
       titulo: string;
     };
+
 
     totalRespostas: number;
 
@@ -110,6 +123,7 @@ export type DadosRelatorioPsicossocial = {
 
     mediaGeral: number | null;
   }[];
+
 
   analise?: AnalisePsicossocial;
 };
@@ -137,8 +151,10 @@ export default function RelatorioAvaliacaoPsicossocialTela({
       fator =>
         normalizarClassificacao(
           fator.classificacao
-        ) === "CRITICO"
-    ).length || 0;
+        ) ===
+        "CRITICO"
+    ).length ||
+    0;
 
 
   const altos =
@@ -146,8 +162,10 @@ export default function RelatorioAvaliacaoPsicossocialTela({
       fator =>
         normalizarClassificacao(
           fator.classificacao
-        ) === "ALTO"
-    ).length || 0;
+        ) ===
+        "ALTO"
+    ).length ||
+    0;
 
 
   return (
@@ -159,9 +177,11 @@ export default function RelatorioAvaliacaoPsicossocialTela({
               Avaliação Psicossocial
             </p>
 
+
             <h1 className="mt-1 text-2xl font-black text-slate-900">
               Mapa de Riscos Psicossociais
             </h1>
+
 
             <p className="mt-1 text-sm text-slate-500">
               Fatores psicossociais relacionados ao trabalho, exposição e
@@ -173,7 +193,7 @@ export default function RelatorioAvaliacaoPsicossocialTela({
           <div className="flex gap-3 print:hidden">
             <Link
               href="/avaliacao-psicossocial"
-              className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold"
+              className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
             >
               Voltar
             </Link>
@@ -184,7 +204,7 @@ export default function RelatorioAvaliacaoPsicossocialTela({
               onClick={() =>
                 window.print()
               }
-              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white"
+              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-slate-700"
             >
               Imprimir relatório
             </button>
@@ -195,7 +215,9 @@ export default function RelatorioAvaliacaoPsicossocialTela({
 
       <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <Filtros
-          dados={dados}
+          dados={
+            dados
+          }
         />
 
 
@@ -207,12 +229,14 @@ export default function RelatorioAvaliacaoPsicossocialTela({
             }
           />
 
+
           <Card
             titulo="Respondentes"
             valor={
               dados.resumo.totalRespostas
             }
           />
+
 
           <Card
             titulo="Cobertura"
@@ -226,77 +250,67 @@ export default function RelatorioAvaliacaoPsicossocialTela({
             }
           />
 
+
           <Card
             titulo="Fatores altos"
-            valor={altos}
+            valor={
+              altos
+            }
             alerta
           />
 
+
           <Card
             titulo="Fatores críticos"
-            valor={criticos}
+            valor={
+              criticos
+            }
             critico
           />
         </div>
 
 
-        <div className="mb-6 grid gap-6 xl:grid-cols-[1fr_360px]">
-          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-600">
-              Cobertura
-            </p>
-
-            <h2 className="mt-1 text-lg font-black">
-              Participação na avaliação
-            </h2>
+        <section className="mb-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-600">
+            Cobertura
+          </p>
 
 
-            <div className="mt-5 grid gap-4 sm:grid-cols-3">
-              <Info
-                titulo="Convidados"
-                valor={String(
-                  dados.resumo.totalConvites
-                )}
-              />
-
-              <Info
-                titulo="Respondidos"
-                valor={String(
-                  dados.resumo
-                    .totalConvitesRespondidos
-                )}
-              />
-
-              <Info
-                titulo="Pendentes"
-                valor={String(
-                  pendentes
-                )}
-              />
-            </div>
-          </section>
+          <h2 className="mt-1 text-lg font-black text-slate-900">
+            Participação na avaliação
+          </h2>
 
 
-          <section className="rounded-3xl bg-slate-900 p-6 text-white">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-300">
-              Proteção de anonimato
-            </p>
+          <p className="mt-1 text-sm text-slate-500">
+            Acompanhe a quantidade de convites e respostas recebidas.
+          </p>
 
-            <h2 className="mt-2 text-xl font-black">
-              Mínimo de respostas
-            </h2>
 
-            <strong className="mt-4 block text-4xl">
-              {analise?.anonimatoMinimo ??
-                "—"}
-            </strong>
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            <Info
+              titulo="Convidados"
+              valor={String(
+                dados.resumo.totalConvites
+              )}
+            />
 
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              Recortes com quantidade inferior ao mínimo configurado não devem
-              ser apresentados isoladamente.
-            </p>
-          </section>
-        </div>
+
+            <Info
+              titulo="Respondidos"
+              valor={String(
+                dados.resumo.totalConvitesRespondidos
+              )}
+            />
+
+
+            <Info
+              titulo="Pendentes"
+              valor={String(
+                pendentes
+              )}
+            />
+          </div>
+        </section>
 
 
         {!analise ? (
@@ -307,21 +321,23 @@ export default function RelatorioAvaliacaoPsicossocialTela({
               Mapa de exposição
             </p>
 
+
             <h2 className="mt-1 text-lg font-black text-slate-900">
               Fatores psicossociais
             </h2>
 
+
             <p className="mt-1 text-sm text-slate-500">
-              Classificação de acordo com as faixas definidas no instrumento
-              utilizado.
+              Classificação dos fatores conforme as faixas de interpretação
+              configuradas no instrumento.
             </p>
 
 
             {analise.fatores.length ===
             0 ? (
               <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
-                Ainda não há fatores psicossociais com dados suficientes para
-                exibição.
+                Ainda não existem fatores psicossociais com resultados
+                disponíveis.
               </div>
             ) : (
               <div className="mt-6 space-y-4">
@@ -359,31 +375,6 @@ function FatorCard({
 }: {
   fator: FatorPsicossocial;
 }) {
-  if (
-    fator.bloqueadoAnonimato
-  ) {
-    return (
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-        <h3 className="font-black text-slate-900">
-          {fator.fatorRisco ||
-            fator.nome}
-        </h3>
-
-        <p className="mt-2 text-sm text-slate-500">
-          Resultado ocultado por critério de anonimato.
-        </p>
-
-        <p className="mt-1 text-xs text-slate-400">
-          {
-            fator.totalRespostas
-          }{" "}
-          respondente(s) neste fator.
-        </p>
-      </div>
-    );
-  }
-
-
   const classe =
     normalizarClassificacao(
       fator.classificacao
@@ -427,7 +418,9 @@ function FatorCard({
             null
               ? "—"
               : `${fator.score
-                  .toFixed(1)
+                  .toFixed(
+                    1
+                  )
                   .replace(
                     ".",
                     ","
@@ -448,7 +441,7 @@ function FatorCard({
         null && (
         <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-100">
           <div
-            className={`h-full ${classeBarra(
+            className={`h-full rounded-full ${classeBarra(
               classe
             )}`}
             style={{
@@ -510,12 +503,14 @@ function classeBarra(
     return "bg-red-600";
   }
 
+
   if (
     classificacao ===
     "ALTO"
   ) {
     return "bg-orange-500";
   }
+
 
   if (
     classificacao ===
@@ -524,12 +519,14 @@ function classeBarra(
     return "bg-amber-400";
   }
 
+
   if (
     classificacao ===
     "BAIXO"
   ) {
     return "bg-green-500";
   }
+
 
   return "bg-slate-400";
 }
@@ -555,6 +552,7 @@ function Filtros({
           }
         />
 
+
         <CampoFiltro
           label="Data final"
           name="dataFim"
@@ -566,9 +564,10 @@ function Filtros({
 
 
         <div>
-          <label className="mb-2 block text-sm font-semibold">
+          <label className="mb-2 block text-sm font-semibold text-slate-700">
             Organização
           </label>
+
 
           <select
             name="clienteId"
@@ -576,11 +575,12 @@ function Filtros({
               dados.filtros.clienteId ||
               ""
             }
-            className="min-h-12 w-full rounded-2xl border border-slate-200 px-4"
+            className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
           >
             <option value="">
               Todas
             </option>
+
 
             {dados.clientes.map(
               cliente => (
@@ -602,17 +602,18 @@ function Filtros({
       </div>
 
 
-      <div className="mt-5 flex justify-end gap-3">
+      <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Link
           href="/avaliacao-psicossocial/relatorio"
-          className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold"
+          className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
         >
           Limpar
         </Link>
 
+
         <button
           type="submit"
-          className="rounded-2xl bg-amber-600 px-5 py-3 text-sm font-bold text-white hover:bg-amber-700"
+          className="min-h-12 rounded-2xl bg-amber-600 px-5 py-3 text-sm font-bold text-white hover:bg-amber-700"
         >
           Gerar análise
         </button>
@@ -630,9 +631,14 @@ function TabelaAvaliacoes({
   return (
     <section className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
       <div className="border-b border-slate-100 p-6">
-        <h2 className="text-lg font-black">
+        <h2 className="text-lg font-black text-slate-900">
           Avaliações consideradas
         </h2>
+
+
+        <p className="mt-1 text-sm text-slate-500">
+          Aplicações consideradas no mapa de riscos psicossociais.
+        </p>
       </div>
 
 
@@ -689,18 +695,27 @@ function TabelaAvaliacoes({
                     }
                     className="border-t border-slate-100"
                   >
-                    <td className="px-4 py-4 font-bold">
-                      {
-                        pesquisa.titulo
-                      }
+                    <td className="px-4 py-4">
+                      <div className="font-bold text-slate-900">
+                        {
+                          pesquisa.titulo
+                        }
+                      </div>
+
+
+                      <div className="mt-1 text-xs text-slate-500">
+                        {
+                          pesquisa.modelo.titulo
+                        }
+                      </div>
                     </td>
 
-                    <td className="px-4 py-4 text-sm">
-                      {pesquisa.cliente
-                        .empresa ||
-                        pesquisa.cliente
-                          .nome}
+
+                    <td className="px-4 py-4 text-sm text-slate-700">
+                      {pesquisa.cliente.empresa ||
+                        pesquisa.cliente.nome}
                     </td>
+
 
                     <td className="px-4 py-4">
                       <StatusBadge
@@ -710,11 +725,13 @@ function TabelaAvaliacoes({
                       />
                     </td>
 
+
                     <TdNumero
                       valor={
                         pesquisa.totalRespostas
                       }
                     />
+
 
                     <TdNumero
                       valor={
@@ -726,6 +743,7 @@ function TabelaAvaliacoes({
                             )
                       }
                     />
+
 
                     <td className="px-4 py-4 text-right print:hidden">
                       <Link
@@ -754,10 +772,10 @@ function AvisoAnalise() {
         Mapa de riscos ainda não calculado
       </h2>
 
+
       <p className="mt-2 text-sm leading-6 text-amber-800">
-        O backend ainda precisa aplicar o sentido das perguntas, consolidar os
-        fatores e utilizar as faixas de interpretação configuradas no
-        instrumento.
+        O backend ainda precisa consolidar as dimensões e aplicar as faixas de
+        interpretação configuradas no instrumento.
       </p>
     </div>
   );
@@ -770,16 +788,19 @@ function CampoFiltro({
   defaultValue,
 }: {
   label: string;
+
   name: string;
+
   defaultValue: string;
 }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-semibold">
+      <label className="mb-2 block text-sm font-semibold text-slate-700">
         {
           label
         }
       </label>
+
 
       <input
         name={
@@ -789,7 +810,7 @@ function CampoFiltro({
         defaultValue={
           defaultValue
         }
-        className="min-h-12 w-full rounded-2xl border border-slate-200 px-4"
+        className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-amber-500 focus:ring-4 focus:ring-amber-100"
       />
     </div>
   );
@@ -803,8 +824,11 @@ function Card({
   critico = false,
 }: {
   titulo: string;
+
   valor: string | number;
+
   alerta?: boolean;
+
   critico?: boolean;
 }) {
   const classe =
@@ -825,6 +849,7 @@ function Card({
         }
       </p>
 
+
       <strong className="mt-2 block text-3xl font-black">
         {
           valor
@@ -840,6 +865,7 @@ function Info({
   valor,
 }: {
   titulo: string;
+
   valor: string;
 }) {
   return (
@@ -850,7 +876,8 @@ function Info({
         }
       </p>
 
-      <strong className="mt-1 block text-lg">
+
+      <strong className="mt-1 block text-lg text-slate-900">
         {
           valor
         }
@@ -893,6 +920,7 @@ function Th({
   direita = false,
 }: {
   children: React.ReactNode;
+
   direita?: boolean;
 }) {
   return (
@@ -917,7 +945,7 @@ function TdNumero({
   valor: string | number;
 }) {
   return (
-    <td className="px-4 py-4 text-right text-sm font-semibold">
+    <td className="px-4 py-4 text-right text-sm font-semibold text-slate-700">
       {
         valor
       }
@@ -949,7 +977,9 @@ function percentual(
   valor: number
 ) {
   return `${valor
-    .toFixed(1)
+    .toFixed(
+      1
+    )
     .replace(
       ".",
       ","

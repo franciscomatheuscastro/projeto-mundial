@@ -13,7 +13,7 @@ import {
   useRouter,
 } from "next/navigation";
 
-import {
+import type {
   StatusPesquisaCliente,
 } from "@prisma/client";
 
@@ -62,6 +62,12 @@ const CORES_GRAFICO = [
   "#0891b2",
   "#db2777",
 ];
+
+
+const STATUS_PESQUISA = {
+  ABERTA: "ABERTA",
+  FECHADA: "FECHADA",
+} as const;
 
 
 function montarLink(
@@ -282,7 +288,7 @@ export default function PesquisasTela({
         modeloId,
 
         status:
-          StatusPesquisaCliente.ABERTA,
+          STATUS_PESQUISA.ABERTA as StatusPesquisaCliente,
       });
 
 
@@ -333,14 +339,14 @@ export default function PesquisasTela({
 
     const novoStatus =
       pesquisaSelecionada.status ===
-      StatusPesquisaCliente.ABERTA
-        ? StatusPesquisaCliente.FECHADA
-        : StatusPesquisaCliente.ABERTA;
+      STATUS_PESQUISA.ABERTA
+        ? STATUS_PESQUISA.FECHADA
+        : STATUS_PESQUISA.ABERTA;
 
 
     await alterarStatus(
       pesquisaSelecionada.id,
-      novoStatus
+      novoStatus as StatusPesquisaCliente
     );
 
 
@@ -408,7 +414,7 @@ export default function PesquisasTela({
       pesquisas.filter(
         pesquisa =>
           pesquisa.status ===
-          StatusPesquisaCliente.ABERTA
+          STATUS_PESQUISA.ABERTA
       ).length;
 
 
@@ -416,7 +422,7 @@ export default function PesquisasTela({
       pesquisas.filter(
         pesquisa =>
           pesquisa.status ===
-          StatusPesquisaCliente.FECHADA
+          STATUS_PESQUISA.FECHADA
       ).length;
 
 
@@ -1033,14 +1039,6 @@ export default function PesquisasTela({
                     }
                   />
 
-                  <Info
-                    titulo="Anonimato mínimo"
-                    valor={String(
-                      pesquisaSelecionada.configuracaoAnalise
-                        .anonimatoMinimo
-                    )}
-                  />
-
                   {podeGerenciarLinks && (
                     <>
                       <Info
@@ -1072,13 +1070,13 @@ export default function PesquisasTela({
                     }
                     className={`mt-6 min-h-12 w-full rounded-2xl px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60 ${
                       pesquisaSelecionada.status ===
-                      StatusPesquisaCliente.ABERTA
+                      STATUS_PESQUISA.ABERTA
                         ? "bg-red-600 hover:bg-red-700"
                         : "bg-green-600 hover:bg-green-700"
                     }`}
                   >
                     {pesquisaSelecionada.status ===
-                    StatusPesquisaCliente.ABERTA
+                    STATUS_PESQUISA.ABERTA
                       ? "Fechar pesquisa"
                       : "Reabrir pesquisa"}
                   </button>
@@ -1357,11 +1355,9 @@ export default function PesquisasTela({
                               {pergunta.tipo ===
                                 "NOTA" && (
                                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
-                                  Peso{" "}
-                                  {
-                                    pergunta.peso
-                                  }{" "}
-                                  ·{" "}
+                                  {dimensao
+                                    ? `Peso da dimensão ${dimensao.peso} · `
+                                    : ""}
                                   {pergunta.sentidoPontuacao ===
                                   "NEGATIVO"
                                     ? "Pontuação inversa"
@@ -1387,11 +1383,11 @@ export default function PesquisasTela({
                             )}
 
 
-                            {pergunta.fatorRisco && (
+                            {dimensao?.fatorRisco && (
                               <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-                                Fator de risco:{" "}
+                                Fator de risco da dimensão:{" "}
                                 {
-                                  pergunta.fatorRisco
+                                  dimensao.fatorRisco
                                 }
                               </div>
                             )}
@@ -1737,7 +1733,6 @@ function ResumoModeloSelecionado({
           metodo: string;
           escalaMinima: number;
           escalaMaxima: number;
-          anonimatoMinimo: number;
         };
       }
     | undefined;
@@ -1756,7 +1751,7 @@ function ResumoModeloSelecionado({
       </p>
 
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <InfoModelo
           titulo="Dimensões"
           valor={String(
@@ -1769,12 +1764,6 @@ function ResumoModeloSelecionado({
           valor={`${modelo.configuracaoAnalise.escalaMinima} a ${modelo.configuracaoAnalise.escalaMaxima}`}
         />
 
-        <InfoModelo
-          titulo="Anonimato mínimo"
-          valor={String(
-            modelo.configuracaoAnalise.anonimatoMinimo
-          )}
-        />
       </div>
 
 

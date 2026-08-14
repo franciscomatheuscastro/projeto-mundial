@@ -26,16 +26,22 @@ export type PerguntaPesquisaCliente = {
 
   opcoes: string[];
 
+
   /*
-   * Snapshot analítico da pergunta.
+   * Snapshot da estrutura analítica
+   * utilizada quando a aplicação
+   * foi criada.
    */
   dimensaoId?: string | null;
 
-  peso: number;
 
+  /*
+   * POSITIVO ou NEGATIVO.
+   *
+   * Necessário para interpretar
+   * corretamente perguntas NOTA.
+   */
   sentidoPontuacao: SentidoPontuacao;
-
-  fatorRisco?: string | null;
 };
 
 
@@ -86,10 +92,13 @@ export type PesquisaCliente = {
 
   status?: StatusPesquisaCliente;
 
+
   /*
-   * Normalmente não precisam ser enviados pela tela.
-   * O repositório cria o snapshot automaticamente
-   * a partir do ModeloPesquisa.
+   * Estes campos normalmente não precisam
+   * ser enviados pelo formulário.
+   *
+   * O repositório gera snapshots a partir
+   * do modelo no momento da criação.
    */
   perguntas?: PerguntaPesquisaCliente[];
 
@@ -120,15 +129,20 @@ export type PesquisaClienteResumo = {
 
   atualizadoEm: Date;
 
+
   cliente: {
     id: string;
+
     nome: string;
   };
 
+
   modelo: {
     id: string;
+
     titulo: string;
   };
+
 
   totalRespostas: number;
 };
@@ -151,8 +165,12 @@ export type PesquisaClienteDetalhada = {
 
   status: StatusPesquisaCliente;
 
+
   /*
-   * Snapshot usado pela aplicação.
+   * Snapshot da aplicação.
+   *
+   * Estes dados devem ser utilizados
+   * para relatórios históricos.
    */
   perguntas: PerguntaPesquisaCliente[];
 
@@ -160,22 +178,26 @@ export type PesquisaClienteDetalhada = {
 
   configuracaoAnalise: ConfiguracaoAnaliseModelo;
 
+
   criadoEm: Date;
 
   atualizadoEm: Date;
 
+
   cliente: {
     id: string;
+
     nome: string;
+
     empresa?: string | null;
   };
 
+
   /*
-   * Modelo original atual.
+   * Estado atual do modelo original.
    *
-   * Pode evoluir depois da criação da aplicação.
-   * Por isso o relatório deverá usar prioritariamente
-   * os snapshots acima.
+   * Pode ser diferente do snapshot
+   * da aplicação.
    */
   modelo: {
     id: string;
@@ -189,9 +211,11 @@ export type PesquisaClienteDetalhada = {
     configuracaoAnalise: ConfiguracaoAnaliseModelo;
   };
 
+
   respostas: RespostaPesquisaCliente[];
 
   totalRespostas: number;
+
 
   convites?: ConvitePesquisaCliente[];
 
@@ -224,6 +248,7 @@ export type DadosFormularioPesquisaCliente = {
     atualizadoEm?: Date;
   }[];
 
+
   modelos: {
     id: string;
 
@@ -240,6 +265,7 @@ export type DadosFormularioPesquisaCliente = {
     criadoEm?: Date;
 
     atualizadoEm?: Date;
+
 
     perguntas: PerguntaPesquisaCliente[];
 
@@ -262,15 +288,21 @@ export type PesquisaClienteRelatorio =
       respostas: RespostaPesquisaItem[];
     }[];
 
+
     /*
-     * Mantido nesta etapa por compatibilidade com
-     * os relatórios atuais.
+     * Mantido temporariamente por
+     * compatibilidade com relatórios antigos.
      *
-     * Depois criaremos indicadores específicos:
+     * Os relatórios novos usam:
      *
-     * CLIMA -> favorabilidade
-     * DIAGNÓSTICO -> maturidade/score
-     * PSICOSSOCIAL -> exposição/criticidade
+     * CLIMA
+     * -> favorabilidade
+     *
+     * DIAGNÓSTICO
+     * -> maturidade
+     *
+     * PSICOSSOCIAL
+     * -> exposição/criticidade
      */
     mediaGeral: number;
   };

@@ -4,10 +4,9 @@ import {
   TipoPergunta,
 } from "@prisma/client";
 
-
-export type SentidoPontuacao =
-  | "POSITIVO"
-  | "NEGATIVO";
+import type {
+  SentidoPontuacao,
+} from "@/src/core/model/ModeloPesquisa";
 
 
 export type PerguntaRespostaPesquisa = {
@@ -25,17 +24,14 @@ export type PerguntaRespostaPesquisa = {
 
   opcoes: string[];
 
-  /*
-   * Configuração analítica da pergunta.
-   */
 
+  /*
+   * Estrutura analítica utilizada
+   * pelo motor de relatórios.
+   */
   dimensaoId?: string | null;
 
-  peso?: number;
-
   sentidoPontuacao?: SentidoPontuacao;
-
-  fatorRisco?: string | null;
 };
 
 

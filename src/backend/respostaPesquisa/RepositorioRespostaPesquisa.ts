@@ -27,7 +27,10 @@ function numeroSeguro(
   padrao: number
 ) {
   const numero =
-    Number(valor);
+    Number(
+      valor
+    );
+
 
   return Number.isFinite(
     numero
@@ -43,6 +46,7 @@ function textoOuNull(
   const texto =
     valor?.trim();
 
+
   return texto ||
     null;
 }
@@ -56,6 +60,7 @@ function emailOuNull(
       ?.trim()
       .toLowerCase();
 
+
   return texto ||
     null;
 }
@@ -67,6 +72,7 @@ function emailOuNull(
 
 type ConfiguracaoAnaliseBasica = {
   escalaMinima: number;
+
   escalaMaxima: number;
 };
 
@@ -75,8 +81,11 @@ function normalizarConfiguracaoAnalise(
   valor: unknown
 ): ConfiguracaoAnaliseBasica {
   const padrao = {
-    escalaMinima: 1,
-    escalaMaxima: 5,
+    escalaMinima:
+      1,
+
+    escalaMaxima:
+      5,
   };
 
 
@@ -95,6 +104,7 @@ function normalizarConfiguracaoAnalise(
   const item =
     valor as {
       escalaMinima?: unknown;
+
       escalaMaxima?: unknown;
     };
 
@@ -123,6 +133,7 @@ function normalizarConfiguracaoAnalise(
 
   return {
     escalaMinima,
+
     escalaMaxima,
   };
 }
@@ -143,6 +154,7 @@ function normalizarPerguntas(
     return [];
   }
 
+
   return perguntas
     .map(
       (
@@ -152,12 +164,19 @@ function normalizarPerguntas(
         const item =
           pergunta as Partial<PerguntaRespostaPesquisa>;
 
+
+        const tipo =
+          item.tipo ||
+          TipoPergunta.NOTA;
+
+
         const sentidoPontuacao:
           PerguntaRespostaPesquisa["sentidoPontuacao"] =
             item.sentidoPontuacao ===
             "NEGATIVO"
               ? "NEGATIVO"
               : "POSITIVO";
+
 
         return {
           id:
@@ -172,9 +191,7 @@ function normalizarPerguntas(
             item.descricao?.trim() ||
             null,
 
-          tipo:
-            item.tipo ||
-            TipoPergunta.NOTA,
+          tipo,
 
           ordem:
             item.ordem ||
@@ -184,7 +201,13 @@ function normalizarPerguntas(
             item.obrigatoria ??
             true,
 
+          /*
+           * Opções são utilizadas apenas
+           * em perguntas de múltipla escolha.
+           */
           opcoes:
+            tipo ===
+              TipoPergunta.MULTIPLA_ESCOLHA &&
             Array.isArray(
               item.opcoes
             )
@@ -200,24 +223,22 @@ function normalizarPerguntas(
                   )
               : [],
 
+          /*
+           * A pergunta apenas referencia
+           * a dimensão.
+           *
+           * Peso e fator de risco pertencem
+           * exclusivamente à dimensão.
+           */
           dimensaoId:
             item.dimensaoId ??
             null,
 
-          peso:
-            Math.max(
-              0,
-              numeroSeguro(
-                item.peso,
-                1
-              )
-            ),
-
+          /*
+           * O sentido é necessário principalmente
+           * para perguntas de NOTA.
+           */
           sentidoPontuacao,
-
-          fatorRisco:
-            item.fatorRisco?.trim() ||
-            null,
         };
       }
     )
@@ -312,9 +333,8 @@ export default class RepositorioRespostaPesquisa {
           pesquisa.id,
 
         /*
-         * IMPORTANTE:
-         * necessário para a tela pública saber
-         * qual escala visual deve apresentar.
+         * Permite que a tela pública saiba
+         * qual módulo está sendo respondido.
          */
         tipo:
           pesquisa.tipo,
@@ -332,10 +352,8 @@ export default class RepositorioRespostaPesquisa {
           pesquisa.status,
 
         /*
-         * Sempre utilizamos o snapshot da aplicação.
-         *
-         * Portanto alterações futuras no modelo
-         * não alteram uma aplicação já criada.
+         * Utilizamos sempre o snapshot
+         * preservado na aplicação.
          */
         perguntas:
           normalizarPerguntas(
@@ -378,8 +396,8 @@ export default class RepositorioRespostaPesquisa {
 
 
     /*
-     * Se não for convite, procuramos pelo
-     * link público geral da aplicação.
+     * Caso não seja convite individual,
+     * procuramos pelo token público.
      */
     const pesquisa =
       await prisma.pesquisaCliente.findUnique({
@@ -429,9 +447,6 @@ export default class RepositorioRespostaPesquisa {
       id:
         pesquisa.id,
 
-      /*
-       * Também obrigatório no link público.
-       */
       tipo:
         pesquisa.tipo,
 
@@ -495,8 +510,8 @@ export default class RepositorioRespostaPesquisa {
 
 
     /*
-     * Primeiro verificamos se o token pertence
-     * a um convite individual.
+     * Primeiro verificamos se o token
+     * pertence a um convite individual.
      */
     const convite =
       await prisma.convitePesquisa.findUnique({
@@ -523,8 +538,8 @@ export default class RepositorioRespostaPesquisa {
 
 
     /*
-     * Caso contrário, tratamos como resposta
-     * pelo link público geral.
+     * Caso contrário, tratamos
+     * como resposta pelo link público.
      */
     return this.salvarPorTokenPublico(
       resposta
@@ -613,8 +628,8 @@ export default class RepositorioRespostaPesquisa {
 
 
     /*
-     * A transação protege contra dois envios
-     * simultâneos utilizando o mesmo convite.
+     * A transação ajuda a evitar dois
+     * envios simultâneos pelo mesmo convite.
      */
     return prisma.$transaction(
       async tx => {
@@ -646,11 +661,12 @@ export default class RepositorioRespostaPesquisa {
 
 
         /*
-         * Dados previamente cadastrados no convite
-         * têm prioridade.
+         * Dados previamente cadastrados
+         * no convite têm prioridade.
          *
-         * Caso estejam vazios, usamos os dados que
-         * o participante informou no formulário.
+         * Quando estiverem vazios,
+         * utilizamos os informados
+         * pelo participante.
          */
         const respostaCriada =
           await tx.respostaPesquisa.create({
@@ -860,8 +876,8 @@ export default class RepositorioRespostaPesquisa {
 
 
     /*
-     * Bloqueia envio duplicado da mesma pergunta
-     * dentro da mesma requisição.
+     * Impede duas respostas para a mesma
+     * pergunta dentro da mesma requisição.
      */
     const idsRecebidos =
       new Set<string>();
@@ -935,7 +951,7 @@ export default class RepositorioRespostaPesquisa {
 
 
       /*
-       * Obrigatoriedade.
+       * Pergunta obrigatória.
        */
       if (
         pergunta.obrigatoria &&
@@ -955,7 +971,7 @@ export default class RepositorioRespostaPesquisa {
 
 
       /*
-       * Pergunta de nota.
+       * NOTA
        */
       if (
         pergunta.tipo ===
@@ -978,13 +994,6 @@ export default class RepositorioRespostaPesquisa {
         }
 
 
-        /*
-         * Agora validamos usando a escala
-         * configurada na aplicação.
-         *
-         * Exemplo padrão:
-         * 1 a 5.
-         */
         if (
           valor <
             configuracao.escalaMinima ||
@@ -999,7 +1008,7 @@ export default class RepositorioRespostaPesquisa {
 
 
       /*
-       * Múltipla escolha.
+       * MÚLTIPLA ESCOLHA
        */
       if (
         pergunta.tipo ===
@@ -1017,11 +1026,11 @@ export default class RepositorioRespostaPesquisa {
 
 
       /*
-       * Sim / Não.
+       * SIM / NÃO
        */
       if (
         pergunta.tipo ===
-          TipoPergunta.SIM_NAO
+        TipoPergunta.SIM_NAO
       ) {
         const respostasValidas =
           [

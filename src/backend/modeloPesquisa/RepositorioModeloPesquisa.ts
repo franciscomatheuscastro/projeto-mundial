@@ -1,6 +1,7 @@
 import {
   Prisma,
   TipoModuloPesquisa,
+  TipoPergunta,
 } from "@prisma/client";
 
 import {
@@ -23,7 +24,7 @@ import {
 } from "@/src/core/model/ModeloPesquisa";
 
 
-function numeroPositivo(
+function numeroSeguro(
   valor: unknown,
   padrao: number
 ) {
@@ -32,17 +33,39 @@ function numeroPositivo(
       valor
     );
 
+
+  return Number.isFinite(
+    numero
+  )
+    ? numero
+    : padrao;
+}
+
+
+function pesoSeguro(
+  valor: unknown
+) {
+  const numero =
+    numeroSeguro(
+      valor,
+      1
+    );
+
+
   if (
-    !Number.isFinite(
-      numero
-    )
+    numero < 0
   ) {
-    return padrao;
+    return 0;
   }
+
 
   return numero;
 }
 
+
+/* =========================================================
+ * DIMENSÕES
+ * ======================================================= */
 
 function normalizarDimensoes(
   dimensoes: unknown
@@ -55,14 +78,16 @@ function normalizarDimensoes(
     return [];
   }
 
+
   return dimensoes
     .map(
       (
         dimensao,
         index
-      ) => {
+      ): DimensaoModelo => {
         const item =
           dimensao as Partial<DimensaoModelo>;
+
 
         return {
           id:
@@ -82,9 +107,8 @@ function normalizarDimensoes(
             index + 1,
 
           peso:
-            numeroPositivo(
-              item.peso,
-              1
+            pesoSeguro(
+              item.peso
             ),
 
           fatorRisco:
@@ -116,6 +140,10 @@ function normalizarDimensoes(
 }
 
 
+/* =========================================================
+ * FAIXAS
+ * ======================================================= */
+
 function normalizarFaixas(
   faixas: unknown
 ): FaixaInterpretacaoModelo[] {
@@ -127,14 +155,30 @@ function normalizarFaixas(
     return [];
   }
 
+
   return faixas
     .map(
       (
         faixa,
         index
-      ) => {
+      ): FaixaInterpretacaoModelo => {
         const item =
           faixa as Partial<FaixaInterpretacaoModelo>;
+
+
+        const minimo =
+          numeroSeguro(
+            item.minimo,
+            0
+          );
+
+
+        const maximo =
+          numeroSeguro(
+            item.maximo,
+            100
+          );
+
 
         return {
           id:
@@ -147,15 +191,15 @@ function normalizarFaixas(
             `Faixa ${index + 1}`,
 
           minimo:
-            numeroPositivo(
-              item.minimo,
-              0
+            Math.min(
+              minimo,
+              maximo
             ),
 
           maximo:
-            numeroPositivo(
-              item.maximo,
-              100
+            Math.max(
+              minimo,
+              maximo
             ),
 
           classificacao:
@@ -164,8 +208,7 @@ function normalizarFaixas(
 
           ordem:
             item.ordem ||
-            index +
-            1,
+            index + 1,
         };
       }
     )
@@ -192,6 +235,10 @@ function normalizarFaixas(
 }
 
 
+/* =========================================================
+ * ARRAYS NUMÉRICOS
+ * ======================================================= */
+
 function normalizarArrayNumerico(
   valor: unknown
 ): number[] {
@@ -203,25 +250,37 @@ function normalizarArrayNumerico(
     return [];
   }
 
-  return valor
-    .map(
-      (
-        item
-      ) =>
-        Number(
-          item
+
+  return [
+    ...new Set(
+      valor
+        .map(
+          item =>
+            Number(
+              item
+            )
         )
-    )
-    .filter(
-      (
-        item
-      ) =>
-        Number.isFinite(
-          item
+        .filter(
+          item =>
+            Number.isFinite(
+              item
+            )
         )
-    );
+    ),
+  ].sort(
+    (
+      a,
+      b
+    ) =>
+      a -
+      b
+  );
 }
 
+
+/* =========================================================
+ * CONFIGURAÇÃO ANALÍTICA
+ * ======================================================= */
 
 function normalizarConfiguracaoAnalise(
   configuracao: unknown,
@@ -231,6 +290,7 @@ function normalizarConfiguracaoAnalise(
     criarConfiguracaoAnalisePadrao(
       tipo
     );
+
 
   if (
     !configuracao ||
@@ -243,20 +303,24 @@ function normalizarConfiguracaoAnalise(
     return padrao;
   }
 
+
   const item =
     configuracao as Partial<ConfiguracaoAnaliseModelo>;
 
+
   const escalaMinima =
-    numeroPositivo(
+    numeroSeguro(
       item.escalaMinima,
       padrao.escalaMinima
     );
 
+
   const escalaMaxima =
-    numeroPositivo(
+    numeroSeguro(
       item.escalaMaxima,
       padrao.escalaMaxima
     );
+
 
   return {
     metodo:
@@ -264,9 +328,9 @@ function normalizarConfiguracaoAnalise(
       TipoModuloPesquisa.CLIMA
         ? "FAVORABILIDADE"
         : tipo ===
-          TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
-        ? "MATURIDADE"
-        : "RISCO_PSICOSSOCIAL",
+            TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+          ? "MATURIDADE"
+          : "RISCO_PSICOSSOCIAL",
 
     escalaMinima:
       Math.min(
@@ -278,17 +342,6 @@ function normalizarConfiguracaoAnalise(
       Math.max(
         escalaMinima,
         escalaMaxima
-      ),
-
-    anonimatoMinimo:
-      Math.max(
-        1,
-        Math.round(
-          numeroPositivo(
-            item.anonimatoMinimo,
-            padrao.anonimatoMinimo
-          )
-        )
       ),
 
     favoravel:
@@ -323,6 +376,10 @@ function normalizarConfiguracaoAnalise(
 }
 
 
+/* =========================================================
+ * PERGUNTAS
+ * ======================================================= */
+
 function normalizarPerguntas(
   perguntas: unknown,
   dimensoes: DimensaoModelo[] = []
@@ -335,96 +392,124 @@ function normalizarPerguntas(
     return [];
   }
 
+
   const idsDimensoes =
     new Set(
       dimensoes.map(
-        (
-          dimensao
-        ) =>
+        dimensao =>
           dimensao.id
       )
     );
 
-  return perguntas.map(
-    (
-      pergunta,
-      index
-    ) => {
-      const item =
-        pergunta as Partial<PerguntaModelo>;
 
-      const dimensaoId =
-        item.dimensaoId &&
-        idsDimensoes.has(
-          item.dimensaoId
-        )
-          ? item.dimensaoId
-          : null;
+  return perguntas
+    .map(
+      (
+        pergunta,
+        index
+      ): PerguntaModelo => {
+        const item =
+          pergunta as Partial<PerguntaModelo>;
 
-      return {
-        id:
-          item.id ||
-          randomUUID(),
 
-        titulo:
-          item.titulo?.trim() ||
-          "Nova pergunta",
-
-        descricao:
-          item.descricao?.trim() ||
-          null,
-
-        tipo:
+        const tipo =
           item.tipo ||
-          "NOTA",
+          TipoPergunta.NOTA;
+
+
+        const dimensaoId =
+          item.dimensaoId &&
+          idsDimensoes.has(
+            item.dimensaoId
+          )
+            ? item.dimensaoId
+            : null;
+
+
+        return {
+          id:
+            item.id ||
+            randomUUID(),
+
+          titulo:
+            item.titulo?.trim() ||
+            "Nova pergunta",
+
+          descricao:
+            item.descricao?.trim() ||
+            null,
+
+          tipo,
+
+          ordem:
+            item.ordem ||
+            index + 1,
+
+          obrigatoria:
+            item.obrigatoria ??
+            true,
+
+          /*
+           * Opções somente fazem sentido
+           * em múltipla escolha.
+           */
+          opcoes:
+            tipo ===
+              TipoPergunta.MULTIPLA_ESCOLHA &&
+            Array.isArray(
+              item.opcoes
+            )
+              ? item.opcoes
+                  .map(
+                    opcao =>
+                      String(
+                        opcao
+                      ).trim()
+                  )
+                  .filter(
+                    Boolean
+                  )
+              : [],
+
+          dimensaoId,
+
+          /*
+           * O sentido só possui efeito
+           * analítico nas perguntas NOTA.
+           *
+           * Nos demais tipos mantemos POSITIVO
+           * apenas para padronizar o snapshot.
+           */
+          sentidoPontuacao:
+            tipo ===
+              TipoPergunta.NOTA &&
+            item.sentidoPontuacao ===
+              "NEGATIVO"
+              ? "NEGATIVO"
+              : "POSITIVO",
+        };
+      }
+    )
+    .sort(
+      (
+        a,
+        b
+      ) =>
+        a.ordem -
+        b.ordem
+    )
+    .map(
+      (
+        pergunta,
+        index
+      ) => ({
+        ...pergunta,
 
         ordem:
-          item.ordem ||
           index +
           1,
-
-        obrigatoria:
-          item.obrigatoria ??
-          true,
-
-        opcoes:
-          Array.isArray(
-            item.opcoes
-          )
-            ? item.opcoes
-                .map(
-                  (
-                    opcao
-                  ) =>
-                    String(
-                      opcao
-                    ).trim()
-                )
-                .filter(
-                  Boolean
-                )
-            : [],
-
-        dimensaoId,
-
-        peso:
-          numeroPositivo(
-            item.peso,
-            1
-          ),
-
-        sentidoPontuacao:
-          item.sentidoPontuacao ===
-          "NEGATIVO"
-            ? "NEGATIVO"
-            : "POSITIVO",
-
-        fatorRisco:
-          item.fatorRisco?.trim() ||
-          null,
-      };
-    }
-  );
+      })
+    );
 }
 
 
@@ -440,7 +525,7 @@ function criarPerguntaPadrao(): PerguntaModelo {
       null,
 
     tipo:
-      "NOTA",
+      TipoPergunta.NOTA,
 
     ordem:
       1,
@@ -453,24 +538,28 @@ function criarPerguntaPadrao(): PerguntaModelo {
     dimensaoId:
       null,
 
-    peso:
-      1,
-
     sentidoPontuacao:
       "POSITIVO",
-
-    fatorRisco:
-      null,
   };
 }
 
 
+/* =========================================================
+ * REPOSITÓRIO
+ * ======================================================= */
+
 export default class RepositorioModeloPesquisa {
+
+  /* =======================================================
+   * SALVAR
+   * ===================================================== */
+
   static async salvar(
     modelo: ModeloPesquisa
   ): Promise<ModeloPesquisaDetalhado> {
     const titulo =
       modelo.titulo?.trim();
+
 
     if (
       !titulo
@@ -487,33 +576,33 @@ export default class RepositorioModeloPesquisa {
 
 
     /*
-     * Evita alterar o tipo de um instrumento que
-     * já possui aplicações históricas.
+     * Não permitimos mudar o módulo de
+     * um modelo depois que ele já possui
+     * aplicações.
      */
     if (
       modelo.id
     ) {
       const existente =
-        await prisma.modeloPesquisa.findUnique(
-          {
-            where: {
-              id:
-                modelo.id,
-            },
+        await prisma.modeloPesquisa.findUnique({
+          where: {
+            id:
+              modelo.id,
+          },
 
-            select: {
-              tipo:
-                true,
+          select: {
+            tipo:
+              true,
 
-              _count: {
-                select: {
-                  pesquisas:
-                    true,
-                },
+            _count: {
+              select: {
+                pesquisas:
+                  true,
               },
             },
-          }
-        );
+          },
+        });
+
 
       if (
         !existente
@@ -522,6 +611,7 @@ export default class RepositorioModeloPesquisa {
           "Modelo não encontrado."
         );
       }
+
 
       if (
         existente.tipo !==
@@ -557,6 +647,15 @@ export default class RepositorioModeloPesquisa {
       );
 
 
+    const perguntasSalvar =
+      perguntas.length >
+      0
+        ? perguntas
+        : [
+            criarPerguntaPadrao(),
+          ];
+
+
     const dados = {
       titulo,
 
@@ -575,14 +674,7 @@ export default class RepositorioModeloPesquisa {
         false,
 
       perguntas:
-        (
-          perguntas.length >
-          0
-            ? perguntas
-            : [
-                criarPerguntaPadrao(),
-              ]
-        ) as unknown as Prisma.InputJsonValue,
+        perguntasSalvar as unknown as Prisma.InputJsonValue,
 
       dimensoes:
         dimensoes as unknown as Prisma.InputJsonValue,
@@ -594,23 +686,19 @@ export default class RepositorioModeloPesquisa {
 
     const resultado =
       modelo.id
-        ? await prisma.modeloPesquisa.update(
-            {
-              where: {
-                id:
-                  modelo.id,
-              },
+        ? await prisma.modeloPesquisa.update({
+            where: {
+              id:
+                modelo.id,
+            },
 
-              data:
-                dados,
-            }
-          )
-        : await prisma.modeloPesquisa.create(
-            {
-              data:
-                dados,
-            }
-          );
+            data:
+              dados,
+          })
+        : await prisma.modeloPesquisa.create({
+            data:
+              dados,
+          });
 
 
     const dimensoesResultado =
@@ -662,43 +750,45 @@ export default class RepositorioModeloPesquisa {
   }
 
 
+  /* =======================================================
+   * LISTAR
+   * ===================================================== */
+
   static async obterTodos(): Promise<
     ModeloPesquisaComResumo[]
   > {
     const modelos =
-      await prisma.modeloPesquisa.findMany(
-        {
-          orderBy: {
-            criadoEm:
-              "desc",
-          },
+      await prisma.modeloPesquisa.findMany({
+        orderBy: {
+          criadoEm:
+            "desc",
+        },
 
-          include: {
-            _count: {
-              select: {
-                pesquisas:
-                  true,
-              },
+        include: {
+          _count: {
+            select: {
+              pesquisas:
+                true,
             },
           },
-        }
-      );
+        },
+      });
 
 
     return modelos.map(
-      (
-        modelo
-      ) => {
+      modelo => {
         const dimensoes =
           normalizarDimensoes(
             modelo.dimensoes
           );
+
 
         const perguntas =
           normalizarPerguntas(
             modelo.perguntas,
             dimensoes
           );
+
 
         return {
           id:
@@ -747,26 +837,28 @@ export default class RepositorioModeloPesquisa {
   }
 
 
+  /* =======================================================
+   * EXCLUIR MODELO
+   * ===================================================== */
+
   static async excluir(
     id: string
-  ) {
+  ): Promise<string> {
     const modelo =
-      await prisma.modeloPesquisa.findUnique(
-        {
-          where: {
-            id,
-          },
+      await prisma.modeloPesquisa.findUnique({
+        where: {
+          id,
+        },
 
-          include: {
-            _count: {
-              select: {
-                pesquisas:
-                  true,
-              },
+        include: {
+          _count: {
+            select: {
+              pesquisas:
+                true,
             },
           },
-        }
-      );
+        },
+      });
 
 
     if (
@@ -789,30 +881,30 @@ export default class RepositorioModeloPesquisa {
     }
 
 
-    await prisma.modeloPesquisa.delete(
-      {
-        where: {
-          id,
-        },
-      }
-    );
+    await prisma.modeloPesquisa.delete({
+      where: {
+        id,
+      },
+    });
 
 
     return id;
   }
 
 
+  /* =======================================================
+   * OBTER POR ID
+   * ===================================================== */
+
   static async obterPorId(
     id: string
   ): Promise<ModeloPesquisaDetalhado> {
     const modelo =
-      await prisma.modeloPesquisa.findUnique(
-        {
-          where: {
-            id,
-          },
-        }
-      );
+      await prisma.modeloPesquisa.findUnique({
+        where: {
+          id,
+        },
+      });
 
 
     if (
@@ -872,160 +964,75 @@ export default class RepositorioModeloPesquisa {
   }
 
 
+  /* =======================================================
+   * ADICIONAR PERGUNTA
+   * ===================================================== */
+
   static async adicionarPergunta(
     modeloId: string
-  ) {
+  ): Promise<PerguntaModelo> {
     const modelo =
       await this.obterPorId(
         modeloId
       );
 
 
-    const novaPergunta: PerguntaModelo =
-      {
-        ...criarPerguntaPadrao(),
+    const novaPergunta: PerguntaModelo = {
+      ...criarPerguntaPadrao(),
 
-        ordem:
-          modelo.perguntas
-            .length +
-          1,
-      };
+      ordem:
+        modelo.perguntas.length +
+        1,
+    };
 
 
     const perguntas = [
       ...modelo.perguntas,
-
       novaPergunta,
     ];
 
 
-    await prisma.modeloPesquisa.update(
-      {
-        where: {
-          id:
-            modeloId,
-        },
+    await prisma.modeloPesquisa.update({
+      where: {
+        id:
+          modeloId,
+      },
 
-        data: {
-          perguntas:
-            perguntas as unknown as Prisma.InputJsonValue,
-        },
-      }
-    );
+      data: {
+        perguntas:
+          perguntas as unknown as Prisma.InputJsonValue,
+      },
+    });
 
 
     return novaPergunta;
   }
 
 
+  /* =======================================================
+   * SALVAR PERGUNTA
+   * ===================================================== */
+
   static async salvarPergunta(
     modeloId: string,
     pergunta: PerguntaModelo
-  ) {
+  ): Promise<PerguntaModelo> {
     const modelo =
       await this.obterPorId(
         modeloId
       );
 
 
-    const dimensaoValida =
-      pergunta.dimensaoId
-        ? modelo.dimensoes.some(
-            (
-              dimensao
-            ) =>
-              dimensao.id ===
-              pergunta.dimensaoId
-          )
-        : true;
-
-
-    if (
-      !dimensaoValida
-    ) {
-      throw new Error(
-        "A dimensão selecionada não pertence a este modelo."
-      );
-    }
-
-
-    const perguntas =
-      modelo.perguntas.map(
-        (
-          item
-        ) =>
-          item.id ===
-          pergunta.id
-            ? {
-                ...item,
-
-                titulo:
-                  pergunta.titulo?.trim() ||
-                  "Nova pergunta",
-
-                descricao:
-                  pergunta.descricao?.trim() ||
-                  null,
-
-                tipo:
-                  pergunta.tipo,
-
-                obrigatoria:
-                  pergunta.obrigatoria ??
-                  true,
-
-                opcoes:
-                  Array.isArray(
-                    pergunta.opcoes
-                  )
-                    ? pergunta.opcoes
-                        .map(
-                          (
-                            opcao
-                          ) =>
-                            opcao.trim()
-                        )
-                        .filter(
-                          Boolean
-                        )
-                    : [],
-
-                dimensaoId:
-                  pergunta.dimensaoId ||
-                  null,
-
-                peso:
-                  numeroPositivo(
-                    pergunta.peso,
-                    1
-                  ),
-
-                sentidoPontuacao:
-                  pergunta.sentidoPontuacao ===
-                  "NEGATIVO"
-                    ? "NEGATIVO"
-                    : "POSITIVO",
-
-                fatorRisco:
-                  pergunta.fatorRisco?.trim() ||
-                  null,
-              }
-            : item
-      );
-
-
-    const perguntaSalva =
-      perguntas.find(
-        (
-          item
-        ) =>
+    const perguntaExistente =
+      modelo.perguntas.find(
+        item =>
           item.id ===
           pergunta.id
       );
 
 
     if (
-      !perguntaSalva
+      !perguntaExistente
     ) {
       throw new Error(
         "Pergunta não encontrada."
@@ -1033,41 +1040,141 @@ export default class RepositorioModeloPesquisa {
     }
 
 
-    await prisma.modeloPesquisa.update(
-      {
-        where: {
-          id:
-            modeloId,
-        },
+    if (
+      pergunta.dimensaoId
+    ) {
+      const dimensaoValida =
+        modelo.dimensoes.some(
+          dimensao =>
+            dimensao.id ===
+            pergunta.dimensaoId
+        );
 
-        data: {
-          perguntas:
-            perguntas as unknown as Prisma.InputJsonValue,
-        },
+
+      if (
+        !dimensaoValida
+      ) {
+        throw new Error(
+          "A dimensão selecionada não pertence a este modelo."
+        );
       }
-    );
+    }
 
 
-    return perguntaSalva;
+    const tipo =
+      pergunta.tipo ||
+      TipoPergunta.NOTA;
+
+
+    const perguntaNormalizada: PerguntaModelo = {
+      ...perguntaExistente,
+
+      titulo:
+        pergunta.titulo?.trim() ||
+        "Nova pergunta",
+
+      descricao:
+        pergunta.descricao?.trim() ||
+        null,
+
+      tipo,
+
+      obrigatoria:
+        pergunta.obrigatoria ??
+        true,
+
+      opcoes:
+        tipo ===
+          TipoPergunta.MULTIPLA_ESCOLHA &&
+        Array.isArray(
+          pergunta.opcoes
+        )
+          ? pergunta.opcoes
+              .map(
+                opcao =>
+                  opcao.trim()
+              )
+              .filter(
+                Boolean
+              )
+          : [],
+
+      dimensaoId:
+        pergunta.dimensaoId ||
+        null,
+
+      sentidoPontuacao:
+        tipo ===
+          TipoPergunta.NOTA &&
+        pergunta.sentidoPontuacao ===
+          "NEGATIVO"
+          ? "NEGATIVO"
+          : "POSITIVO",
+    };
+
+
+    const perguntas =
+      modelo.perguntas.map(
+        item =>
+          item.id ===
+          pergunta.id
+            ? perguntaNormalizada
+            : item
+      );
+
+
+    await prisma.modeloPesquisa.update({
+      where: {
+        id:
+          modeloId,
+      },
+
+      data: {
+        perguntas:
+          perguntas as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+
+    return perguntaNormalizada;
   }
 
+
+  /* =======================================================
+   * EXCLUIR PERGUNTA
+   * ===================================================== */
 
   static async excluirPergunta(
     modeloId: string,
     perguntaId: string
-  ) {
+  ): Promise<string> {
     const modelo =
       await this.obterPorId(
         modeloId
       );
 
 
+    const existe =
+      modelo.perguntas.some(
+        pergunta =>
+          pergunta.id ===
+          perguntaId
+      );
+
+
+    if (
+      !existe
+    ) {
+      throw new Error(
+        "Pergunta não encontrada."
+      );
+    }
+
+
     const perguntas =
       modelo.perguntas
         .filter(
-          (
-            pergunta
-          ) =>
+          pergunta =>
             pergunta.id !==
             perguntaId
         )
@@ -1085,28 +1192,30 @@ export default class RepositorioModeloPesquisa {
         );
 
 
-    await prisma.modeloPesquisa.update(
-      {
-        where: {
-          id:
-            modeloId,
-        },
+    await prisma.modeloPesquisa.update({
+      where: {
+        id:
+          modeloId,
+      },
 
-        data: {
-          perguntas:
-            perguntas as unknown as Prisma.InputJsonValue,
-        },
-      }
-    );
+      data: {
+        perguntas:
+          perguntas as unknown as Prisma.InputJsonValue,
+      },
+    });
 
 
     return modeloId;
   }
 
 
+  /* =======================================================
+   * DUPLICAR
+   * ===================================================== */
+
   static async duplicar(
     id: string
-  ) {
+  ): Promise<ModeloPesquisaDetalhado> {
     const modelo =
       await this.obterPorId(
         id
@@ -1114,8 +1223,9 @@ export default class RepositorioModeloPesquisa {
 
 
     /*
-     * Criamos novos IDs de dimensão e atualizamos
-     * as perguntas que apontavam para elas.
+     * Novos IDs são necessários para que
+     * dimensões do modelo original e da cópia
+     * sejam totalmente independentes.
      */
     const mapaDimensoes =
       new Map<
@@ -1133,10 +1243,12 @@ export default class RepositorioModeloPesquisa {
           const novoId =
             randomUUID();
 
+
           mapaDimensoes.set(
             dimensao.id,
             novoId
           );
+
 
           return {
             ...dimensao,
@@ -1171,7 +1283,7 @@ export default class RepositorioModeloPesquisa {
             pergunta.dimensaoId
               ? mapaDimensoes.get(
                   pergunta.dimensaoId
-                ) ||
+                ) ??
                 null
               : null,
         })

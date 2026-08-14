@@ -14,7 +14,9 @@ import {
   obterDadosRelatorioModuloPesquisa,
 } from "@/src/backend/pesquisaCliente/acoesModuloPesquisa";
 
-import RelatorioAvaliacaoPsicossocialTela, {
+import RelatorioAvaliacaoPsicossocialTela from "@/src/app/components/pesquisas/RelatorioAvaliacaoPsicossocialTela";
+
+import type {
   DadosRelatorioPsicossocial,
 } from "@/src/app/components/pesquisas/RelatorioAvaliacaoPsicossocialTela";
 
@@ -35,7 +37,9 @@ export default async function RelatorioAvaliacaoPsicossocialPage({
     await auth();
 
 
-  if (!session?.user) {
+  if (
+    !session?.user
+  ) {
     redirect(
       "/login"
     );
@@ -54,15 +58,11 @@ export default async function RelatorioAvaliacaoPsicossocialPage({
 
 
   /*
-   * A action é compartilhada pelos três módulos.
+   * A action é compartilhada entre
+   * Clima, Diagnóstico e Psicossocial.
    *
-   * Por isso o TypeScript entende o campo "analise"
-   * como uma união:
-   *
-   * Clima | Diagnóstico | Psicossocial
-   *
-   * Neste endpoint nós sabemos que o tipo solicitado
-   * é exclusivamente AVALIACAO_PSICOSSOCIAL.
+   * Aqui garantimos que este retorno
+   * pertence ao módulo Psicossocial.
    */
   if (
     resultado.tipo !==
@@ -74,6 +74,9 @@ export default async function RelatorioAvaliacaoPsicossocialPage({
   }
 
 
+  /*
+   * Narrowing da união retornada pelo backend.
+   */
   if (
     !resultado.analise ||
     !(
@@ -97,9 +100,6 @@ export default async function RelatorioAvaliacaoPsicossocialPage({
       analise: {
         fatores:
           resultado.analise.fatores,
-
-        anonimatoMinimo:
-          resultado.analise.anonimatoMinimo,
       },
     };
 

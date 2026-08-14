@@ -42,11 +42,12 @@ type AcumuladorClima = {
   id: string;
   nome: string;
 
-  favoravelPeso: number;
-  neutroPeso: number;
-  desfavoravelPeso: number;
+  pesoDimensao: number;
 
-  totalPeso: number;
+  favoravel: number;
+  neutro: number;
+  desfavoravel: number;
+
   totalRespostas: number;
 };
 
@@ -56,8 +57,10 @@ type AcumuladorScore = {
   nome: string;
   fatorRisco: string | null;
 
-  somaPonderada: number;
-  pesoTotal: number;
+  pesoDimensao: number;
+
+  soma: number;
+  quantidade: number;
 
   totalRespostas: number;
 
@@ -286,7 +289,15 @@ function normalizarConfiguracaoAnalise(
       configuracao
     )
   ) {
-    return padrao;
+    return {
+      ...padrao,
+
+      /*
+       * O anonimato mínimo deixou de fazer parte
+       * da regra analítica. Mantemos qualquer campo
+       * legado apenas fora da lógica deste repositório.
+       */
+    } as ConfiguracaoAnaliseModelo;
   }
 
 
@@ -314,17 +325,6 @@ function normalizarConfiguracaoAnalise(
       numeroSeguro(
         item.escalaMaxima,
         padrao.escalaMaxima
-      ),
-
-    anonimatoMinimo:
-      Math.max(
-        1,
-        Math.round(
-          numeroSeguro(
-            item.anonimatoMinimo,
-            padrao.anonimatoMinimo
-          )
-        )
       ),
 
     favoravel:
@@ -355,7 +355,7 @@ function normalizarConfiguracaoAnalise(
       normalizarFaixas(
         item.faixas
       ),
-  };
+  } as ConfiguracaoAnaliseModelo;
 }
 
 
@@ -403,6 +403,11 @@ function normalizarPerguntas(
           : null;
 
 
+      const tipo =
+        item.tipo ||
+        TipoPergunta.NOTA;
+
+
       return {
         id:
           item.id ||
@@ -416,9 +421,7 @@ function normalizarPerguntas(
           item.descricao?.trim() ||
           null,
 
-        tipo:
-          item.tipo ||
-          TipoPergunta.NOTA,
+        tipo,
 
         ordem:
           item.ordem ||
@@ -428,7 +431,13 @@ function normalizarPerguntas(
           item.obrigatoria ??
           true,
 
+        /*
+         * Opções só fazem sentido para
+         * perguntas de múltipla escolha.
+         */
         opcoes:
+          tipo ===
+            TipoPergunta.MULTIPLA_ESCOLHA &&
           Array.isArray(
             item.opcoes
           )
@@ -446,25 +455,16 @@ function normalizarPerguntas(
 
         dimensaoId,
 
-        peso:
-          Math.max(
-            0,
-            numeroSeguro(
-              item.peso,
-              1
-            )
-          ),
-
+        /*
+         * A orientação continua pertencendo à pergunta,
+         * pois uma afirmação pode ser positiva ou negativa.
+         */
         sentidoPontuacao:
           item.sentidoPontuacao ===
           "NEGATIVO"
             ? "NEGATIVO"
             : "POSITIVO",
-
-        fatorRisco:
-          item.fatorRisco?.trim() ||
-          null,
-      };
+      } as PerguntaPesquisaCliente;
     }
   );
 }
@@ -983,16 +983,22 @@ function analisarPesquisaClima(
         nome:
           dimensao.nome,
 
-        favoravelPeso:
+        pesoDimensao:
+          Math.max(
+            0,
+            numeroSeguro(
+              dimensao.peso,
+              1
+            )
+          ),
+
+        favoravel:
           0,
 
-        neutroPeso:
+        neutro:
           0,
 
-        desfavoravelPeso:
-          0,
-
-        totalPeso:
+        desfavoravel:
           0,
 
         totalRespostas:
@@ -1011,19 +1017,6 @@ function analisarPesquisaClima(
         ]
       )
     );
-
-
-  let favoravelGeral =
-    0;
-
-  let neutroGeral =
-    0;
-
-  let desfavoravelGeral =
-    0;
-
-  let pesoGeral =
-    0;
 
 
   const comentariosAbertos: string[] =
@@ -1057,14 +1050,11 @@ function analisarPesquisaClima(
       }
 
 
-      /*
-       * Comentários/textos.
-       */
       if (
-        pergunta.tipo !==
-          TipoPergunta.NOTA &&
-        pergunta.tipo !==
-          TipoPergunta.MULTIPLA_ESCOLHA
+        pergunta.tipo ===
+          TipoPergunta.TEXTO ||
+        pergunta.tipo ===
+          TipoPergunta.TEXTO_LONGO
       ) {
         const texto =
           resposta.valor.trim();
@@ -1084,7 +1074,21 @@ function analisarPesquisaClima(
 
       if (
         pergunta.tipo !==
-        TipoPergunta.NOTA
+          TipoPergunta.NOTA ||
+        !pergunta.dimensaoId
+      ) {
+        continue;
+      }
+
+
+      const dimensao =
+        mapaDimensoes.get(
+          pergunta.dimensaoId
+        );
+
+
+      if (
+        !dimensao
       ) {
         continue;
       }
@@ -1105,11 +1109,6 @@ function analisarPesquisaClima(
       }
 
 
-      /*
-       * Favorabilidade sempre é interpretada como:
-       *
-       * nota maior = melhor percepção.
-       */
       const valorOrientado =
         notaOrientadaPositivamente(
           valorOriginal,
@@ -1132,69 +1131,14 @@ function analisarPesquisaClima(
       }
 
 
-      const pesoPergunta =
-        Math.max(
-          0,
-          pergunta.peso ||
-            1
-        );
-
-
-      const dimensao =
-        pergunta.dimensaoId
-          ? mapaDimensoes.get(
-              pergunta.dimensaoId
-            )
-          : undefined;
-
-
-      if (
-        dimensao
-      ) {
-        dimensao.totalPeso +=
-          pesoPergunta;
-
-        dimensao.totalRespostas++;
-
-
-        if (
-          classificacao ===
-          "FAVORAVEL"
-        ) {
-          dimensao.favoravelPeso +=
-            pesoPergunta;
-        }
-
-
-        if (
-          classificacao ===
-          "NEUTRO"
-        ) {
-          dimensao.neutroPeso +=
-            pesoPergunta;
-        }
-
-
-        if (
-          classificacao ===
-          "DESFAVORAVEL"
-        ) {
-          dimensao.desfavoravelPeso +=
-            pesoPergunta;
-        }
-      }
-
-
-      pesoGeral +=
-        pesoPergunta;
+      dimensao.totalRespostas++;
 
 
       if (
         classificacao ===
         "FAVORAVEL"
       ) {
-        favoravelGeral +=
-          pesoPergunta;
+        dimensao.favoravel++;
       }
 
 
@@ -1202,8 +1146,7 @@ function analisarPesquisaClima(
         classificacao ===
         "NEUTRO"
       ) {
-        neutroGeral +=
-          pesoPergunta;
+        dimensao.neutro++;
       }
 
 
@@ -1211,8 +1154,7 @@ function analisarPesquisaClima(
         classificacao ===
         "DESFAVORAVEL"
       ) {
-        desfavoravelGeral +=
-          pesoPergunta;
+        dimensao.desfavoravel++;
       }
     }
   }
@@ -1224,7 +1166,7 @@ function analisarPesquisaClima(
     )
       .filter(
         dimensao =>
-          dimensao.totalPeso >
+          dimensao.totalRespostas >
           0
       )
       .map(
@@ -1235,72 +1177,81 @@ function analisarPesquisaClima(
           nome:
             dimensao.nome,
 
+          pesoDimensao:
+            dimensao.pesoDimensao,
+
           totalRespostas:
             dimensao.totalRespostas,
 
           favoravel:
             (
-              dimensao.favoravelPeso /
-              dimensao.totalPeso
+              dimensao.favoravel /
+              dimensao.totalRespostas
             ) *
             100,
 
           neutro:
             (
-              dimensao.neutroPeso /
-              dimensao.totalPeso
+              dimensao.neutro /
+              dimensao.totalRespostas
             ) *
             100,
 
           desfavoravel:
             (
-              dimensao.desfavoravelPeso /
-              dimensao.totalPeso
+              dimensao.desfavoravel /
+              dimensao.totalRespostas
             ) *
             100,
 
-          favoravelPeso:
-            dimensao.favoravelPeso,
+          favoravelQuantidade:
+            dimensao.favoravel,
 
-          neutroPeso:
-            dimensao.neutroPeso,
+          neutroQuantidade:
+            dimensao.neutro,
 
-          desfavoravelPeso:
-            dimensao.desfavoravelPeso,
-
-          totalPeso:
-            dimensao.totalPeso,
+          desfavoravelQuantidade:
+            dimensao.desfavoravel,
         })
       );
 
 
-  return {
-    indiceGeralClima:
-      pesoGeral >
+  const pesoTotal =
+    dimensoesResultado.reduce(
+      (
+        total,
+        dimensao
+      ) =>
+        total +
+        dimensao.pesoDimensao,
       0
-        ? (
-            favoravelGeral /
-            pesoGeral
-          ) *
-          100
-        : null,
+    );
+
+
+  const indiceGeralClima =
+    pesoTotal >
+    0
+      ? dimensoesResultado.reduce(
+          (
+            total,
+            dimensao
+          ) =>
+            total +
+            dimensao.favoravel *
+              dimensao.pesoDimensao,
+          0
+        ) /
+        pesoTotal
+      : null;
+
+
+  return {
+    indiceGeralClima,
 
     dimensoes:
       dimensoesResultado,
 
     comentariosAbertos,
-
-    favoravelPeso:
-      favoravelGeral,
-
-    neutroPeso:
-      neutroGeral,
-
-    desfavoravelPeso:
-      desfavoravelGeral,
-
-    totalPeso:
-      pesoGeral,
   };
 }
 
@@ -1315,27 +1266,15 @@ function montarAnaliseClima(
         id: string;
         nome: string;
 
-        favoravelPeso: number;
-        neutroPeso: number;
-        desfavoravelPeso: number;
+        pesoDimensao: number;
 
-        totalPeso: number;
+        favoravelQuantidade: number;
+        neutroQuantidade: number;
+        desfavoravelQuantidade: number;
+
         totalRespostas: number;
       }
     >();
-
-
-  let favoravelGeral =
-    0;
-
-  let neutroGeral =
-    0;
-
-  let desfavoravelGeral =
-    0;
-
-  let pesoGeral =
-    0;
 
 
   const comentariosAbertos: string[] =
@@ -1357,19 +1296,6 @@ function montarAnaliseClima(
       analisarPesquisaClima(
         pesquisa
       );
-
-
-    favoravelGeral +=
-      resultado.favoravelPeso;
-
-    neutroGeral +=
-      resultado.neutroPeso;
-
-    desfavoravelGeral +=
-      resultado.desfavoravelPeso;
-
-    pesoGeral +=
-      resultado.totalPeso;
 
 
     comentariosAbertos.push(
@@ -1411,16 +1337,16 @@ function montarAnaliseClima(
           nome:
             dimensao.nome,
 
-          favoravelPeso:
+          pesoDimensao:
+            dimensao.pesoDimensao,
+
+          favoravelQuantidade:
             0,
 
-          neutroPeso:
+          neutroQuantidade:
             0,
 
-          desfavoravelPeso:
-            0,
-
-          totalPeso:
+          desfavoravelQuantidade:
             0,
 
           totalRespostas:
@@ -1428,17 +1354,14 @@ function montarAnaliseClima(
         };
 
 
-      atual.favoravelPeso +=
-        dimensao.favoravelPeso;
+      atual.favoravelQuantidade +=
+        dimensao.favoravelQuantidade;
 
-      atual.neutroPeso +=
-        dimensao.neutroPeso;
+      atual.neutroQuantidade +=
+        dimensao.neutroQuantidade;
 
-      atual.desfavoravelPeso +=
-        dimensao.desfavoravelPeso;
-
-      atual.totalPeso +=
-        dimensao.totalPeso;
+      atual.desfavoravelQuantidade +=
+        dimensao.desfavoravelQuantidade;
 
       atual.totalRespostas +=
         dimensao.totalRespostas;
@@ -1452,13 +1375,13 @@ function montarAnaliseClima(
   }
 
 
-  const dimensoes =
+  const dimensoesComPeso =
     Array.from(
       mapaDimensoes.values()
     )
       .filter(
         item =>
-          item.totalPeso >
+          item.totalRespostas >
           0
       )
       .map(
@@ -1469,27 +1392,30 @@ function montarAnaliseClima(
           nome:
             item.nome,
 
+          pesoDimensao:
+            item.pesoDimensao,
+
           totalRespostas:
             item.totalRespostas,
 
           favoravel:
             (
-              item.favoravelPeso /
-              item.totalPeso
+              item.favoravelQuantidade /
+              item.totalRespostas
             ) *
             100,
 
           neutro:
             (
-              item.neutroPeso /
-              item.totalPeso
+              item.neutroQuantidade /
+              item.totalRespostas
             ) *
             100,
 
           desfavoravel:
             (
-              item.desfavoravelPeso /
-              item.totalPeso
+              item.desfavoravelQuantidade /
+              item.totalRespostas
             ) *
             100,
         })
@@ -1504,18 +1430,46 @@ function montarAnaliseClima(
       );
 
 
-  return {
-    indiceGeralClima:
-      pesoGeral >
+  const pesoTotal =
+    dimensoesComPeso.reduce(
+      (
+        total,
+        dimensao
+      ) =>
+        total +
+        dimensao.pesoDimensao,
       0
-        ? (
-            favoravelGeral /
-            pesoGeral
-          ) *
-          100
-        : null,
+    );
 
-    dimensoes,
+
+  const indiceGeralClima =
+    pesoTotal >
+    0
+      ? dimensoesComPeso.reduce(
+          (
+            total,
+            dimensao
+          ) =>
+            total +
+            dimensao.favoravel *
+              dimensao.pesoDimensao,
+          0
+        ) /
+        pesoTotal
+      : null;
+
+
+  return {
+    indiceGeralClima,
+
+    dimensoes:
+      dimensoesComPeso.map(
+        ({
+          pesoDimensao,
+          ...dimensao
+        }) =>
+          dimensao
+      ),
 
     comentariosAbertos,
 
@@ -1586,10 +1540,19 @@ function analisarPesquisaDiagnostico(
           dimensao.fatorRisco ??
           null,
 
-        somaPonderada:
+        pesoDimensao:
+          Math.max(
+            0,
+            numeroSeguro(
+              dimensao.peso,
+              1
+            )
+          ),
+
+        soma:
           0,
 
-        pesoTotal:
+        quantidade:
           0,
 
         totalRespostas:
@@ -1600,13 +1563,6 @@ function analisarPesquisaDiagnostico(
       }
     );
   }
-
-
-  let somaGeral =
-    0;
-
-  let pesoGeral =
-    0;
 
 
   for (
@@ -1632,7 +1588,21 @@ function analisarPesquisaDiagnostico(
       if (
         !pergunta ||
         pergunta.tipo !==
-          TipoPergunta.NOTA
+          TipoPergunta.NOTA ||
+        !pergunta.dimensaoId
+      ) {
+        continue;
+      }
+
+
+      const dimensao =
+        mapaDimensoes.get(
+          pergunta.dimensaoId
+        );
+
+
+      if (
+        !dimensao
       ) {
         continue;
       }
@@ -1669,62 +1639,16 @@ function analisarPesquisaDiagnostico(
         );
 
 
-      const dimensao =
-        pergunta.dimensaoId
-          ? mapaDimensoes.get(
-              pergunta.dimensaoId
-            )
-          : undefined;
+      dimensao.soma +=
+        score;
 
+      dimensao.quantidade++;
 
-      const pesoPergunta =
-        Math.max(
-          0,
-          pergunta.peso ||
-            1
-        );
+      dimensao.totalRespostas++;
 
-
-      const pesoDimensao =
-        pergunta.dimensaoId
-          ? dimensoes.find(
-              item =>
-                item.id ===
-                pergunta.dimensaoId
-            )?.peso ||
-            1
-          : 1;
-
-
-      const pesoFinal =
-        pesoPergunta *
-        pesoDimensao;
-
-
-      somaGeral +=
-        score *
-        pesoFinal;
-
-      pesoGeral +=
-        pesoFinal;
-
-
-      if (
-        dimensao
-      ) {
-        dimensao.somaPonderada +=
-          score *
-          pesoFinal;
-
-        dimensao.pesoTotal +=
-          pesoFinal;
-
-        dimensao.totalRespostas++;
-
-        dimensao.respondentes.add(
-          respostaPesquisa.id
-        );
-      }
+      dimensao.respondentes.add(
+        respostaPesquisa.id
+      );
     }
   }
 
@@ -1735,14 +1659,14 @@ function analisarPesquisaDiagnostico(
     )
       .filter(
         item =>
-          item.pesoTotal >
+          item.quantidade >
           0
       )
       .map(
         item => {
           const score =
-            item.somaPonderada /
-            item.pesoTotal;
+            item.soma /
+            item.quantidade;
 
 
           const faixa =
@@ -1761,6 +1685,9 @@ function analisarPesquisaDiagnostico(
 
             score,
 
+            pesoDimensao:
+              item.pesoDimensao,
+
             classificacao:
               faixa?.classificacao ||
               faixa?.nome ||
@@ -1768,15 +1695,34 @@ function analisarPesquisaDiagnostico(
 
             totalRespostas:
               item.totalRespostas,
-
-            somaPonderada:
-              item.somaPonderada,
-
-            pesoTotal:
-              item.pesoTotal,
           };
         }
       );
+
+
+  const pesoGeral =
+    dimensoesResultado.reduce(
+      (
+        total,
+        dimensao
+      ) =>
+        total +
+        dimensao.pesoDimensao,
+      0
+    );
+
+
+  const somaGeral =
+    dimensoesResultado.reduce(
+      (
+        total,
+        dimensao
+      ) =>
+        total +
+        dimensao.score *
+          dimensao.pesoDimensao,
+      0
+    );
 
 
   return {
@@ -1871,10 +1817,11 @@ function montarAnaliseDiagnostico(
 
 
       atual.somaPonderada +=
-        dimensao.somaPonderada;
+        dimensao.score *
+        dimensao.pesoDimensao;
 
       atual.pesoTotal +=
-        dimensao.pesoTotal;
+        dimensao.pesoDimensao;
 
       atual.totalRespostas +=
         dimensao.totalRespostas;
@@ -1888,10 +1835,6 @@ function montarAnaliseDiagnostico(
   }
 
 
-  /*
-   * Só classifica o consolidado se os instrumentos
-   * estiverem usando exatamente as mesmas faixas.
-   */
   const faixas =
     obterFaixasCompativeis(
       pesquisasBanco
@@ -1950,15 +1893,6 @@ function montarAnaliseDiagnostico(
       );
 
 
-  /*
-   * Classificação executiva relativa.
-   *
-   * Não inventamos faixas técnicas para "força"
-   * ou "prioridade".
-   *
-   * Apenas organizamos as dimensões do melhor
-   * para o pior desempenho.
-   */
   const quantidade =
     dimensoes.length;
 
@@ -2113,10 +2047,19 @@ function analisarPesquisaPsicossocial(
           dimensao.fatorRisco ??
           null,
 
-        somaPonderada:
+        pesoDimensao:
+          Math.max(
+            0,
+            numeroSeguro(
+              dimensao.peso,
+              1
+            )
+          ),
+
+        soma:
           0,
 
-        pesoTotal:
+        quantidade:
           0,
 
         totalRespostas:
@@ -2127,6 +2070,7 @@ function analisarPesquisaPsicossocial(
       }
     );
   }
+
 
   for (
     const respostaPesquisa
@@ -2151,7 +2095,21 @@ function analisarPesquisaPsicossocial(
       if (
         !pergunta ||
         pergunta.tipo !==
-          TipoPergunta.NOTA
+          TipoPergunta.NOTA ||
+        !pergunta.dimensaoId
+      ) {
+        continue;
+      }
+
+
+      const dimensao =
+        mapaDimensoes.get(
+          pergunta.dimensaoId
+        );
+
+
+      if (
+        !dimensao
       ) {
         continue;
       }
@@ -2172,9 +2130,6 @@ function analisarPesquisaPsicossocial(
       }
 
 
-      /*
-       * Agora 100 significa MAIOR exposição.
-       */
       const orientado =
         notaOrientadaParaRisco(
           valor,
@@ -2191,49 +2146,10 @@ function analisarPesquisaPsicossocial(
         );
 
 
-      const dimensao =
-        pergunta.dimensaoId
-          ? mapaDimensoes.get(
-              pergunta.dimensaoId
-            )
-          : undefined;
+      dimensao.soma +=
+        score;
 
-
-      if (
-        !dimensao
-      ) {
-        continue;
-      }
-
-
-      const pesoPergunta =
-        Math.max(
-          0,
-          pergunta.peso ||
-            1
-        );
-
-
-      const pesoDimensao =
-        dimensoes.find(
-          item =>
-            item.id ===
-            pergunta.dimensaoId
-        )?.peso ||
-        1;
-
-
-      const pesoFinal =
-        pesoPergunta *
-        pesoDimensao;
-
-
-      dimensao.somaPonderada +=
-        score *
-        pesoFinal;
-
-      dimensao.pesoTotal +=
-        pesoFinal;
+      dimensao.quantidade++;
 
       dimensao.totalRespostas++;
 
@@ -2245,9 +2161,6 @@ function analisarPesquisaPsicossocial(
 
 
   return {
-    anonimatoMinimo:
-      configuracao.anonimatoMinimo,
-
     faixas:
       configuracao.faixas,
 
@@ -2257,7 +2170,7 @@ function analisarPesquisaPsicossocial(
       )
         .filter(
           item =>
-            item.pesoTotal >
+            item.quantidade >
             0
         )
         .map(
@@ -2271,9 +2184,12 @@ function analisarPesquisaPsicossocial(
             fatorRisco:
               item.fatorRisco,
 
+            pesoDimensao:
+              item.pesoDimensao,
+
             score:
-              item.somaPonderada /
-              item.pesoTotal,
+              item.soma /
+              item.quantidade,
 
             totalRespostas:
               item.respondentes.size,
@@ -2283,12 +2199,6 @@ function analisarPesquisaPsicossocial(
 
             respondentes:
               item.respondentes,
-
-            somaPonderada:
-              item.somaPonderada,
-
-            pesoTotal:
-              item.pesoTotal,
           })
         ),
   };
@@ -2314,10 +2224,6 @@ function montarAnalisePsicossocial(
     >();
 
 
-  let anonimatoMinimo =
-    1;
-
-
   for (
     const pesquisa
     of pesquisasBanco
@@ -2325,18 +2231,6 @@ function montarAnalisePsicossocial(
     const resultado =
       analisarPesquisaPsicossocial(
         pesquisa
-      );
-
-
-    /*
-     * Regra conservadora:
-     * se diferentes instrumentos exigirem mínimos
-     * diferentes, usamos o maior.
-     */
-    anonimatoMinimo =
-      Math.max(
-        anonimatoMinimo,
-        resultado.anonimatoMinimo
       );
 
 
@@ -2380,10 +2274,11 @@ function montarAnalisePsicossocial(
 
 
       atual.somaPonderada +=
-        fator.somaPonderada;
+        fator.score *
+        fator.pesoDimensao;
 
       atual.pesoTotal +=
-        fator.pesoTotal;
+        fator.pesoDimensao;
 
 
       for (
@@ -2404,11 +2299,6 @@ function montarAnalisePsicossocial(
   }
 
 
-  /*
-   * Só aplicamos classificação de risco no
-   * consolidado se todas as metodologias possuírem
-   * exatamente as mesmas faixas.
-   */
   const faixas =
     obterFaixasCompativeis(
       pesquisasBanco
@@ -2421,15 +2311,6 @@ function montarAnalisePsicossocial(
     )
       .map(
         item => {
-          const totalRespondentes =
-            item.respondentes.size;
-
-
-          const bloqueadoAnonimato =
-            totalRespondentes <
-            anonimatoMinimo;
-
-
           const score =
             item.pesoTotal >
             0
@@ -2440,8 +2321,7 @@ function montarAnalisePsicossocial(
 
           const faixa =
             score !==
-              null &&
-            !bloqueadoAnonimato
+            null
               ? encontrarFaixa(
                   score,
                   faixas
@@ -2459,22 +2339,15 @@ function montarAnalisePsicossocial(
             fatorRisco:
               item.fatorRisco,
 
-            score:
-              bloqueadoAnonimato
-                ? null
-                : score,
+            score,
 
             classificacao:
-              bloqueadoAnonimato
-                ? null
-                : faixa?.classificacao ||
-                  faixa?.nome ||
-                  null,
+              faixa?.classificacao ||
+              faixa?.nome ||
+              null,
 
             totalRespostas:
-              totalRespondentes,
-
-            bloqueadoAnonimato,
+              item.respondentes.size,
           };
         }
       )
@@ -2496,14 +2369,6 @@ function montarAnalisePsicossocial(
 
   return {
     fatores,
-
-    anonimatoMinimo,
-
-    totalGruposBloqueados:
-      fatores.filter(
-        fator =>
-          fator.bloqueadoAnonimato
-      ).length,
   };
 }
 

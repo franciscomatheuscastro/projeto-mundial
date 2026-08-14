@@ -24,11 +24,25 @@ export type DimensaoModelo = {
 
   ordem: number;
 
+  /*
+   * Peso analítico da dimensão.
+   *
+   * Exemplo:
+   * Liderança = 2
+   * Comunicação = 1
+   *
+   * Liderança terá o dobro da influência
+   * no resultado consolidado.
+   */
   peso: number;
 
   /*
-   * Mais utilizado no módulo psicossocial.
-   * Pode ficar nulo nos demais.
+   * Principalmente utilizado
+   * em Avaliação Psicossocial.
+   *
+   * Exemplo:
+   * Dimensão: Demandas
+   * Fator de risco: Sobrecarga de trabalho
    */
   fatorRisco?: string | null;
 };
@@ -52,18 +66,20 @@ export type FaixaInterpretacaoModelo = {
 export type ConfiguracaoAnaliseModelo = {
   metodo: MetodoAnalise;
 
+  /*
+   * Escala utilizada nas perguntas NOTA.
+   *
+   * Exemplo:
+   * 1 até 5
+   */
   escalaMinima: number;
 
   escalaMaxima: number;
 
-  /*
-   * Quantidade mínima de respostas para permitir
-   * um recorte por unidade/setor/cargo.
-   */
-  anonimatoMinimo: number;
 
   /*
-   * Utilizados principalmente em Pesquisa de Clima.
+   * Utilizado principalmente
+   * em Pesquisa de Clima.
    */
   favoravel: number[];
 
@@ -71,13 +87,19 @@ export type ConfiguracaoAnaliseModelo = {
 
   desfavoravel: number[];
 
+
   /*
-   * Utilizado principalmente por Diagnóstico
+   * Utilizado principalmente por
+   * Diagnóstico Organizacional
    * e Avaliação Psicossocial.
    *
-   * Não definimos faixas psicossociais automaticamente:
-   * elas devem ser cadastradas conforme a metodologia
-   * efetivamente utilizada.
+   * Exemplo:
+   *
+   * 0-39   -> CRITICO
+   * 40-59  -> BAIXO
+   * 60-74  -> MODERADO
+   * 75-89  -> ALTO
+   * 90-100 -> EXCELENCIA
    */
   faixas: FaixaInterpretacaoModelo[];
 };
@@ -96,30 +118,32 @@ export type PerguntaModelo = {
 
   obrigatoria: boolean;
 
+  /*
+   * Somente utilizado quando:
+   *
+   * tipo === MULTIPLA_ESCOLHA
+   */
   opcoes: string[];
 
+
   /*
-   * Estrutura analítica.
+   * Dimensão analítica à qual
+   * a pergunta pertence.
    */
   dimensaoId?: string | null;
 
-  peso: number;
 
   /*
    * POSITIVO:
    * nota maior = resultado melhor.
    *
    * NEGATIVO:
-   * nota maior = resultado pior e deverá ser
-   * invertida pelo motor analítico.
+   * nota maior = resultado pior.
+   *
+   * O motor analítico fará a inversão
+   * quando necessário.
    */
   sentidoPontuacao: SentidoPontuacao;
-
-  /*
-   * Opcional.
-   * Útil principalmente no Psicossocial.
-   */
-  fatorRisco?: string | null;
 };
 
 
@@ -185,9 +209,6 @@ export function criarConfiguracaoAnalisePadrao(
       escalaMaxima:
         5,
 
-      anonimatoMinimo:
-        5,
-
       favoravel: [
         4,
         5,
@@ -221,9 +242,6 @@ export function criarConfiguracaoAnalisePadrao(
       escalaMaxima:
         5,
 
-      anonimatoMinimo:
-        5,
-
       favoravel: [],
 
       neutro: [],
@@ -245,9 +263,6 @@ export function criarConfiguracaoAnalisePadrao(
     escalaMaxima:
       5,
 
-    anonimatoMinimo:
-      5,
-
     favoravel: [],
 
     neutro: [],
@@ -255,11 +270,11 @@ export function criarConfiguracaoAnalisePadrao(
     desfavoravel: [],
 
     /*
-     * Intencionalmente vazio.
+     * Não criamos classificações
+     * psicossociais automaticamente.
      *
-     * O sistema não deve inventar critérios
-     * psicossociais. As faixas deverão ser
-     * cadastradas conforme o instrumento.
+     * Elas devem seguir a metodologia
+     * utilizada pela Mundial.
      */
     faixas: [],
   };

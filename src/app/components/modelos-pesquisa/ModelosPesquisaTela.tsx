@@ -12,7 +12,7 @@ import {
   useRouter,
 } from "next/navigation";
 
-import {
+import type {
   TipoModuloPesquisa,
   TipoPergunta,
 } from "@prisma/client";
@@ -21,15 +21,57 @@ import {
   useModelosPesquisa,
 } from "@/src/app/data/hooks/useModelosPesquisa";
 
-import {
+import type {
   ConfiguracaoAnaliseModelo,
-  criarConfiguracaoAnalisePadrao,
   DimensaoModelo,
   FaixaInterpretacaoModelo,
   PerguntaModelo,
   SentidoPontuacao,
 } from "@/src/core/model/ModeloPesquisa";
 
+
+/* =========================================================
+ * CONSTANTES CLIENT-SAFE
+ *
+ * Não utilizar TipoPergunta.NOTA,
+ * TipoModuloPesquisa.CLIMA etc. neste componente.
+ *
+ * O Prisma permanece somente como tipagem.
+ * ======================================================= */
+
+const TIPO_MODULO = {
+  CLIMA:
+    "CLIMA",
+
+  DIAGNOSTICO_ORGANIZACIONAL:
+    "DIAGNOSTICO_ORGANIZACIONAL",
+
+  AVALIACAO_PSICOSSOCIAL:
+    "AVALIACAO_PSICOSSOCIAL",
+} as const;
+
+
+const TIPO_PERGUNTA = {
+  NOTA:
+    "NOTA",
+
+  SIM_NAO:
+    "SIM_NAO",
+
+  TEXTO:
+    "TEXTO",
+
+  TEXTO_LONGO:
+    "TEXTO_LONGO",
+
+  MULTIPLA_ESCOLHA:
+    "MULTIPLA_ESCOLHA",
+} as const;
+
+
+/* =========================================================
+ * PROPS
+ * ======================================================= */
 
 type Props = {
   modo:
@@ -41,9 +83,17 @@ type Props = {
 };
 
 
+/* =========================================================
+ * ESTILO
+ * ======================================================= */
+
 const inputClassName =
   "min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
 
+
+/* =========================================================
+ * UTILITÁRIOS
+ * ======================================================= */
 
 function gerarIdLocal(
   prefixo: string
@@ -62,6 +112,98 @@ function gerarIdLocal(
 }
 
 
+/*
+ * Configuração client-safe.
+ *
+ * Evitamos chamar criarConfiguracaoAnalisePadrao()
+ * do model dentro deste componente Client.
+ */
+function criarConfiguracaoAnalisePadraoCliente(
+  tipo: TipoModuloPesquisa
+): ConfiguracaoAnaliseModelo {
+  if (
+    tipo ===
+    TIPO_MODULO.CLIMA
+  ) {
+    return {
+      metodo:
+        "FAVORABILIDADE",
+
+      escalaMinima:
+        1,
+
+      escalaMaxima:
+        5,
+
+      favoravel: [
+        4,
+        5,
+      ],
+
+      neutro: [
+        3,
+      ],
+
+      desfavoravel: [
+        1,
+        2,
+      ],
+
+      faixas: [],
+    };
+  }
+
+
+  if (
+    tipo ===
+    TIPO_MODULO.DIAGNOSTICO_ORGANIZACIONAL
+  ) {
+    return {
+      metodo:
+        "MATURIDADE",
+
+      escalaMinima:
+        1,
+
+      escalaMaxima:
+        5,
+
+      favoravel: [],
+
+      neutro: [],
+
+      desfavoravel: [],
+
+      faixas: [],
+    };
+  }
+
+
+  return {
+    metodo:
+      "RISCO_PSICOSSOCIAL",
+
+    escalaMinima:
+      1,
+
+    escalaMaxima:
+      5,
+
+    favoravel: [],
+
+    neutro: [],
+
+    desfavoravel: [],
+
+    faixas: [],
+  };
+}
+
+
+/* =========================================================
+ * COMPONENTE PRINCIPAL
+ * ======================================================= */
+
 export default function ModelosPesquisaTela({
   modo,
   modeloId,
@@ -72,9 +214,13 @@ export default function ModelosPesquisaTela({
 
   const {
     modelos,
+
     modeloSelecionado,
+
     carregando,
+
     processando,
+
     erro,
 
     carregarModeloPorId,
@@ -113,7 +259,7 @@ export default function ModelosPesquisaTela({
     setTipo,
   ] =
     useState<TipoModuloPesquisa>(
-      TipoModuloPesquisa.CLIMA
+      TIPO_MODULO.CLIMA as TipoModuloPesquisa
     );
 
 
@@ -138,11 +284,15 @@ export default function ModelosPesquisaTela({
     setConfiguracaoAnalise,
   ] =
     useState<ConfiguracaoAnaliseModelo>(
-      criarConfiguracaoAnalisePadrao(
-        TipoModuloPesquisa.CLIMA
+      criarConfiguracaoAnalisePadraoCliente(
+        TIPO_MODULO.CLIMA as TipoModuloPesquisa
       )
     );
 
+
+  /* =======================================================
+   * CARREGAR MODELO
+   * ===================================================== */
 
   useEffect(() => {
     if (
@@ -164,6 +314,10 @@ export default function ModelosPesquisaTela({
   ]);
 
 
+  /* =======================================================
+   * SINCRONIZAR MODELO
+   * ===================================================== */
+
   useEffect(() => {
     if (
       modo ===
@@ -174,28 +328,33 @@ export default function ModelosPesquisaTela({
         modeloSelecionado.titulo
       );
 
+
       setDescricao(
         modeloSelecionado.descricao ??
           ""
       );
 
+
       setTipo(
         modeloSelecionado.tipo
       );
+
 
       setAtivo(
         modeloSelecionado.ativo ??
           true
       );
 
+
       setDimensoes(
         modeloSelecionado.dimensoes ??
           []
       );
 
+
       setConfiguracaoAnalise(
         modeloSelecionado.configuracaoAnalise ??
-          criarConfiguracaoAnalisePadrao(
+          criarConfiguracaoAnalisePadraoCliente(
             modeloSelecionado.tipo
           )
       );
@@ -205,6 +364,10 @@ export default function ModelosPesquisaTela({
     modeloSelecionado,
   ]);
 
+
+  /* =======================================================
+   * ALTERAR TIPO
+   * ===================================================== */
 
   function alterarTipo(
     novoTipo: TipoModuloPesquisa
@@ -216,22 +379,29 @@ export default function ModelosPesquisaTela({
       return;
     }
 
+
     setTipo(
       novoTipo
     );
 
+
     /*
-     * Trocar o módulo altera o motor analítico.
-     * Portanto começamos com uma configuração coerente
-     * para o novo módulo.
+     * Cada módulo possui um motor analítico diferente.
+     *
+     * Ao trocar o módulo reiniciamos somente
+     * a configuração analítica.
      */
     setConfiguracaoAnalise(
-      criarConfiguracaoAnalisePadrao(
+      criarConfiguracaoAnalisePadraoCliente(
         novoTipo
       )
     );
   }
 
+
+  /* =======================================================
+   * SALVAR MODELO
+   * ===================================================== */
 
   async function enviarModelo(
     event: FormEvent<HTMLFormElement>
@@ -249,7 +419,10 @@ export default function ModelosPesquisaTela({
 
         titulo,
 
-        descricao,
+        descricao:
+
+          descricao.trim() ||
+          null,
 
         tipo,
 
@@ -273,9 +446,14 @@ export default function ModelosPesquisaTela({
       `/modelos-pesquisa/${resultado.id}`
     );
 
+
     router.refresh();
   }
 
+
+  /* =======================================================
+   * DUPLICAR
+   * ===================================================== */
 
   async function duplicarAtual() {
     if (
@@ -284,18 +462,25 @@ export default function ModelosPesquisaTela({
       return;
     }
 
+
     const novoModelo =
       await duplicarModelo(
         modeloId
       );
 
+
     router.push(
       `/modelos-pesquisa/${novoModelo.id}`
     );
 
+
     router.refresh();
   }
 
+
+  /* =======================================================
+   * EXCLUIR MODELO
+   * ===================================================== */
 
   async function excluirModeloAtual(
     id: string
@@ -318,15 +503,18 @@ export default function ModelosPesquisaTela({
       "/modelos-pesquisa"
     );
 
+
     router.refresh();
   }
 
 
+  /* =======================================================
+   * DIMENSÕES
+   * ===================================================== */
+
   function adicionarDimensao() {
     setDimensoes(
-      (
-        atual
-      ) => [
+      atual => [
         ...atual,
 
         {
@@ -361,13 +549,9 @@ export default function ModelosPesquisaTela({
     dados: Partial<DimensaoModelo>
   ) {
     setDimensoes(
-      (
-        atual
-      ) =>
+      atual =>
         atual.map(
-          (
-            dimensao
-          ) =>
+          dimensao =>
             dimensao.id ===
             id
               ? {
@@ -394,14 +578,10 @@ export default function ModelosPesquisaTela({
 
 
     setDimensoes(
-      (
-        atual
-      ) =>
+      atual =>
         atual
           .filter(
-            (
-              dimensao
-            ) =>
+            dimensao =>
               dimensao.id !==
               id
           )
@@ -421,6 +601,10 @@ export default function ModelosPesquisaTela({
   }
 
 
+  /* =======================================================
+   * LISTA
+   * ===================================================== */
+
   if (
     modo ===
     "lista"
@@ -428,30 +612,27 @@ export default function ModelosPesquisaTela({
     const totalModelos =
       modelos.length;
 
+
     const totalAtivos =
       modelos.filter(
-        (
-          modelo
-        ) =>
+        modelo =>
           modelo.ativo
       ).length;
 
+
     const totalClima =
       modelos.filter(
-        (
-          modelo
-        ) =>
+        modelo =>
           modelo.tipo ===
-          TipoModuloPesquisa.CLIMA
+          TIPO_MODULO.CLIMA
       ).length;
+
 
     const totalOutrosModulos =
       modelos.filter(
-        (
-          modelo
-        ) =>
+        modelo =>
           modelo.tipo !==
-          TipoModuloPesquisa.CLIMA
+          TIPO_MODULO.CLIMA
       ).length;
 
 
@@ -464,14 +645,18 @@ export default function ModelosPesquisaTela({
                 Estrutura de Questionários
               </p>
 
+
               <h1 className="mt-1 text-2xl font-black text-slate-900">
                 Construtor de Modelos
               </h1>
 
+
               <p className="mt-1 text-sm text-slate-500">
-                Crie instrumentos reutilizáveis e configure sua estrutura analítica.
+                Crie instrumentos reutilizáveis e configure sua estrutura
+                analítica.
               </p>
             </div>
+
 
             <Link
               href="/modelos-pesquisa/novo"
@@ -499,6 +684,7 @@ export default function ModelosPesquisaTela({
               }
             />
 
+
             <CardResumo
               titulo="Ativos"
               valor={
@@ -506,12 +692,14 @@ export default function ModelosPesquisaTela({
               }
             />
 
+
             <CardResumo
               titulo="Pesquisa de Clima"
               valor={
                 totalClima
               }
             />
+
 
             <CardResumo
               titulo="Outros módulos"
@@ -575,9 +763,7 @@ export default function ModelosPesquisaTela({
                   />
                 ) : (
                   modelos.map(
-                    (
-                      modelo
-                    ) => (
+                    modelo => (
                       <tr
                         key={
                           modelo.id
@@ -648,6 +834,7 @@ export default function ModelosPesquisaTela({
                             Editar
                           </Link>
 
+
                           <button
                             type="button"
                             onClick={() =>
@@ -675,6 +862,10 @@ export default function ModelosPesquisaTela({
     );
   }
 
+
+  /* =======================================================
+   * NOVO MODELO
+   * ===================================================== */
 
   if (
     modo ===
@@ -758,6 +949,7 @@ export default function ModelosPesquisaTela({
                 Cancelar
               </Link>
 
+
               <button
                 disabled={
                   processando
@@ -775,6 +967,10 @@ export default function ModelosPesquisaTela({
     );
   }
 
+
+  /* =======================================================
+   * EDITAR MODELO
+   * ===================================================== */
 
   return (
     <main className="min-h-screen bg-slate-100">
@@ -891,14 +1087,20 @@ export default function ModelosPesquisaTela({
               }
             />
 
+
             <p className="mt-2 text-xs text-amber-700">
-              Alterações nesta configuração só são persistidas quando você clicar em “Salvar modelo”.
+              Alterações nesta configuração só são persistidas quando você
+              clicar em “Salvar modelo”.
             </p>
           </div>
         </aside>
 
 
         <div className="space-y-6">
+          {/* =================================================
+           * DIMENSÕES
+           * =============================================== */}
+
           <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
             <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -906,12 +1108,15 @@ export default function ModelosPesquisaTela({
                   Estrutura analítica
                 </p>
 
+
                 <h2 className="mt-1 text-lg font-black text-slate-900">
                   Dimensões
                 </h2>
 
+
                 <p className="text-sm text-slate-500">
-                  Agrupe as perguntas para permitir cálculos e relatórios por dimensão.
+                  Agrupe as perguntas para permitir cálculos e relatórios por
+                  dimensão.
                 </p>
               </div>
 
@@ -936,9 +1141,7 @@ export default function ModelosPesquisaTela({
             ) : (
               <div className="space-y-3">
                 {dimensoes.map(
-                  (
-                    dimensao
-                  ) => (
+                  dimensao => (
                     <DimensaoCard
                       key={
                         dimensao.id
@@ -948,7 +1151,7 @@ export default function ModelosPesquisaTela({
                       }
                       psicossocial={
                         tipo ===
-                        TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
+                        TIPO_MODULO.AVALIACAO_PSICOSSOCIAL
                       }
                       onChange={(
                         dados
@@ -971,12 +1174,17 @@ export default function ModelosPesquisaTela({
           </section>
 
 
+          {/* =================================================
+           * PERGUNTAS
+           * =============================================== */}
+
           <section>
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-lg font-black text-slate-900">
                   Perguntas do formulário
                 </h2>
+
 
                 <p className="text-sm text-slate-500">
                   Total:{" "}
@@ -1012,15 +1220,17 @@ export default function ModelosPesquisaTela({
             <div className="space-y-4">
               {carregando ||
               !modeloSelecionado ? (
-                <EstadoVazio texto="Carregando modelo..." />
+                <EstadoVazio
+                  texto="Carregando modelo..."
+                />
               ) : modeloSelecionado.perguntas.length ===
                 0 ? (
-                <EstadoVazio texto="Nenhuma pergunta cadastrada." />
+                <EstadoVazio
+                  texto="Nenhuma pergunta cadastrada."
+                />
               ) : (
                 modeloSelecionado.perguntas.map(
-                  (
-                    pergunta
-                  ) => (
+                  pergunta => (
                     <PerguntaCard
                       key={
                         pergunta.id
@@ -1030,9 +1240,6 @@ export default function ModelosPesquisaTela({
                       }
                       dimensoes={
                         dimensoes
-                      }
-                      tipoModulo={
-                        tipo
                       }
                       processando={
                         processando
@@ -1045,6 +1252,7 @@ export default function ModelosPesquisaTela({
                         ) {
                           return;
                         }
+
 
                         await salvarPergunta(
                           modeloId,
@@ -1059,6 +1267,7 @@ export default function ModelosPesquisaTela({
                         ) {
                           return;
                         }
+
 
                         await excluirPergunta(
                           modeloId,
@@ -1077,6 +1286,10 @@ export default function ModelosPesquisaTela({
   );
 }
 
+
+/* =========================================================
+ * CONFIGURAÇÃO DE ANÁLISE
+ * ======================================================= */
 
 function ConfiguracaoAnaliseEditor({
   tipo,
@@ -1108,6 +1321,7 @@ function ConfiguracaoAnaliseEditor({
         Configuração de análise
       </h3>
 
+
       <p className="mb-5 text-xs text-slate-500">
         Método:{" "}
         <strong>
@@ -1118,7 +1332,7 @@ function ConfiguracaoAnaliseEditor({
       </p>
 
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <CampoNumero
           label="Escala mínima"
           value={
@@ -1134,6 +1348,7 @@ function ConfiguracaoAnaliseEditor({
           }
         />
 
+
         <CampoNumero
           label="Escala máxima"
           value={
@@ -1148,30 +1363,16 @@ function ConfiguracaoAnaliseEditor({
             })
           }
         />
-
-        <CampoNumero
-          label="Anonimato mínimo"
-          value={
-            configuracao.anonimatoMinimo
-          }
-          onChange={(
-            valor
-          ) =>
-            alterar({
-              anonimatoMinimo:
-                valor,
-            })
-          }
-        />
       </div>
 
 
       {tipo ===
-        TipoModuloPesquisa.CLIMA && (
+        TIPO_MODULO.CLIMA && (
         <div className="mt-5 rounded-2xl bg-blue-50 p-4">
           <p className="mb-4 text-sm font-bold text-blue-900">
             Favorabilidade
           </p>
+
 
           <ArrayNotas
             label="Favorável"
@@ -1188,6 +1389,7 @@ function ConfiguracaoAnaliseEditor({
             }
           />
 
+
           <ArrayNotas
             label="Neutro"
             value={
@@ -1202,6 +1404,7 @@ function ConfiguracaoAnaliseEditor({
               })
             }
           />
+
 
           <ArrayNotas
             label="Desfavorável"
@@ -1222,7 +1425,7 @@ function ConfiguracaoAnaliseEditor({
 
 
       {tipo !==
-        TipoModuloPesquisa.CLIMA && (
+        TIPO_MODULO.CLIMA && (
         <FaixasEditor
           faixas={
             configuracao.faixas
@@ -1236,7 +1439,7 @@ function ConfiguracaoAnaliseEditor({
           }
           psicossocial={
             tipo ===
-            TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
+            TIPO_MODULO.AVALIACAO_PSICOSSOCIAL
           }
         />
       )}
@@ -1244,6 +1447,10 @@ function ConfiguracaoAnaliseEditor({
   );
 }
 
+
+/* =========================================================
+ * FAIXAS
+ * ======================================================= */
 
 function FaixasEditor({
   faixas,
@@ -1294,9 +1501,7 @@ function FaixasEditor({
   ) {
     onChange(
       faixas.map(
-        (
-          faixa
-        ) =>
+        faixa =>
           faixa.id ===
           id
             ? {
@@ -1316,9 +1521,7 @@ function FaixasEditor({
     onChange(
       faixas
         .filter(
-          (
-            faixa
-          ) =>
+          faixa =>
             faixa.id !==
             id
         )
@@ -1346,12 +1549,14 @@ function FaixasEditor({
             Faixas de interpretação
           </p>
 
+
           <p className="text-xs text-slate-500">
             {psicossocial
               ? "Cadastre somente faixas previstas pela metodologia psicossocial utilizada."
               : "Defina as faixas utilizadas para interpretar o score organizacional."}
           </p>
         </div>
+
 
         <button
           type="button"
@@ -1367,9 +1572,7 @@ function FaixasEditor({
 
       <div className="mt-4 space-y-3">
         {faixas.map(
-          (
-            faixa
-          ) => (
+          faixa => (
             <div
               key={
                 faixa.id
@@ -1395,6 +1598,7 @@ function FaixasEditor({
                   }
                 />
 
+
                 <CampoCompacto
                   label="Classificação"
                   value={
@@ -1412,6 +1616,7 @@ function FaixasEditor({
                     )
                   }
                 />
+
 
                 <CampoNumero
                   label="Mínimo"
@@ -1431,6 +1636,7 @@ function FaixasEditor({
                   }
                 />
 
+
                 <CampoNumero
                   label="Máximo"
                   value={
@@ -1449,6 +1655,7 @@ function FaixasEditor({
                   }
                 />
               </div>
+
 
               <button
                 type="button"
@@ -1477,6 +1684,10 @@ function FaixasEditor({
   );
 }
 
+
+/* =========================================================
+ * DIMENSÃO
+ * ======================================================= */
 
 function DimensaoCard({
   dimensao,
@@ -1510,6 +1721,7 @@ function DimensaoCard({
             })
           }
         />
+
 
         <CampoNumero
           label="Peso"
@@ -1580,10 +1792,13 @@ function DimensaoCard({
 }
 
 
+/* =========================================================
+ * PERGUNTA
+ * ======================================================= */
+
 function PerguntaCard({
   pergunta,
   dimensoes,
-  tipoModulo,
   processando,
   onSalvar,
   onExcluir,
@@ -1591,8 +1806,6 @@ function PerguntaCard({
   pergunta: PerguntaModelo;
 
   dimensoes: DimensaoModelo[];
-
-  tipoModulo: TipoModuloPesquisa;
 
   processando: boolean;
 
@@ -1663,16 +1876,6 @@ function PerguntaCard({
 
 
   const [
-    peso,
-    setPeso,
-  ] =
-    useState(
-      pergunta.peso ??
-        1
-    );
-
-
-  const [
     sentidoPontuacao,
     setSentidoPontuacao,
   ] =
@@ -1682,64 +1885,63 @@ function PerguntaCard({
     );
 
 
-  const [
-    fatorRisco,
-    setFatorRisco,
-  ] =
-    useState(
-      pergunta.fatorRisco ??
-        ""
-    );
-
-
   async function salvar(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
 
-    await onSalvar({
-      id:
-        pergunta.id,
+    const opcoesTratadas =
+      tipo ===
+      TIPO_PERGUNTA.MULTIPLA_ESCOLHA
+        ? opcoes
+            .split("\n")
+            .map(
+              opcao =>
+                opcao.trim()
+            )
+            .filter(
+              Boolean
+            )
+        : [];
 
-      titulo,
 
-      descricao:
-        descricao.trim() ||
-        null,
+    const perguntaAtualizada: PerguntaModelo =
+      {
+        id:
+          pergunta.id,
 
-      tipo,
+        titulo,
 
-      ordem:
-        pergunta.ordem,
+        descricao:
+          descricao.trim() ||
+          null,
 
-      obrigatoria,
+        tipo,
 
-      opcoes:
-        opcoes
-          .split("\n")
-          .map(
-            (
-              opcao
-            ) =>
-              opcao.trim()
-          )
-          .filter(
-            Boolean
-          ),
+        ordem:
+          pergunta.ordem,
 
-      dimensaoId:
-        dimensaoId ||
-        null,
+        obrigatoria,
 
-      peso,
+        opcoes:
+          opcoesTratadas,
 
-      sentidoPontuacao,
+        dimensaoId:
+          dimensaoId ||
+          null,
 
-      fatorRisco:
-        fatorRisco.trim() ||
-        null,
-    });
+        sentidoPontuacao:
+          tipo ===
+          TIPO_PERGUNTA.NOTA
+            ? sentidoPontuacao
+            : "POSITIVO",
+      };
+
+
+    await onSalvar(
+      perguntaAtualizada
+    );
   }
 
 
@@ -1757,6 +1959,7 @@ function PerguntaCard({
               pergunta.ordem
             }
           </span>
+
 
           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
             {
@@ -1796,17 +1999,32 @@ function PerguntaCard({
               Tipo da pergunta
             </label>
 
+
             <select
               value={
                 tipo
               }
               onChange={(
                 event
-              ) =>
+              ) => {
+                const novoTipo =
+                  event.target.value as TipoPergunta;
+
+
                 setTipo(
-                  event.target.value as TipoPergunta
-                )
-              }
+                  novoTipo
+                );
+
+
+                if (
+                  novoTipo !==
+                  TIPO_PERGUNTA.MULTIPLA_ESCOLHA
+                ) {
+                  setOpcoes(
+                    ""
+                  );
+                }
+              }}
               className={
                 inputClassName
               }
@@ -1839,6 +2057,7 @@ function PerguntaCard({
               Dimensão
             </label>
 
+
             <select
               value={
                 dimensaoId
@@ -1858,10 +2077,9 @@ function PerguntaCard({
                 Sem dimensão
               </option>
 
+
               {dimensoes.map(
-                (
-                  dimensao
-                ) => (
+                dimensao => (
                   <option
                     key={
                       dimensao.id
@@ -1880,77 +2098,57 @@ function PerguntaCard({
           </div>
 
 
-          <CampoNumero
-            label="Peso da pergunta"
-            value={
-              peso
-            }
-            onChange={
-              setPeso
-            }
-          />
+          {tipo ===
+            TIPO_PERGUNTA.NOTA && (
+            <div className="mb-5 md:col-span-2">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Sentido da pontuação
+              </label>
 
 
-          <div className="mb-5">
-            <label className="mb-2 block text-sm font-semibold text-slate-700">
-              Sentido da pontuação
-            </label>
-
-            <select
-              value={
-                sentidoPontuacao
-              }
-              onChange={(
-                event
-              ) =>
-                setSentidoPontuacao(
-                  event.target.value as SentidoPontuacao
-                )
-              }
-              className={
-                inputClassName
-              }
-            >
-              <option value="POSITIVO">
-                Positivo — nota maior é melhor
-              </option>
-
-              <option value="NEGATIVO">
-                Negativo — nota maior é pior
-              </option>
-            </select>
-          </div>
-
-
-          {tipoModulo ===
-            TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL && (
-            <div className="md:col-span-2">
-              <Campo
-                label="Fator de risco"
+              <select
                 value={
-                  fatorRisco
+                  sentidoPontuacao
                 }
-                onChange={
-                  setFatorRisco
+                onChange={(
+                  event
+                ) =>
+                  setSentidoPontuacao(
+                    event.target.value as SentidoPontuacao
+                  )
                 }
-                placeholder="Ex: Sobrecarga"
-              />
+                className={
+                  inputClassName
+                }
+              >
+                <option value="POSITIVO">
+                  Positivo — nota maior é melhor
+                </option>
+
+                <option value="NEGATIVO">
+                  Negativo — nota maior é pior
+                </option>
+              </select>
             </div>
           )}
 
 
-          <div className="md:col-span-2">
-            <CampoArea
-              label="Opções"
-              value={
-                opcoes
-              }
-              onChange={
-                setOpcoes
-              }
-              placeholder={"Uma opção por linha"}
-            />
-          </div>
+          {tipo ===
+            TIPO_PERGUNTA.MULTIPLA_ESCOLHA && (
+            <div className="md:col-span-2">
+              <CampoArea
+                label="Opções"
+                value={
+                  opcoes
+                }
+                onChange={
+                  setOpcoes
+                }
+                placeholder="Uma opção por linha"
+                required
+              />
+            </div>
+          )}
         </div>
 
 
@@ -1989,6 +2187,7 @@ function PerguntaCard({
             Excluir pergunta
           </button>
 
+
           <button
             disabled={
               processando
@@ -2005,6 +2204,10 @@ function PerguntaCard({
   );
 }
 
+
+/* =========================================================
+ * ARRAY DE NOTAS
+ * ======================================================= */
 
 function ArrayNotas({
   label,
@@ -2036,17 +2239,13 @@ function ArrayNotas({
           texto
             .split(",")
             .map(
-              (
-                item
-              ) =>
+              item =>
                 Number(
                   item.trim()
                 )
             )
             .filter(
-              (
-                item
-              ) =>
+              item =>
                 Number.isFinite(
                   item
                 )
@@ -2058,6 +2257,10 @@ function ArrayNotas({
   );
 }
 
+
+/* =========================================================
+ * CAMPOS
+ * ======================================================= */
 
 function CampoNumero({
   label,
@@ -2079,6 +2282,7 @@ function CampoNumero({
           label
         }
       </label>
+
 
       <input
         type="number"
@@ -2128,6 +2332,7 @@ function CampoCompacto({
         }
       </label>
 
+
       <input
         value={
           value
@@ -2147,177 +2352,6 @@ function CampoCompacto({
         }
       />
     </div>
-  );
-}
-
-
-function CabecalhoEditor({
-  titulo,
-  descricao,
-}: {
-  titulo: string;
-
-  descricao: string;
-}) {
-  return (
-    <header className="bg-white px-4 py-5 shadow-sm sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
-            Construtor de Modelos
-          </p>
-
-          <h1 className="mt-1 text-2xl font-black text-slate-900">
-            {
-              titulo
-            }
-          </h1>
-
-          <p className="mt-1 text-sm text-slate-500">
-            {
-              descricao
-            }
-          </p>
-        </div>
-
-        <Link
-          href="/modelos-pesquisa"
-          className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700"
-        >
-          Voltar
-        </Link>
-      </div>
-    </header>
-  );
-}
-
-
-function SelectTipoModelo({
-  value,
-  onChange,
-}: {
-  value: TipoModuloPesquisa;
-
-  onChange: (
-    valor: TipoModuloPesquisa
-  ) => void;
-}) {
-  return (
-    <div className="mb-5">
-      <label className="mb-2 block text-sm font-semibold text-slate-700">
-        Tipo do modelo
-      </label>
-
-      <select
-        value={
-          value
-        }
-        onChange={(
-          event
-        ) =>
-          onChange(
-            event.target.value as TipoModuloPesquisa
-          )
-        }
-        className={
-          inputClassName
-        }
-      >
-        <option value={TipoModuloPesquisa.CLIMA}>
-          Pesquisa de Clima
-        </option>
-
-        <option value={TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL}>
-          Diagnóstico Organizacional
-        </option>
-
-        <option value={TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL}>
-          Avaliação Psicossocial
-        </option>
-      </select>
-    </div>
-  );
-}
-
-
-function TipoModeloBadge({
-  tipo,
-}: {
-  tipo: TipoModuloPesquisa;
-}) {
-  if (
-    tipo ===
-    TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
-  ) {
-    return (
-      <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
-        Diagnóstico Organizacional
-      </span>
-    );
-  }
-
-  if (
-    tipo ===
-    TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
-  ) {
-    return (
-      <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
-        Avaliação Psicossocial
-      </span>
-    );
-  }
-
-  return (
-    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
-      Pesquisa de Clima
-    </span>
-  );
-}
-
-
-function CardResumo({
-  titulo,
-  valor,
-}: {
-  titulo: string;
-
-  valor: number;
-}) {
-  return (
-    <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-      <p className="text-sm font-semibold text-slate-500">
-        {
-          titulo
-        }
-      </p>
-
-      <strong className="mt-2 block text-3xl font-black text-slate-900">
-        {
-          valor
-        }
-      </strong>
-    </div>
-  );
-}
-
-
-function StatusBadge({
-  ativo,
-}: {
-  ativo: boolean;
-}) {
-  return (
-    <span
-      className={`rounded-full px-3 py-1 text-xs font-bold ${
-        ativo
-          ? "bg-green-100 text-green-700"
-          : "bg-red-100 text-red-700"
-      }`}
-    >
-      {ativo
-        ? "Ativo"
-        : "Inativo"}
-    </span>
   );
 }
 
@@ -2351,6 +2385,7 @@ function Campo({
           label
         }
       </label>
+
 
       <input
         type={
@@ -2408,6 +2443,7 @@ function CampoArea({
         }
       </label>
 
+
       <textarea
         rows={
           4
@@ -2436,6 +2472,204 @@ function CampoArea({
   );
 }
 
+
+/* =========================================================
+ * CABEÇALHO
+ * ======================================================= */
+
+function CabecalhoEditor({
+  titulo,
+  descricao,
+}: {
+  titulo: string;
+
+  descricao: string;
+}) {
+  return (
+    <header className="bg-white px-4 py-5 shadow-sm sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
+            Construtor de Modelos
+          </p>
+
+
+          <h1 className="mt-1 text-2xl font-black text-slate-900">
+            {
+              titulo
+            }
+          </h1>
+
+
+          <p className="mt-1 text-sm text-slate-500">
+            {
+              descricao
+            }
+          </p>
+        </div>
+
+
+        <Link
+          href="/modelos-pesquisa"
+          className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700"
+        >
+          Voltar
+        </Link>
+      </div>
+    </header>
+  );
+}
+
+
+/* =========================================================
+ * SELECT TIPO MODELO
+ * ======================================================= */
+
+function SelectTipoModelo({
+  value,
+  onChange,
+}: {
+  value: TipoModuloPesquisa;
+
+  onChange: (
+    valor: TipoModuloPesquisa
+  ) => void;
+}) {
+  return (
+    <div className="mb-5">
+      <label className="mb-2 block text-sm font-semibold text-slate-700">
+        Tipo do modelo
+      </label>
+
+
+      <select
+        value={
+          value
+        }
+        onChange={(
+          event
+        ) =>
+          onChange(
+            event.target.value as TipoModuloPesquisa
+          )
+        }
+        className={
+          inputClassName
+        }
+      >
+        <option value="CLIMA">
+          Pesquisa de Clima
+        </option>
+
+        <option value="DIAGNOSTICO_ORGANIZACIONAL">
+          Diagnóstico Organizacional
+        </option>
+
+        <option value="AVALIACAO_PSICOSSOCIAL">
+          Avaliação Psicossocial
+        </option>
+      </select>
+    </div>
+  );
+}
+
+
+/* =========================================================
+ * BADGES
+ * ======================================================= */
+
+function TipoModeloBadge({
+  tipo,
+}: {
+  tipo: TipoModuloPesquisa;
+}) {
+  if (
+    tipo ===
+    TIPO_MODULO.DIAGNOSTICO_ORGANIZACIONAL
+  ) {
+    return (
+      <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
+        Diagnóstico Organizacional
+      </span>
+    );
+  }
+
+
+  if (
+    tipo ===
+    TIPO_MODULO.AVALIACAO_PSICOSSOCIAL
+  ) {
+    return (
+      <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
+        Avaliação Psicossocial
+      </span>
+    );
+  }
+
+
+  return (
+    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
+      Pesquisa de Clima
+    </span>
+  );
+}
+
+
+function StatusBadge({
+  ativo,
+}: {
+  ativo: boolean;
+}) {
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-bold ${
+        ativo
+          ? "bg-green-100 text-green-700"
+          : "bg-red-100 text-red-700"
+      }`}
+    >
+      {ativo
+        ? "Ativo"
+        : "Inativo"}
+    </span>
+  );
+}
+
+
+/* =========================================================
+ * CARD RESUMO
+ * ======================================================= */
+
+function CardResumo({
+  titulo,
+  valor,
+}: {
+  titulo: string;
+
+  valor: number;
+}) {
+  return (
+    <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <p className="text-sm font-semibold text-slate-500">
+        {
+          titulo
+        }
+      </p>
+
+
+      <strong className="mt-2 block text-3xl font-black text-slate-900">
+        {
+          valor
+        }
+      </strong>
+    </div>
+  );
+}
+
+
+/* =========================================================
+ * TABELA
+ * ======================================================= */
 
 function Th({
   children,
@@ -2486,6 +2720,10 @@ function LinhaVazia({
 }
 
 
+/* =========================================================
+ * ESTADOS
+ * ======================================================= */
+
 function EstadoVazio({
   texto,
 }: {
@@ -2511,6 +2749,7 @@ function AlertaErro({
   ) {
     return null;
   }
+
 
   return (
     <div className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-100">
