@@ -1,0 +1,957 @@
+"use client";
+
+import Link from "next/link";
+
+
+export type FatorPsicossocial = {
+  id: string;
+
+  nome: string;
+
+  fatorRisco: string | null;
+
+  score: number | null;
+
+  classificacao: string | null;
+
+  totalRespostas: number;
+
+  bloqueadoAnonimato?: boolean;
+};
+
+
+export type AnalisePsicossocial = {
+  fatores: FatorPsicossocial[];
+
+  anonimatoMinimo: number;
+
+  totalGruposBloqueados?: number;
+};
+
+
+export type DadosRelatorioPsicossocial = {
+  tipo?: string;
+
+  filtros: {
+    dataInicio: string | null;
+    dataFim: string | null;
+    clienteId: string | null;
+  };
+
+  clientes: {
+    id: string;
+    nome: string;
+    empresa: string | null;
+  }[];
+
+  resumo: {
+    totalPesquisas: number;
+    totalAbertas: number;
+    totalFechadas: number;
+    totalArquivadas: number;
+
+    totalRespostas: number;
+
+    totalConvites: number;
+    totalConvitesRespondidos: number;
+
+    taxaParticipacao: number | null;
+
+    mediaGeral: number | null;
+  };
+
+  porCliente: {
+    clienteId: string;
+
+    clienteNome: string;
+
+    empresa: string | null;
+
+    totalPesquisas: number;
+
+    totalRespostas: number;
+
+    totalConvites: number;
+
+    totalConvitesRespondidos: number;
+
+    taxaParticipacao: number | null;
+
+    mediaGeral: number | null;
+  }[];
+
+  pesquisas: {
+    id: string;
+
+    titulo: string;
+
+    status: string;
+
+    criadoEm: Date | string;
+
+    cliente: {
+      id: string;
+      nome: string;
+      empresa: string | null;
+    };
+
+    modelo: {
+      id: string;
+      titulo: string;
+    };
+
+    totalRespostas: number;
+
+    totalConvites: number;
+
+    totalConvitesRespondidos: number;
+
+    taxaParticipacao: number | null;
+
+    mediaGeral: number | null;
+  }[];
+
+  analise?: AnalisePsicossocial;
+};
+
+
+export default function RelatorioAvaliacaoPsicossocialTela({
+  dados,
+}: {
+  dados: DadosRelatorioPsicossocial;
+}) {
+  const analise =
+    dados.analise;
+
+
+  const pendentes =
+    Math.max(
+      0,
+      dados.resumo.totalConvites -
+        dados.resumo.totalConvitesRespondidos
+    );
+
+
+  const criticos =
+    analise?.fatores.filter(
+      fator =>
+        normalizarClassificacao(
+          fator.classificacao
+        ) === "CRITICO"
+    ).length || 0;
+
+
+  const altos =
+    analise?.fatores.filter(
+      fator =>
+        normalizarClassificacao(
+          fator.classificacao
+        ) === "ALTO"
+    ).length || 0;
+
+
+  return (
+    <main className="min-h-screen bg-slate-100">
+      <header className="border-b border-slate-200 bg-white px-4 py-5 shadow-sm print:shadow-none sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-600">
+              Avaliação Psicossocial
+            </p>
+
+            <h1 className="mt-1 text-2xl font-black text-slate-900">
+              Mapa de Riscos Psicossociais
+            </h1>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Fatores psicossociais relacionados ao trabalho, exposição e
+              criticidade.
+            </p>
+          </div>
+
+
+          <div className="flex gap-3 print:hidden">
+            <Link
+              href="/avaliacao-psicossocial"
+              className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold"
+            >
+              Voltar
+            </Link>
+
+
+            <button
+              type="button"
+              onClick={() =>
+                window.print()
+              }
+              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white"
+            >
+              Imprimir relatório
+            </button>
+          </div>
+        </div>
+      </header>
+
+
+      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <Filtros
+          dados={dados}
+        />
+
+
+        <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <Card
+            titulo="Avaliações"
+            valor={
+              dados.resumo.totalPesquisas
+            }
+          />
+
+          <Card
+            titulo="Respondentes"
+            valor={
+              dados.resumo.totalRespostas
+            }
+          />
+
+          <Card
+            titulo="Cobertura"
+            valor={
+              dados.resumo.taxaParticipacao ===
+              null
+                ? "—"
+                : percentual(
+                    dados.resumo.taxaParticipacao
+                  )
+            }
+          />
+
+          <Card
+            titulo="Fatores altos"
+            valor={altos}
+            alerta
+          />
+
+          <Card
+            titulo="Fatores críticos"
+            valor={criticos}
+            critico
+          />
+        </div>
+
+
+        <div className="mb-6 grid gap-6 xl:grid-cols-[1fr_360px]">
+          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-600">
+              Cobertura
+            </p>
+
+            <h2 className="mt-1 text-lg font-black">
+              Participação na avaliação
+            </h2>
+
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-3">
+              <Info
+                titulo="Convidados"
+                valor={String(
+                  dados.resumo.totalConvites
+                )}
+              />
+
+              <Info
+                titulo="Respondidos"
+                valor={String(
+                  dados.resumo
+                    .totalConvitesRespondidos
+                )}
+              />
+
+              <Info
+                titulo="Pendentes"
+                valor={String(
+                  pendentes
+                )}
+              />
+            </div>
+          </section>
+
+
+          <section className="rounded-3xl bg-slate-900 p-6 text-white">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-300">
+              Proteção de anonimato
+            </p>
+
+            <h2 className="mt-2 text-xl font-black">
+              Mínimo de respostas
+            </h2>
+
+            <strong className="mt-4 block text-4xl">
+              {analise?.anonimatoMinimo ??
+                "—"}
+            </strong>
+
+            <p className="mt-3 text-sm leading-6 text-slate-300">
+              Recortes com quantidade inferior ao mínimo configurado não devem
+              ser apresentados isoladamente.
+            </p>
+          </section>
+        </div>
+
+
+        {!analise ? (
+          <AvisoAnalise />
+        ) : (
+          <section className="mb-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-600">
+              Mapa de exposição
+            </p>
+
+            <h2 className="mt-1 text-lg font-black text-slate-900">
+              Fatores psicossociais
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Classificação de acordo com as faixas definidas no instrumento
+              utilizado.
+            </p>
+
+
+            {analise.fatores.length ===
+            0 ? (
+              <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+                Ainda não há fatores psicossociais com dados suficientes para
+                exibição.
+              </div>
+            ) : (
+              <div className="mt-6 space-y-4">
+                {analise.fatores.map(
+                  fator => (
+                    <FatorCard
+                      key={
+                        fator.id
+                      }
+                      fator={
+                        fator
+                      }
+                    />
+                  )
+                )}
+              </div>
+            )}
+          </section>
+        )}
+
+
+        <TabelaAvaliacoes
+          pesquisas={
+            dados.pesquisas
+          }
+        />
+      </section>
+    </main>
+  );
+}
+
+
+function FatorCard({
+  fator,
+}: {
+  fator: FatorPsicossocial;
+}) {
+  if (
+    fator.bloqueadoAnonimato
+  ) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+        <h3 className="font-black text-slate-900">
+          {fator.fatorRisco ||
+            fator.nome}
+        </h3>
+
+        <p className="mt-2 text-sm text-slate-500">
+          Resultado ocultado por critério de anonimato.
+        </p>
+
+        <p className="mt-1 text-xs text-slate-400">
+          {
+            fator.totalRespostas
+          }{" "}
+          respondente(s) neste fator.
+        </p>
+      </div>
+    );
+  }
+
+
+  const classe =
+    normalizarClassificacao(
+      fator.classificacao
+    );
+
+
+  return (
+    <div className="rounded-2xl border border-slate-200 p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="font-black text-slate-900">
+            {fator.fatorRisco ||
+              fator.nome}
+          </h3>
+
+
+          {fator.fatorRisco &&
+            fator.fatorRisco !==
+              fator.nome && (
+              <p className="mt-1 text-xs text-slate-500">
+                Dimensão:{" "}
+                {
+                  fator.nome
+                }
+              </p>
+            )}
+
+
+          <p className="mt-1 text-xs text-slate-500">
+            {
+              fator.totalRespostas
+            }{" "}
+            respondente(s)
+          </p>
+        </div>
+
+
+        <div className="flex items-center gap-3">
+          <strong className="text-2xl text-slate-900">
+            {fator.score ===
+            null
+              ? "—"
+              : `${fator.score
+                  .toFixed(1)
+                  .replace(
+                    ".",
+                    ","
+                  )}/100`}
+          </strong>
+
+
+          <ClassificacaoBadge
+            classificacao={
+              classe
+            }
+          />
+        </div>
+      </div>
+
+
+      {fator.score !==
+        null && (
+        <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className={`h-full ${classeBarra(
+              classe
+            )}`}
+            style={{
+              width: `${Math.min(
+                100,
+                Math.max(
+                  0,
+                  fator.score
+                )
+              )}%`,
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function ClassificacaoBadge({
+  classificacao,
+}: {
+  classificacao: string;
+}) {
+  const classe =
+    classificacao ===
+    "CRITICO"
+      ? "bg-red-100 text-red-700"
+      : classificacao ===
+          "ALTO"
+        ? "bg-orange-100 text-orange-700"
+        : classificacao ===
+            "MODERADO"
+          ? "bg-amber-100 text-amber-700"
+          : classificacao ===
+              "BAIXO"
+            ? "bg-green-100 text-green-700"
+            : "bg-slate-100 text-slate-600";
+
+
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-black ${classe}`}
+    >
+      {classificacao ||
+        "SEM CLASSIFICAÇÃO"}
+    </span>
+  );
+}
+
+
+function classeBarra(
+  classificacao: string
+) {
+  if (
+    classificacao ===
+    "CRITICO"
+  ) {
+    return "bg-red-600";
+  }
+
+  if (
+    classificacao ===
+    "ALTO"
+  ) {
+    return "bg-orange-500";
+  }
+
+  if (
+    classificacao ===
+    "MODERADO"
+  ) {
+    return "bg-amber-400";
+  }
+
+  if (
+    classificacao ===
+    "BAIXO"
+  ) {
+    return "bg-green-500";
+  }
+
+  return "bg-slate-400";
+}
+
+
+function Filtros({
+  dados,
+}: {
+  dados: DadosRelatorioPsicossocial;
+}) {
+  return (
+    <form
+      method="get"
+      className="mb-6 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 print:hidden"
+    >
+      <div className="grid gap-4 md:grid-cols-3">
+        <CampoFiltro
+          label="Data inicial"
+          name="dataInicio"
+          defaultValue={
+            dados.filtros.dataInicio ||
+            ""
+          }
+        />
+
+        <CampoFiltro
+          label="Data final"
+          name="dataFim"
+          defaultValue={
+            dados.filtros.dataFim ||
+            ""
+          }
+        />
+
+
+        <div>
+          <label className="mb-2 block text-sm font-semibold">
+            Organização
+          </label>
+
+          <select
+            name="clienteId"
+            defaultValue={
+              dados.filtros.clienteId ||
+              ""
+            }
+            className="min-h-12 w-full rounded-2xl border border-slate-200 px-4"
+          >
+            <option value="">
+              Todas
+            </option>
+
+            {dados.clientes.map(
+              cliente => (
+                <option
+                  key={
+                    cliente.id
+                  }
+                  value={
+                    cliente.id
+                  }
+                >
+                  {cliente.empresa ||
+                    cliente.nome}
+                </option>
+              )
+            )}
+          </select>
+        </div>
+      </div>
+
+
+      <div className="mt-5 flex justify-end gap-3">
+        <Link
+          href="/avaliacao-psicossocial/relatorio"
+          className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold"
+        >
+          Limpar
+        </Link>
+
+        <button
+          type="submit"
+          className="rounded-2xl bg-amber-600 px-5 py-3 text-sm font-bold text-white hover:bg-amber-700"
+        >
+          Gerar análise
+        </button>
+      </div>
+    </form>
+  );
+}
+
+
+function TabelaAvaliacoes({
+  pesquisas,
+}: {
+  pesquisas: DadosRelatorioPsicossocial["pesquisas"];
+}) {
+  return (
+    <section className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+      <div className="border-b border-slate-100 p-6">
+        <h2 className="text-lg font-black">
+          Avaliações consideradas
+        </h2>
+      </div>
+
+
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[900px]">
+          <thead className="bg-slate-50">
+            <tr>
+              <Th>
+                Avaliação
+              </Th>
+
+              <Th>
+                Organização
+              </Th>
+
+              <Th>
+                Status
+              </Th>
+
+              <Th direita>
+                Respondentes
+              </Th>
+
+              <Th direita>
+                Cobertura
+              </Th>
+
+              <Th direita>
+                Ações
+              </Th>
+            </tr>
+          </thead>
+
+
+          <tbody>
+            {pesquisas.length ===
+            0 ? (
+              <tr>
+                <td
+                  colSpan={
+                    6
+                  }
+                  className="p-10 text-center text-sm text-slate-500"
+                >
+                  Nenhuma avaliação encontrada.
+                </td>
+              </tr>
+            ) : (
+              pesquisas.map(
+                pesquisa => (
+                  <tr
+                    key={
+                      pesquisa.id
+                    }
+                    className="border-t border-slate-100"
+                  >
+                    <td className="px-4 py-4 font-bold">
+                      {
+                        pesquisa.titulo
+                      }
+                    </td>
+
+                    <td className="px-4 py-4 text-sm">
+                      {pesquisa.cliente
+                        .empresa ||
+                        pesquisa.cliente
+                          .nome}
+                    </td>
+
+                    <td className="px-4 py-4">
+                      <StatusBadge
+                        status={
+                          pesquisa.status
+                        }
+                      />
+                    </td>
+
+                    <TdNumero
+                      valor={
+                        pesquisa.totalRespostas
+                      }
+                    />
+
+                    <TdNumero
+                      valor={
+                        pesquisa.taxaParticipacao ===
+                        null
+                          ? "—"
+                          : percentual(
+                              pesquisa.taxaParticipacao
+                            )
+                      }
+                    />
+
+                    <td className="px-4 py-4 text-right print:hidden">
+                      <Link
+                        href={`/avaliacao-psicossocial/${pesquisa.id}/relatorio`}
+                        className="text-sm font-bold text-amber-700 hover:text-amber-900"
+                      >
+                        Ver avaliação
+                      </Link>
+                    </td>
+                  </tr>
+                )
+              )
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+
+function AvisoAnalise() {
+  return (
+    <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-6">
+      <h2 className="font-black text-amber-950">
+        Mapa de riscos ainda não calculado
+      </h2>
+
+      <p className="mt-2 text-sm leading-6 text-amber-800">
+        O backend ainda precisa aplicar o sentido das perguntas, consolidar os
+        fatores e utilizar as faixas de interpretação configuradas no
+        instrumento.
+      </p>
+    </div>
+  );
+}
+
+
+function CampoFiltro({
+  label,
+  name,
+  defaultValue,
+}: {
+  label: string;
+  name: string;
+  defaultValue: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-semibold">
+        {
+          label
+        }
+      </label>
+
+      <input
+        name={
+          name
+        }
+        type="date"
+        defaultValue={
+          defaultValue
+        }
+        className="min-h-12 w-full rounded-2xl border border-slate-200 px-4"
+      />
+    </div>
+  );
+}
+
+
+function Card({
+  titulo,
+  valor,
+  alerta = false,
+  critico = false,
+}: {
+  titulo: string;
+  valor: string | number;
+  alerta?: boolean;
+  critico?: boolean;
+}) {
+  const classe =
+    critico
+      ? "bg-red-600 text-white ring-red-600"
+      : alerta
+        ? "bg-orange-500 text-white ring-orange-500"
+        : "bg-white text-slate-900 ring-slate-200";
+
+
+  return (
+    <div
+      className={`rounded-3xl p-5 shadow-sm ring-1 ${classe}`}
+    >
+      <p className="text-sm font-semibold opacity-70">
+        {
+          titulo
+        }
+      </p>
+
+      <strong className="mt-2 block text-3xl font-black">
+        {
+          valor
+        }
+      </strong>
+    </div>
+  );
+}
+
+
+function Info({
+  titulo,
+  valor,
+}: {
+  titulo: string;
+  valor: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-amber-50 p-4">
+      <p className="text-xs font-semibold uppercase text-amber-700">
+        {
+          titulo
+        }
+      </p>
+
+      <strong className="mt-1 block text-lg">
+        {
+          valor
+        }
+      </strong>
+    </div>
+  );
+}
+
+
+function StatusBadge({
+  status,
+}: {
+  status: string;
+}) {
+  const classe =
+    status ===
+    "ABERTA"
+      ? "bg-green-100 text-green-700"
+      : status ===
+          "FECHADA"
+        ? "bg-red-100 text-red-700"
+        : "bg-slate-100 text-slate-700";
+
+
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-bold ${classe}`}
+    >
+      {status.replaceAll(
+        "_",
+        " "
+      )}
+    </span>
+  );
+}
+
+
+function Th({
+  children,
+  direita = false,
+}: {
+  children: React.ReactNode;
+  direita?: boolean;
+}) {
+  return (
+    <th
+      className={`px-4 py-3 text-sm font-bold text-slate-600 ${
+        direita
+          ? "text-right"
+          : "text-left"
+      }`}
+    >
+      {
+        children
+      }
+    </th>
+  );
+}
+
+
+function TdNumero({
+  valor,
+}: {
+  valor: string | number;
+}) {
+  return (
+    <td className="px-4 py-4 text-right text-sm font-semibold">
+      {
+        valor
+      }
+    </td>
+  );
+}
+
+
+function normalizarClassificacao(
+  valor?: string | null
+) {
+  return (
+    valor ||
+    ""
+  )
+    .trim()
+    .toUpperCase()
+    .normalize(
+      "NFD"
+    )
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    );
+}
+
+
+function percentual(
+  valor: number
+) {
+  return `${valor
+    .toFixed(1)
+    .replace(
+      ".",
+      ","
+    )}%`;
+}

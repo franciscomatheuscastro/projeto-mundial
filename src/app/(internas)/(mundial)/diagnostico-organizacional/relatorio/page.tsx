@@ -14,7 +14,12 @@ import {
   obterDadosRelatorioModuloPesquisa,
 } from "@/src/backend/pesquisaCliente/acoesModuloPesquisa";
 
-import RelatorioModuloTela from "@/src/app/components/pesquisas/RelatorioModuloTela";
+import RelatorioDiagnosticoOrganizacionalTela from "@/src/app/components/pesquisas/RelatorioDiagnosticoOrganizacionalTela";
+
+import type {
+  DadosRelatorioDiagnostico,
+} from "@/src/app/components/pesquisas/RelatorioDiagnosticoOrganizacionalTela";
+
 
 type Props = {
   searchParams: Promise<{
@@ -24,11 +29,13 @@ type Props = {
   }>;
 };
 
-export default async function Page({
+
+export default async function RelatorioDiagnosticoOrganizacionalPage({
   searchParams,
 }: Props) {
   const session =
     await auth();
+
 
   if (!session?.user) {
     redirect(
@@ -36,31 +43,77 @@ export default async function Page({
     );
   }
 
+
   const filtros =
     await searchParams;
 
-  const dados =
+
+  const resultado =
     await obterDadosRelatorioModuloPesquisa(
       TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL,
-      {
-        dataInicio:
-          filtros.dataInicio,
-
-        dataFim:
-          filtros.dataFim,
-
-        clienteId:
-          filtros.clienteId,
-      }
+      filtros
     );
 
+
+  if (
+    resultado.tipo !==
+    TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+  ) {
+    throw new Error(
+      "Tipo de relatório inválido."
+    );
+  }
+
+
+  if (
+    !resultado.analise ||
+    !(
+      "scoreOrganizacional" in
+      resultado.analise
+    )
+  ) {
+    throw new Error(
+      "Dados da análise de diagnóstico organizacional inválidos."
+    );
+  }
+
+
+  const dados: DadosRelatorioDiagnostico =
+    {
+      ...resultado,
+
+      tipo:
+        resultado.tipo,
+
+      analise: {
+        scoreOrganizacional:
+          resultado.analise
+            .scoreOrganizacional,
+
+        dimensoes:
+          resultado.analise
+            .dimensoes,
+
+        forcas:
+          resultado.analise
+            .forcas,
+
+        pontosAtencao:
+          resultado.analise
+            .pontosAtencao,
+
+        prioridades:
+          resultado.analise
+            .prioridades,
+      },
+    };
+
+
   return (
-    <RelatorioModuloTela
+    <RelatorioDiagnosticoOrganizacionalTela
       dados={
         dados
       }
-      tituloModulo="Diagnóstico Organizacional"
-      baseHref="/diagnostico-organizacional"
     />
   );
 }

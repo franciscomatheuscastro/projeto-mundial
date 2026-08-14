@@ -14,6 +14,7 @@ import {
 
 import RepositorioPesquisaCliente from "./RepositorioPesquisaCliente";
 
+
 export default async function salvarPesquisa(
   pesquisa: PesquisaCliente
 ) {
@@ -29,13 +30,23 @@ export default async function salvarPesquisa(
       TipoModuloPesquisa.CLIMA
     );
 
+
   revalidatePath(
     "/pesquisas"
   );
 
   revalidatePath(
+    "/pesquisas/relatorio"
+  );
+
+  revalidatePath(
+    `/pesquisas/${resultado.id}`
+  );
+
+  revalidatePath(
     "/dashboard"
   );
+
 
   return resultado;
 }

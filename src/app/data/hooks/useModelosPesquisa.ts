@@ -9,12 +9,13 @@ import {
 
 import Backend from "@/src/backend";
 
-import {
+import type {
   ModeloPesquisa,
   ModeloPesquisaComResumo,
   ModeloPesquisaDetalhado,
   PerguntaModelo,
 } from "@/src/core/model/ModeloPesquisa";
+
 
 export function useModelosPesquisa() {
   const [
@@ -25,6 +26,7 @@ export function useModelosPesquisa() {
       ModeloPesquisaComResumo[]
     >([]);
 
+
   const [
     modeloSelecionado,
     setModeloSelecionado,
@@ -32,6 +34,7 @@ export function useModelosPesquisa() {
     useState<
       ModeloPesquisaDetalhado | null
     >(null);
+
 
   const [
     erro,
@@ -41,11 +44,13 @@ export function useModelosPesquisa() {
       string | null
     >(null);
 
+
   const [
     carregando,
     setCarregando,
   ] =
     useState(true);
+
 
   const [
     processando,
@@ -53,9 +58,12 @@ export function useModelosPesquisa() {
   ] =
     useTransition();
 
+
   const carregarModelos =
     useCallback(
-      async () => {
+      async (): Promise<
+        ModeloPesquisaComResumo[]
+      > => {
         try {
           setCarregando(
             true
@@ -65,24 +73,32 @@ export function useModelosPesquisa() {
             null
           );
 
+
           const dados =
             await Backend.modelosPesquisa.obterTodos();
 
+
+          const modelosTipados =
+            dados as ModeloPesquisaComResumo[];
+
+
           setModelos(
-            dados
+            modelosTipados
           );
 
-          return dados;
+
+          return modelosTipados;
         } catch (error) {
           const mensagem =
-            error instanceof
-            Error
+            error instanceof Error
               ? error.message
               : "Erro ao carregar modelos.";
+
 
           setErro(
             mensagem
           );
+
 
           throw error;
         } finally {
@@ -94,11 +110,12 @@ export function useModelosPesquisa() {
       []
     );
 
+
   const carregarModeloPorId =
     useCallback(
       async (
         id: string
-      ) => {
+      ): Promise<ModeloPesquisaDetalhado> => {
         try {
           setCarregando(
             true
@@ -107,31 +124,40 @@ export function useModelosPesquisa() {
           setErro(
             null
           );
+
 
           const dados =
             await Backend.modelosPesquisa.obterPorId(
               id
             );
 
+
+          const modeloTipado =
+            dados as ModeloPesquisaDetalhado;
+
+
           setModeloSelecionado(
-            dados
+            modeloTipado
           );
 
-          return dados;
+
+          return modeloTipado;
         } catch (error) {
           const mensagem =
-            error instanceof
-            Error
+            error instanceof Error
               ? error.message
               : "Erro ao carregar modelo.";
+
 
           setErro(
             mensagem
           );
 
+
           setModeloSelecionado(
             null
           );
+
 
           throw error;
         } finally {
@@ -143,11 +169,12 @@ export function useModelosPesquisa() {
       []
     );
 
+
   const excluirModelo =
     useCallback(
       async (
         id: string
-      ) => {
+      ): Promise<void> => {
         return new Promise<void>(
           (
             resolve,
@@ -160,33 +187,36 @@ export function useModelosPesquisa() {
                     null
                   );
 
+
                   await Backend.modelosPesquisa.excluir(
                     id
                   );
 
+
                   await carregarModelos();
 
+
                   setModeloSelecionado(
-                    (
-                      atual
-                    ) =>
+                    atual =>
                       atual?.id ===
                       id
                         ? null
                         : atual
                   );
 
+
                   resolve();
                 } catch (error) {
                   const mensagem =
-                    error instanceof
-                    Error
+                    error instanceof Error
                       ? error.message
                       : "Erro ao excluir modelo.";
+
 
                   setErro(
                     mensagem
                   );
+
 
                   reject(
                     error
@@ -202,11 +232,12 @@ export function useModelosPesquisa() {
       ]
     );
 
+
   const salvarModelo =
     useCallback(
       async (
         modelo: ModeloPesquisa
-      ) => {
+      ): Promise<ModeloPesquisaDetalhado> => {
         return new Promise<ModeloPesquisaDetalhado>(
           (
             resolve,
@@ -219,34 +250,36 @@ export function useModelosPesquisa() {
                     null
                   );
 
+
                   const resultado =
                     await Backend.modelosPesquisa.salvar(
                       modelo
                     );
 
+
                   await carregarModelos();
 
-                  if (
-                    resultado.id
-                  ) {
+
+                  const atualizado =
                     await carregarModeloPorId(
                       resultado.id
                     );
-                  }
+
 
                   resolve(
-                    resultado
+                    atualizado
                   );
                 } catch (error) {
                   const mensagem =
-                    error instanceof
-                    Error
+                    error instanceof Error
                       ? error.message
                       : "Erro ao salvar modelo.";
+
 
                   setErro(
                     mensagem
                   );
+
 
                   reject(
                     error
@@ -263,11 +296,12 @@ export function useModelosPesquisa() {
       ]
     );
 
+
   const adicionarPergunta =
     useCallback(
       async (
         modeloId: string
-      ) => {
+      ): Promise<PerguntaModelo> => {
         return new Promise<PerguntaModelo>(
           (
             resolve,
@@ -280,28 +314,41 @@ export function useModelosPesquisa() {
                     null
                   );
 
-                  const pergunta =
+
+                  const resultado =
                     await Backend.modelosPesquisa.adicionarPergunta(
                       modeloId
                     );
 
+
+                  /*
+                   * O backend retorna a estrutura correta,
+                   * porém o TypeScript está alargando
+                   * sentidoPontuacao para string.
+                   */
+                  const pergunta =
+                    resultado as PerguntaModelo;
+
+
                   await carregarModeloPorId(
                     modeloId
                   );
+
 
                   resolve(
                     pergunta
                   );
                 } catch (error) {
                   const mensagem =
-                    error instanceof
-                    Error
+                    error instanceof Error
                       ? error.message
                       : "Erro ao adicionar pergunta.";
+
 
                   setErro(
                     mensagem
                   );
+
 
                   reject(
                     error
@@ -317,12 +364,13 @@ export function useModelosPesquisa() {
       ]
     );
 
+
   const salvarPergunta =
     useCallback(
       async (
         modeloId: string,
         pergunta: PerguntaModelo
-      ) => {
+      ): Promise<PerguntaModelo> => {
         return new Promise<PerguntaModelo>(
           (
             resolve,
@@ -334,6 +382,7 @@ export function useModelosPesquisa() {
                   setErro(
                     null
                   );
+
 
                   const resultado =
                     await Backend.modelosPesquisa.salvarPergunta(
@@ -341,23 +390,38 @@ export function useModelosPesquisa() {
                       pergunta
                     );
 
+
+                  /*
+                   * O retorno possui a mesma estrutura
+                   * de PerguntaModelo.
+                   *
+                   * O cast corrige apenas a inferência
+                   * excessivamente ampla de
+                   * sentidoPontuacao.
+                   */
+                  const perguntaSalva =
+                    resultado as PerguntaModelo;
+
+
                   await carregarModeloPorId(
                     modeloId
                   );
 
+
                   resolve(
-                    resultado
+                    perguntaSalva
                   );
                 } catch (error) {
                   const mensagem =
-                    error instanceof
-                    Error
+                    error instanceof Error
                       ? error.message
                       : "Erro ao salvar pergunta.";
+
 
                   setErro(
                     mensagem
                   );
+
 
                   reject(
                     error
@@ -373,12 +437,13 @@ export function useModelosPesquisa() {
       ]
     );
 
+
   const excluirPergunta =
     useCallback(
       async (
         modeloId: string,
         perguntaId: string
-      ) => {
+      ): Promise<void> => {
         return new Promise<void>(
           (
             resolve,
@@ -391,26 +456,30 @@ export function useModelosPesquisa() {
                     null
                   );
 
+
                   await Backend.modelosPesquisa.excluirPergunta(
                     modeloId,
                     perguntaId
                   );
 
+
                   await carregarModeloPorId(
                     modeloId
                   );
 
+
                   resolve();
                 } catch (error) {
                   const mensagem =
-                    error instanceof
-                    Error
+                    error instanceof Error
                       ? error.message
                       : "Erro ao excluir pergunta.";
+
 
                   setErro(
                     mensagem
                   );
+
 
                   reject(
                     error
@@ -426,11 +495,12 @@ export function useModelosPesquisa() {
       ]
     );
 
+
   const duplicarModelo =
     useCallback(
       async (
         id: string
-      ) => {
+      ): Promise<ModeloPesquisaDetalhado> => {
         return new Promise<ModeloPesquisaDetalhado>(
           (
             resolve,
@@ -443,34 +513,36 @@ export function useModelosPesquisa() {
                     null
                   );
 
+
                   const resultado =
                     await Backend.modelosPesquisa.duplicar(
                       id
                     );
 
+
                   await carregarModelos();
 
-                  if (
-                    resultado.id
-                  ) {
+
+                  const atualizado =
                     await carregarModeloPorId(
                       resultado.id
                     );
-                  }
+
 
                   resolve(
-                    resultado
+                    atualizado
                   );
                 } catch (error) {
                   const mensagem =
-                    error instanceof
-                    Error
+                    error instanceof Error
                       ? error.message
                       : "Erro ao duplicar modelo.";
+
 
                   setErro(
                     mensagem
                   );
+
 
                   reject(
                     error
@@ -487,31 +559,45 @@ export function useModelosPesquisa() {
       ]
     );
 
-  useEffect(() => {
-    void carregarModelos();
-  }, [
-    carregarModelos,
-  ]);
+
+  useEffect(
+    () => {
+      void carregarModelos().catch(
+        () =>
+          undefined
+      );
+    },
+    [
+      carregarModelos,
+    ]
+  );
+
 
   return {
     modelos,
 
     modeloSelecionado,
+
     setModeloSelecionado,
 
     carregando,
+
     processando,
+
     erro,
 
     excluirModelo,
 
     carregarModelos,
+
     carregarModeloPorId,
 
     salvarModelo,
 
     adicionarPergunta,
+
     salvarPergunta,
+
     excluirPergunta,
 
     duplicarModelo,

@@ -22,8 +22,14 @@ import {
 } from "@/src/app/data/hooks/useModelosPesquisa";
 
 import {
+  ConfiguracaoAnaliseModelo,
+  criarConfiguracaoAnalisePadrao,
+  DimensaoModelo,
+  FaixaInterpretacaoModelo,
   PerguntaModelo,
+  SentidoPontuacao,
 } from "@/src/core/model/ModeloPesquisa";
+
 
 type Props = {
   modo:
@@ -34,8 +40,27 @@ type Props = {
   modeloId?: string;
 };
 
+
 const inputClassName =
   "min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
+
+
+function gerarIdLocal(
+  prefixo: string
+) {
+  if (
+    typeof crypto !==
+      "undefined" &&
+    "randomUUID" in crypto
+  ) {
+    return `${prefixo}-${crypto.randomUUID()}`;
+  }
+
+  return `${prefixo}-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2)}`;
+}
+
 
 export default function ModelosPesquisaTela({
   modo,
@@ -44,21 +69,30 @@ export default function ModelosPesquisaTela({
   const router =
     useRouter();
 
+
   const {
     modelos,
     modeloSelecionado,
     carregando,
     processando,
     erro,
+
     carregarModeloPorId,
+
     salvarModelo,
+
     adicionarPergunta,
+
     salvarPergunta,
+
     excluirPergunta,
+
     duplicarModelo,
+
     excluirModelo,
   } =
     useModelosPesquisa();
+
 
   const [
     titulo,
@@ -66,11 +100,13 @@ export default function ModelosPesquisaTela({
   ] =
     useState("");
 
+
   const [
     descricao,
     setDescricao,
   ] =
     useState("");
+
 
   const [
     tipo,
@@ -80,19 +116,45 @@ export default function ModelosPesquisaTela({
       TipoModuloPesquisa.CLIMA
     );
 
+
   const [
     ativo,
     setAtivo,
   ] =
     useState(true);
 
+
+  const [
+    dimensoes,
+    setDimensoes,
+  ] =
+    useState<DimensaoModelo[]>(
+      []
+    );
+
+
+  const [
+    configuracaoAnalise,
+    setConfiguracaoAnalise,
+  ] =
+    useState<ConfiguracaoAnaliseModelo>(
+      criarConfiguracaoAnalisePadrao(
+        TipoModuloPesquisa.CLIMA
+      )
+    );
+
+
   useEffect(() => {
     if (
-      modo === "editar" &&
+      modo ===
+        "editar" &&
       modeloId
     ) {
       void carregarModeloPorId(
         modeloId
+      ).catch(
+        () =>
+          undefined
       );
     }
   }, [
@@ -101,9 +163,11 @@ export default function ModelosPesquisaTela({
     carregarModeloPorId,
   ]);
 
+
   useEffect(() => {
     if (
-      modo === "editar" &&
+      modo ===
+        "editar" &&
       modeloSelecionado
     ) {
       setTitulo(
@@ -116,13 +180,24 @@ export default function ModelosPesquisaTela({
       );
 
       setTipo(
-        modeloSelecionado.tipo ??
-          TipoModuloPesquisa.CLIMA
+        modeloSelecionado.tipo
       );
 
       setAtivo(
         modeloSelecionado.ativo ??
           true
+      );
+
+      setDimensoes(
+        modeloSelecionado.dimensoes ??
+          []
+      );
+
+      setConfiguracaoAnalise(
+        modeloSelecionado.configuracaoAnalise ??
+          criarConfiguracaoAnalisePadrao(
+            modeloSelecionado.tipo
+          )
       );
     }
   }, [
@@ -130,15 +205,45 @@ export default function ModelosPesquisaTela({
     modeloSelecionado,
   ]);
 
+
+  function alterarTipo(
+    novoTipo: TipoModuloPesquisa
+  ) {
+    if (
+      novoTipo ===
+      tipo
+    ) {
+      return;
+    }
+
+    setTipo(
+      novoTipo
+    );
+
+    /*
+     * Trocar o módulo altera o motor analítico.
+     * Portanto começamos com uma configuração coerente
+     * para o novo módulo.
+     */
+    setConfiguracaoAnalise(
+      criarConfiguracaoAnalisePadrao(
+        novoTipo
+      )
+    );
+  }
+
+
   async function enviarModelo(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
+
     const resultado =
       await salvarModelo({
         id:
-          modo === "editar"
+          modo ===
+          "editar"
             ? modeloId
             : undefined,
 
@@ -157,7 +262,12 @@ export default function ModelosPesquisaTela({
         perguntas:
           modeloSelecionado?.perguntas ??
           [],
+
+        dimensoes,
+
+        configuracaoAnalise,
       });
+
 
     router.push(
       `/modelos-pesquisa/${resultado.id}`
@@ -166,8 +276,11 @@ export default function ModelosPesquisaTela({
     router.refresh();
   }
 
+
   async function duplicarAtual() {
-    if (!modeloId) {
+    if (
+      !modeloId
+    ) {
       return;
     }
 
@@ -183,21 +296,23 @@ export default function ModelosPesquisaTela({
     router.refresh();
   }
 
+
   async function excluirModeloAtual(
     id: string
   ) {
-    const confirmado =
-      confirm(
+    if (
+      !confirm(
         "Tem certeza que deseja excluir este modelo?"
-      );
-
-    if (!confirmado) {
+      )
+    ) {
       return;
     }
+
 
     await excluirModelo(
       id
     );
+
 
     router.push(
       "/modelos-pesquisa"
@@ -206,33 +321,139 @@ export default function ModelosPesquisaTela({
     router.refresh();
   }
 
+
+  function adicionarDimensao() {
+    setDimensoes(
+      (
+        atual
+      ) => [
+        ...atual,
+
+        {
+          id:
+            gerarIdLocal(
+              "dim"
+            ),
+
+          nome:
+            "Nova dimensão",
+
+          descricao:
+            null,
+
+          ordem:
+            atual.length +
+            1,
+
+          peso:
+            1,
+
+          fatorRisco:
+            null,
+        },
+      ]
+    );
+  }
+
+
+  function atualizarDimensao(
+    id: string,
+    dados: Partial<DimensaoModelo>
+  ) {
+    setDimensoes(
+      (
+        atual
+      ) =>
+        atual.map(
+          (
+            dimensao
+          ) =>
+            dimensao.id ===
+            id
+              ? {
+                  ...dimensao,
+
+                  ...dados,
+                }
+              : dimensao
+        )
+    );
+  }
+
+
+  function excluirDimensao(
+    id: string
+  ) {
+    if (
+      !confirm(
+        "Excluir esta dimensão? As perguntas vinculadas a ela ficarão sem dimensão após salvar o modelo."
+      )
+    ) {
+      return;
+    }
+
+
+    setDimensoes(
+      (
+        atual
+      ) =>
+        atual
+          .filter(
+            (
+              dimensao
+            ) =>
+              dimensao.id !==
+              id
+          )
+          .map(
+            (
+              dimensao,
+              index
+            ) => ({
+              ...dimensao,
+
+              ordem:
+                index +
+                1,
+            })
+          )
+    );
+  }
+
+
   if (
-    modo === "lista"
+    modo ===
+    "lista"
   ) {
     const totalModelos =
       modelos.length;
 
     const totalAtivos =
       modelos.filter(
-        (modelo) =>
+        (
+          modelo
+        ) =>
           modelo.ativo
       ).length;
 
     const totalClima =
       modelos.filter(
-        (modelo) =>
-          (modelo.tipo ??
-            TipoModuloPesquisa.CLIMA) ===
+        (
+          modelo
+        ) =>
+          modelo.tipo ===
           TipoModuloPesquisa.CLIMA
       ).length;
 
     const totalOutrosModulos =
       modelos.filter(
-        (modelo) =>
-          (modelo.tipo ??
-            TipoModuloPesquisa.CLIMA) !==
+        (
+          modelo
+        ) =>
+          modelo.tipo !==
           TipoModuloPesquisa.CLIMA
       ).length;
+
 
     return (
       <main className="min-h-screen bg-slate-100">
@@ -248,28 +469,27 @@ export default function ModelosPesquisaTela({
               </h1>
 
               <p className="mt-1 text-sm text-slate-500">
-                Crie modelos reutilizáveis para Pesquisa de Clima,
-                Diagnóstico Organizacional e Avaliação Psicossocial.
+                Crie instrumentos reutilizáveis e configure sua estrutura analítica.
               </p>
             </div>
 
             <Link
               href="/modelos-pesquisa/novo"
-              className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
+              className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700"
             >
               + Novo modelo
             </Link>
           </div>
         </header>
 
+
         <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          {erro && (
-            <AlertaErro
-              mensagem={
-                erro
-              }
-            />
-          )}
+          <AlertaErro
+            mensagem={
+              erro
+            }
+          />
+
 
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <CardResumo
@@ -301,8 +521,9 @@ export default function ModelosPesquisaTela({
             />
           </div>
 
+
           <div className="overflow-x-auto rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-            <table className="w-full min-w-[960px] border-collapse">
+            <table className="w-full min-w-[1000px] border-collapse">
               <thead className="bg-slate-50">
                 <tr>
                   <Th>
@@ -311,6 +532,10 @@ export default function ModelosPesquisaTela({
 
                   <Th>
                     Tipo
+                  </Th>
+
+                  <Th>
+                    Dimensões
                   </Th>
 
                   <Th>
@@ -325,19 +550,18 @@ export default function ModelosPesquisaTela({
                     Status
                   </Th>
 
-                  <Th
-                    direita
-                  >
+                  <Th direita>
                     Ações
                   </Th>
                 </tr>
               </thead>
 
+
               <tbody>
                 {carregando ? (
                   <LinhaVazia
                     colunas={
-                      6
+                      7
                     }
                     texto="Carregando modelos..."
                   />
@@ -345,7 +569,7 @@ export default function ModelosPesquisaTela({
                   0 ? (
                   <LinhaVazia
                     colunas={
-                      6
+                      7
                     }
                     texto="Nenhum modelo cadastrado."
                   />
@@ -373,14 +597,24 @@ export default function ModelosPesquisaTela({
                           </div>
                         </td>
 
+
                         <td className="px-4 py-4">
                           <TipoModeloBadge
                             tipo={
-                              modelo.tipo ??
-                              TipoModuloPesquisa.CLIMA
+                              modelo.tipo
                             }
                           />
                         </td>
+
+
+                        <td className="px-4 py-4 text-sm font-semibold text-slate-700">
+                          {
+                            modelo.dimensoes
+                              ?.length ||
+                            0
+                          }
+                        </td>
+
 
                         <td className="px-4 py-4 text-sm font-semibold text-slate-700">
                           {
@@ -388,11 +622,13 @@ export default function ModelosPesquisaTela({
                           }
                         </td>
 
+
                         <td className="px-4 py-4 text-sm font-semibold text-slate-700">
                           {
                             modelo.totalPesquisas
                           }
                         </td>
+
 
                         <td className="px-4 py-4">
                           <StatusBadge
@@ -402,6 +638,7 @@ export default function ModelosPesquisaTela({
                             }
                           />
                         </td>
+
 
                         <td className="px-4 py-4 text-right">
                           <Link
@@ -421,7 +658,7 @@ export default function ModelosPesquisaTela({
                             disabled={
                               processando
                             }
-                            className="ml-4 text-sm font-bold text-red-600 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="ml-4 text-sm font-bold text-red-600 hover:text-red-800 disabled:opacity-60"
                           >
                             Excluir
                           </button>
@@ -438,59 +675,42 @@ export default function ModelosPesquisaTela({
     );
   }
 
+
   if (
-    modo === "novo"
+    modo ===
+    "novo"
   ) {
     return (
       <main className="min-h-screen bg-slate-100">
-        <header className="bg-white px-4 py-5 shadow-sm sm:px-6 lg:px-8">
-          <div className="mx-auto flex max-w-3xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
-                Construtor de Modelos
-              </p>
+        <CabecalhoEditor
+          titulo="Criar Modelo"
+          descricao="Defina o tipo e a metodologia inicial do instrumento."
+        />
 
-              <h1 className="mt-1 text-2xl font-black text-slate-900">
-                Criar Modelo
-              </h1>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Defina o tipo do questionário e depois configure suas perguntas.
-              </p>
-            </div>
-
-            <Link
-              href="/modelos-pesquisa"
-              className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-            >
-              Voltar
-            </Link>
-          </div>
-        </header>
 
         <section className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
           <form
             onSubmit={
               enviarModelo
             }
-            className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6"
+            className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
           >
-            {erro && (
-              <AlertaErro
-                mensagem={
-                  erro
-                }
-              />
-            )}
+            <AlertaErro
+              mensagem={
+                erro
+              }
+            />
+
 
             <SelectTipoModelo
               value={
                 tipo
               }
               onChange={
-                setTipo
+                alterarTipo
               }
             />
+
 
             <Campo
               label="Título do modelo"
@@ -501,8 +721,9 @@ export default function ModelosPesquisaTela({
                 setTitulo
               }
               required
-              placeholder="Ex: Diagnóstico Organizacional 2026"
+              placeholder="Ex: Pesquisa de Clima 2026"
             />
+
 
             <CampoArea
               label="Descrição"
@@ -512,13 +733,27 @@ export default function ModelosPesquisaTela({
               onChange={
                 setDescricao
               }
-              placeholder="Explique o objetivo deste modelo"
+              placeholder="Objetivo e contexto do instrumento"
             />
+
+
+            <ConfiguracaoAnaliseEditor
+              tipo={
+                tipo
+              }
+              configuracao={
+                configuracaoAnalise
+              }
+              onChange={
+                setConfiguracaoAnalise
+              }
+            />
+
 
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
               <Link
                 href="/modelos-pesquisa"
-                className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700"
               >
                 Cancelar
               </Link>
@@ -527,7 +762,7 @@ export default function ModelosPesquisaTela({
                 disabled={
                   processando
                 }
-                className="min-h-12 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="min-h-12 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
               >
                 {processando
                   ? "Criando..."
@@ -540,56 +775,39 @@ export default function ModelosPesquisaTela({
     );
   }
 
+
   return (
     <main className="min-h-screen bg-slate-100">
-      <header className="bg-white px-4 py-5 shadow-sm sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
-              Construtor de Modelos
-            </p>
+      <CabecalhoEditor
+        titulo="Editar Modelo"
+        descricao="Configure dimensões, metodologia e perguntas do instrumento."
+      />
 
-            <h1 className="mt-1 text-2xl font-black text-slate-900">
-              Editar Modelo
-            </h1>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Configure o tipo, perguntas e opções do questionário.
-            </p>
-          </div>
-
-          <Link
-            href="/modelos-pesquisa"
-            className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-          >
-            Voltar
-          </Link>
-        </div>
-      </header>
 
       <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[380px_1fr] lg:px-8">
-        <aside className="h-fit rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-          {erro && (
+        <aside className="h-fit space-y-5">
+          <form
+            onSubmit={
+              enviarModelo
+            }
+            className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6"
+          >
             <AlertaErro
               mensagem={
                 erro
               }
             />
-          )}
 
-          <form
-            onSubmit={
-              enviarModelo
-            }
-          >
+
             <SelectTipoModelo
               value={
                 tipo
               }
               onChange={
-                setTipo
+                alterarTipo
               }
             />
+
 
             <Campo
               label="Título"
@@ -602,6 +820,7 @@ export default function ModelosPesquisaTela({
               required
             />
 
+
             <CampoArea
               label="Descrição"
               value={
@@ -612,7 +831,8 @@ export default function ModelosPesquisaTela({
               }
             />
 
-            <label className="mb-6 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
+
+            <label className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
               <input
                 type="checkbox"
                 checked={
@@ -622,254 +842,759 @@ export default function ModelosPesquisaTela({
                   event
                 ) =>
                   setAtivo(
-                    event.target
-                      .checked
+                    event.target.checked
                   )
                 }
-                className="h-4 w-4"
               />
 
               Modelo ativo
             </label>
 
+
             <button
               disabled={
                 processando
               }
-              className="min-h-12 w-full rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-h-12 w-full rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
             >
               {processando
                 ? "Salvando..."
                 : "Salvar modelo"}
             </button>
-          </form>
 
-          <button
-            type="button"
-            onClick={() =>
-              void duplicarAtual()
-            }
-            disabled={
-              processando
-            }
-            className="mt-3 min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Duplicar modelo
-          </button>
-        </aside>
-
-        <div>
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-lg font-black text-slate-900">
-                Perguntas do formulário
-              </h2>
-
-              <p className="text-sm text-slate-500">
-                Total:{" "}
-                {modeloSelecionado?.perguntas.length ??
-                  0}{" "}
-                pergunta(s)
-              </p>
-            </div>
 
             <button
               type="button"
-              onClick={() => {
-                if (
-                  modeloId
-                ) {
-                  void adicionarPergunta(
-                    modeloId
-                  );
-                }
-              }}
-              disabled={
-                processando ||
-                !modeloId
+              onClick={() =>
+                void duplicarAtual()
               }
-              className="min-h-12 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={
+                processando
+              }
+              className="mt-3 min-h-12 w-full rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 disabled:opacity-60"
             >
-              + Adicionar pergunta
+              Duplicar modelo
             </button>
-          </div>
+          </form>
 
-          <div className="space-y-4">
-            {carregando ||
-            !modeloSelecionado ? (
-              <div className="rounded-3xl bg-white p-10 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
-                Carregando modelo...
+
+          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <ConfiguracaoAnaliseEditor
+              tipo={
+                tipo
+              }
+              configuracao={
+                configuracaoAnalise
+              }
+              onChange={
+                setConfiguracaoAnalise
+              }
+            />
+
+            <p className="mt-2 text-xs text-amber-700">
+              Alterações nesta configuração só são persistidas quando você clicar em “Salvar modelo”.
+            </p>
+          </div>
+        </aside>
+
+
+        <div className="space-y-6">
+          <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
+                  Estrutura analítica
+                </p>
+
+                <h2 className="mt-1 text-lg font-black text-slate-900">
+                  Dimensões
+                </h2>
+
+                <p className="text-sm text-slate-500">
+                  Agrupe as perguntas para permitir cálculos e relatórios por dimensão.
+                </p>
               </div>
-            ) : modeloSelecionado.perguntas.length ===
-              0 ? (
-              <div className="rounded-3xl bg-white p-10 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
-                Nenhuma pergunta cadastrada.
+
+
+              <button
+                type="button"
+                onClick={
+                  adicionarDimensao
+                }
+                className="min-h-12 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white"
+              >
+                + Dimensão
+              </button>
+            </div>
+
+
+            {dimensoes.length ===
+            0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
+                Nenhuma dimensão cadastrada.
               </div>
             ) : (
-              modeloSelecionado.perguntas.map(
-                (
-                  pergunta
-                ) => (
-                  <PerguntaCard
-                    key={
-                      pergunta.id
-                    }
-                    pergunta={
-                      pergunta
-                    }
-                    processando={
-                      processando
-                    }
-                    onSalvar={async (
-                      perguntaAtualizada
-                    ) => {
-                      if (
-                        !modeloId
-                      ) {
-                        return;
+              <div className="space-y-3">
+                {dimensoes.map(
+                  (
+                    dimensao
+                  ) => (
+                    <DimensaoCard
+                      key={
+                        dimensao.id
                       }
-
-                      await salvarPergunta(
-                        modeloId,
-                        perguntaAtualizada
-                      );
-                    }}
-                    onExcluir={async (
-                      perguntaId
-                    ) => {
-                      if (
-                        !modeloId
-                      ) {
-                        return;
+                      dimensao={
+                        dimensao
                       }
-
-                      await excluirPergunta(
-                        modeloId,
-                        perguntaId
-                      );
-                    }}
-                  />
-                )
-              )
+                      psicossocial={
+                        tipo ===
+                        TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
+                      }
+                      onChange={(
+                        dados
+                      ) =>
+                        atualizarDimensao(
+                          dimensao.id,
+                          dados
+                        )
+                      }
+                      onExcluir={() =>
+                        excluirDimensao(
+                          dimensao.id
+                        )
+                      }
+                    />
+                  )
+                )}
+              </div>
             )}
-          </div>
+          </section>
+
+
+          <section>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-black text-slate-900">
+                  Perguntas do formulário
+                </h2>
+
+                <p className="text-sm text-slate-500">
+                  Total:{" "}
+                  {modeloSelecionado?.perguntas.length ??
+                    0}{" "}
+                  pergunta(s)
+                </p>
+              </div>
+
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    modeloId
+                  ) {
+                    void adicionarPergunta(
+                      modeloId
+                    );
+                  }
+                }}
+                disabled={
+                  processando ||
+                  !modeloId
+                }
+                className="min-h-12 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
+              >
+                + Adicionar pergunta
+              </button>
+            </div>
+
+
+            <div className="space-y-4">
+              {carregando ||
+              !modeloSelecionado ? (
+                <EstadoVazio texto="Carregando modelo..." />
+              ) : modeloSelecionado.perguntas.length ===
+                0 ? (
+                <EstadoVazio texto="Nenhuma pergunta cadastrada." />
+              ) : (
+                modeloSelecionado.perguntas.map(
+                  (
+                    pergunta
+                  ) => (
+                    <PerguntaCard
+                      key={
+                        pergunta.id
+                      }
+                      pergunta={
+                        pergunta
+                      }
+                      dimensoes={
+                        dimensoes
+                      }
+                      tipoModulo={
+                        tipo
+                      }
+                      processando={
+                        processando
+                      }
+                      onSalvar={async (
+                        atualizada
+                      ) => {
+                        if (
+                          !modeloId
+                        ) {
+                          return;
+                        }
+
+                        await salvarPergunta(
+                          modeloId,
+                          atualizada
+                        );
+                      }}
+                      onExcluir={async (
+                        perguntaId
+                      ) => {
+                        if (
+                          !modeloId
+                        ) {
+                          return;
+                        }
+
+                        await excluirPergunta(
+                          modeloId,
+                          perguntaId
+                        );
+                      }}
+                    />
+                  )
+                )
+              )}
+            </div>
+          </section>
         </div>
       </section>
     </main>
   );
 }
 
-function SelectTipoModelo({
-  value,
+
+function ConfiguracaoAnaliseEditor({
+  tipo,
+  configuracao,
   onChange,
 }: {
-  value:
-    TipoModuloPesquisa;
+  tipo: TipoModuloPesquisa;
+
+  configuracao: ConfiguracaoAnaliseModelo;
 
   onChange: (
-    valor: TipoModuloPesquisa
+    valor: ConfiguracaoAnaliseModelo
   ) => void;
 }) {
+  function alterar(
+    dados: Partial<ConfiguracaoAnaliseModelo>
+  ) {
+    onChange({
+      ...configuracao,
+
+      ...dados,
+    });
+  }
+
+
   return (
-    <div className="mb-5">
-      <label className="mb-2 block text-sm font-semibold text-slate-700">
-        Tipo do modelo
-      </label>
+    <div>
+      <h3 className="mb-1 font-black text-slate-900">
+        Configuração de análise
+      </h3>
 
-      <select
-        value={
-          value
-        }
-        onChange={(
-          event
-        ) =>
-          onChange(
-            event.target
-              .value as TipoModuloPesquisa
-          )
-        }
-        className={
-          inputClassName
-        }
-      >
-        <option
-          value={
-            TipoModuloPesquisa.CLIMA
+      <p className="mb-5 text-xs text-slate-500">
+        Método:{" "}
+        <strong>
+          {
+            configuracao.metodo
           }
-        >
-          Pesquisa de Clima
-        </option>
+        </strong>
+      </p>
 
-        <option
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <CampoNumero
+          label="Escala mínima"
           value={
-            TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+            configuracao.escalaMinima
           }
-        >
-          Diagnóstico Organizacional
-        </option>
+          onChange={(
+            valor
+          ) =>
+            alterar({
+              escalaMinima:
+                valor,
+            })
+          }
+        />
 
-        <option
+        <CampoNumero
+          label="Escala máxima"
           value={
+            configuracao.escalaMaxima
+          }
+          onChange={(
+            valor
+          ) =>
+            alterar({
+              escalaMaxima:
+                valor,
+            })
+          }
+        />
+
+        <CampoNumero
+          label="Anonimato mínimo"
+          value={
+            configuracao.anonimatoMinimo
+          }
+          onChange={(
+            valor
+          ) =>
+            alterar({
+              anonimatoMinimo:
+                valor,
+            })
+          }
+        />
+      </div>
+
+
+      {tipo ===
+        TipoModuloPesquisa.CLIMA && (
+        <div className="mt-5 rounded-2xl bg-blue-50 p-4">
+          <p className="mb-4 text-sm font-bold text-blue-900">
+            Favorabilidade
+          </p>
+
+          <ArrayNotas
+            label="Favorável"
+            value={
+              configuracao.favoravel
+            }
+            onChange={(
+              valor
+            ) =>
+              alterar({
+                favoravel:
+                  valor,
+              })
+            }
+          />
+
+          <ArrayNotas
+            label="Neutro"
+            value={
+              configuracao.neutro
+            }
+            onChange={(
+              valor
+            ) =>
+              alterar({
+                neutro:
+                  valor,
+              })
+            }
+          />
+
+          <ArrayNotas
+            label="Desfavorável"
+            value={
+              configuracao.desfavoravel
+            }
+            onChange={(
+              valor
+            ) =>
+              alterar({
+                desfavoravel:
+                  valor,
+              })
+            }
+          />
+        </div>
+      )}
+
+
+      {tipo !==
+        TipoModuloPesquisa.CLIMA && (
+        <FaixasEditor
+          faixas={
+            configuracao.faixas
+          }
+          onChange={(
+            faixas
+          ) =>
+            alterar({
+              faixas,
+            })
+          }
+          psicossocial={
+            tipo ===
             TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
           }
-        >
-          Avaliação Psicossocial
-        </option>
-      </select>
-
-      <p className="mt-2 text-xs text-slate-500">
-        O modelo ficará disponível somente no módulo selecionado.
-      </p>
+        />
+      )}
     </div>
   );
 }
 
-function TipoModeloBadge({
-  tipo,
+
+function FaixasEditor({
+  faixas,
+  onChange,
+  psicossocial,
 }: {
-  tipo:
-    TipoModuloPesquisa;
+  faixas: FaixaInterpretacaoModelo[];
+
+  onChange: (
+    valor: FaixaInterpretacaoModelo[]
+  ) => void;
+
+  psicossocial: boolean;
 }) {
-  if (
-    tipo ===
-    TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+  function adicionar() {
+    onChange([
+      ...faixas,
+
+      {
+        id:
+          gerarIdLocal(
+            "faixa"
+          ),
+
+        nome:
+          "Nova faixa",
+
+        minimo:
+          0,
+
+        maximo:
+          100,
+
+        classificacao:
+          "NOVA_FAIXA",
+
+        ordem:
+          faixas.length +
+          1,
+      },
+    ]);
+  }
+
+
+  function atualizar(
+    id: string,
+    dados: Partial<FaixaInterpretacaoModelo>
   ) {
-    return (
-      <span className="inline-flex rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
-        Diagnóstico Organizacional
-      </span>
+    onChange(
+      faixas.map(
+        (
+          faixa
+        ) =>
+          faixa.id ===
+          id
+            ? {
+                ...faixa,
+
+                ...dados,
+              }
+            : faixa
+      )
     );
   }
 
-  if (
-    tipo ===
-    TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
+
+  function excluir(
+    id: string
   ) {
-    return (
-      <span className="inline-flex rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
-        Avaliação Psicossocial
-      </span>
+    onChange(
+      faixas
+        .filter(
+          (
+            faixa
+          ) =>
+            faixa.id !==
+            id
+        )
+        .map(
+          (
+            faixa,
+            index
+          ) => ({
+            ...faixa,
+
+            ordem:
+              index +
+              1,
+          })
+        )
     );
   }
+
 
   return (
-    <span className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
-      Pesquisa de Clima
-    </span>
+    <div className="mt-5 rounded-2xl border border-slate-200 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-slate-900">
+            Faixas de interpretação
+          </p>
+
+          <p className="text-xs text-slate-500">
+            {psicossocial
+              ? "Cadastre somente faixas previstas pela metodologia psicossocial utilizada."
+              : "Defina as faixas utilizadas para interpretar o score organizacional."}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={
+            adicionar
+          }
+          className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white"
+        >
+          + Faixa
+        </button>
+      </div>
+
+
+      <div className="mt-4 space-y-3">
+        {faixas.map(
+          (
+            faixa
+          ) => (
+            <div
+              key={
+                faixa.id
+              }
+              className="rounded-2xl bg-slate-50 p-3"
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <CampoCompacto
+                  label="Nome"
+                  value={
+                    faixa.nome
+                  }
+                  onChange={(
+                    valor
+                  ) =>
+                    atualizar(
+                      faixa.id,
+                      {
+                        nome:
+                          valor,
+                      }
+                    )
+                  }
+                />
+
+                <CampoCompacto
+                  label="Classificação"
+                  value={
+                    faixa.classificacao
+                  }
+                  onChange={(
+                    valor
+                  ) =>
+                    atualizar(
+                      faixa.id,
+                      {
+                        classificacao:
+                          valor,
+                      }
+                    )
+                  }
+                />
+
+                <CampoNumero
+                  label="Mínimo"
+                  value={
+                    faixa.minimo
+                  }
+                  onChange={(
+                    valor
+                  ) =>
+                    atualizar(
+                      faixa.id,
+                      {
+                        minimo:
+                          valor,
+                      }
+                    )
+                  }
+                />
+
+                <CampoNumero
+                  label="Máximo"
+                  value={
+                    faixa.maximo
+                  }
+                  onChange={(
+                    valor
+                  ) =>
+                    atualizar(
+                      faixa.id,
+                      {
+                        maximo:
+                          valor,
+                      }
+                    )
+                  }
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  excluir(
+                    faixa.id
+                  )
+                }
+                className="mt-3 text-xs font-bold text-red-600"
+              >
+                Excluir faixa
+              </button>
+            </div>
+          )
+        )}
+
+
+        {faixas.length ===
+          0 && (
+          <p className="py-3 text-center text-xs text-slate-500">
+            Nenhuma faixa configurada.
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 
+
+function DimensaoCard({
+  dimensao,
+  psicossocial,
+  onChange,
+  onExcluir,
+}: {
+  dimensao: DimensaoModelo;
+
+  psicossocial: boolean;
+
+  onChange: (
+    dados: Partial<DimensaoModelo>
+  ) => void;
+
+  onExcluir: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 p-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <CampoCompacto
+          label="Nome"
+          value={
+            dimensao.nome
+          }
+          onChange={(
+            nome
+          ) =>
+            onChange({
+              nome,
+            })
+          }
+        />
+
+        <CampoNumero
+          label="Peso"
+          value={
+            dimensao.peso
+          }
+          onChange={(
+            peso
+          ) =>
+            onChange({
+              peso,
+            })
+          }
+        />
+
+
+        <div className="md:col-span-2">
+          <CampoCompacto
+            label="Descrição"
+            value={
+              dimensao.descricao ??
+              ""
+            }
+            onChange={(
+              descricao
+            ) =>
+              onChange({
+                descricao,
+              })
+            }
+          />
+        </div>
+
+
+        {psicossocial && (
+          <div className="md:col-span-2">
+            <CampoCompacto
+              label="Fator de risco"
+              value={
+                dimensao.fatorRisco ??
+                ""
+              }
+              onChange={(
+                fatorRisco
+              ) =>
+                onChange({
+                  fatorRisco,
+                })
+              }
+              placeholder="Ex: Sobrecarga de trabalho"
+            />
+          </div>
+        )}
+      </div>
+
+
+      <button
+        type="button"
+        onClick={
+          onExcluir
+        }
+        className="mt-3 text-xs font-bold text-red-600"
+      >
+        Excluir dimensão
+      </button>
+    </div>
+  );
+}
+
+
 function PerguntaCard({
   pergunta,
+  dimensoes,
+  tipoModulo,
   processando,
   onSalvar,
   onExcluir,
 }: {
-  pergunta:
-    PerguntaModelo;
+  pergunta: PerguntaModelo;
 
-  processando:
-    boolean;
+  dimensoes: DimensaoModelo[];
+
+  tipoModulo: TipoModuloPesquisa;
+
+  processando: boolean;
 
   onSalvar: (
     pergunta: PerguntaModelo
@@ -887,6 +1612,7 @@ function PerguntaCard({
       pergunta.titulo
     );
 
+
   const [
     descricao,
     setDescricao,
@@ -896,6 +1622,7 @@ function PerguntaCard({
         ""
     );
 
+
   const [
     tipo,
     setTipo,
@@ -903,6 +1630,7 @@ function PerguntaCard({
     useState<TipoPergunta>(
       pergunta.tipo
     );
+
 
   const [
     obrigatoria,
@@ -912,24 +1640,63 @@ function PerguntaCard({
       pergunta.obrigatoria
     );
 
+
   const [
     opcoes,
     setOpcoes,
   ] =
     useState(
-      Array.isArray(
-        pergunta.opcoes
+      pergunta.opcoes.join(
+        "\n"
       )
-        ? pergunta.opcoes.join(
-            "\n"
-          )
-        : ""
     );
+
+
+  const [
+    dimensaoId,
+    setDimensaoId,
+  ] =
+    useState(
+      pergunta.dimensaoId ??
+        ""
+    );
+
+
+  const [
+    peso,
+    setPeso,
+  ] =
+    useState(
+      pergunta.peso ??
+        1
+    );
+
+
+  const [
+    sentidoPontuacao,
+    setSentidoPontuacao,
+  ] =
+    useState<SentidoPontuacao>(
+      pergunta.sentidoPontuacao ??
+        "POSITIVO"
+    );
+
+
+  const [
+    fatorRisco,
+    setFatorRisco,
+  ] =
+    useState(
+      pergunta.fatorRisco ??
+        ""
+    );
+
 
   async function salvar(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
+
 
     await onSalvar({
       id:
@@ -952,14 +1719,29 @@ function PerguntaCard({
         opcoes
           .split("\n")
           .map(
-            (opcao) =>
+            (
+              opcao
+            ) =>
               opcao.trim()
           )
           .filter(
             Boolean
           ),
+
+      dimensaoId:
+        dimensaoId ||
+        null,
+
+      peso,
+
+      sentidoPontuacao,
+
+      fatorRisco:
+        fatorRisco.trim() ||
+        null,
     });
   }
+
 
   return (
     <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
@@ -968,20 +1750,21 @@ function PerguntaCard({
           salvar
         }
       >
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+        <div className="mb-4 flex items-center justify-between">
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
             Pergunta{" "}
             {
               pergunta.ordem
             }
           </span>
 
-          <span className="w-fit rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
             {
               tipo
             }
           </span>
         </div>
+
 
         <Campo
           label="Enunciado"
@@ -994,6 +1777,7 @@ function PerguntaCard({
           required
         />
 
+
         <Campo
           label="Descrição complementar"
           value={
@@ -1004,6 +1788,7 @@ function PerguntaCard({
           }
           placeholder="Opcional"
         />
+
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="mb-5">
@@ -1019,8 +1804,7 @@ function PerguntaCard({
                 event
               ) =>
                 setTipo(
-                  event.target
-                    .value as TipoPergunta
+                  event.target.value as TipoPergunta
                 )
               }
               className={
@@ -1028,7 +1812,7 @@ function PerguntaCard({
               }
             >
               <option value="NOTA">
-                Nota de 1 a 5
+                Nota
               </option>
 
               <option value="SIM_NAO">
@@ -1049,19 +1833,126 @@ function PerguntaCard({
             </select>
           </div>
 
-          <CampoArea
-            label="Opções"
+
+          <div className="mb-5">
+            <label className="mb-2 block text-sm font-semibold text-slate-700">
+              Dimensão
+            </label>
+
+            <select
+              value={
+                dimensaoId
+              }
+              onChange={(
+                event
+              ) =>
+                setDimensaoId(
+                  event.target.value
+                )
+              }
+              className={
+                inputClassName
+              }
+            >
+              <option value="">
+                Sem dimensão
+              </option>
+
+              {dimensoes.map(
+                (
+                  dimensao
+                ) => (
+                  <option
+                    key={
+                      dimensao.id
+                    }
+                    value={
+                      dimensao.id
+                    }
+                  >
+                    {
+                      dimensao.nome
+                    }
+                  </option>
+                )
+              )}
+            </select>
+          </div>
+
+
+          <CampoNumero
+            label="Peso da pergunta"
             value={
-              opcoes
+              peso
             }
             onChange={
-              setOpcoes
-            }
-            placeholder={
-              "Uma opção por linha\nRuim\nBom\nExcelente"
+              setPeso
             }
           />
+
+
+          <div className="mb-5">
+            <label className="mb-2 block text-sm font-semibold text-slate-700">
+              Sentido da pontuação
+            </label>
+
+            <select
+              value={
+                sentidoPontuacao
+              }
+              onChange={(
+                event
+              ) =>
+                setSentidoPontuacao(
+                  event.target.value as SentidoPontuacao
+                )
+              }
+              className={
+                inputClassName
+              }
+            >
+              <option value="POSITIVO">
+                Positivo — nota maior é melhor
+              </option>
+
+              <option value="NEGATIVO">
+                Negativo — nota maior é pior
+              </option>
+            </select>
+          </div>
+
+
+          {tipoModulo ===
+            TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL && (
+            <div className="md:col-span-2">
+              <Campo
+                label="Fator de risco"
+                value={
+                  fatorRisco
+                }
+                onChange={
+                  setFatorRisco
+                }
+                placeholder="Ex: Sobrecarga"
+              />
+            </div>
+          )}
+
+
+          <div className="md:col-span-2">
+            <CampoArea
+              label="Opções"
+              value={
+                opcoes
+              }
+              onChange={
+                setOpcoes
+              }
+              placeholder={"Uma opção por linha"}
+            />
+          </div>
         </div>
+
 
         <label className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
           <input
@@ -1073,17 +1964,16 @@ function PerguntaCard({
               event
             ) =>
               setObrigatoria(
-                event.target
-                  .checked
+                event.target.checked
               )
             }
-            className="h-4 w-4"
           />
 
           Pergunta obrigatória
         </label>
 
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
           <button
             type="button"
             onClick={() =>
@@ -1094,7 +1984,7 @@ function PerguntaCard({
             disabled={
               processando
             }
-            className="min-h-12 rounded-2xl border border-red-200 bg-white px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-12 rounded-2xl border border-red-200 px-5 py-3 text-sm font-bold text-red-600 disabled:opacity-60"
           >
             Excluir pergunta
           </button>
@@ -1103,7 +1993,7 @@ function PerguntaCard({
             disabled={
               processando
             }
-            className="min-h-12 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-12 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
           >
             {processando
               ? "Salvando..."
@@ -1115,11 +2005,282 @@ function PerguntaCard({
   );
 }
 
+
+function ArrayNotas({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+
+  value: number[];
+
+  onChange: (
+    valor: number[]
+  ) => void;
+}) {
+  return (
+    <CampoCompacto
+      label={
+        label
+      }
+      value={
+        value.join(
+          ", "
+        )
+      }
+      onChange={(
+        texto
+      ) =>
+        onChange(
+          texto
+            .split(",")
+            .map(
+              (
+                item
+              ) =>
+                Number(
+                  item.trim()
+                )
+            )
+            .filter(
+              (
+                item
+              ) =>
+                Number.isFinite(
+                  item
+                )
+            )
+        )
+      }
+      placeholder="Ex: 4, 5"
+    />
+  );
+}
+
+
+function CampoNumero({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+
+  value: number;
+
+  onChange: (
+    valor: number
+  ) => void;
+}) {
+  return (
+    <div className="mb-4">
+      <label className="mb-2 block text-sm font-semibold text-slate-700">
+        {
+          label
+        }
+      </label>
+
+      <input
+        type="number"
+        step="0.01"
+        value={
+          value
+        }
+        onChange={(
+          event
+        ) =>
+          onChange(
+            Number(
+              event.target.value
+            )
+          )
+        }
+        className={
+          inputClassName
+        }
+      />
+    </div>
+  );
+}
+
+
+function CampoCompacto({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+
+  value: string;
+
+  onChange: (
+    valor: string
+  ) => void;
+
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-bold text-slate-600">
+        {
+          label
+        }
+      </label>
+
+      <input
+        value={
+          value
+        }
+        onChange={(
+          event
+        ) =>
+          onChange(
+            event.target.value
+          )
+        }
+        placeholder={
+          placeholder
+        }
+        className={
+          inputClassName
+        }
+      />
+    </div>
+  );
+}
+
+
+function CabecalhoEditor({
+  titulo,
+  descricao,
+}: {
+  titulo: string;
+
+  descricao: string;
+}) {
+  return (
+    <header className="bg-white px-4 py-5 shadow-sm sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
+            Construtor de Modelos
+          </p>
+
+          <h1 className="mt-1 text-2xl font-black text-slate-900">
+            {
+              titulo
+            }
+          </h1>
+
+          <p className="mt-1 text-sm text-slate-500">
+            {
+              descricao
+            }
+          </p>
+        </div>
+
+        <Link
+          href="/modelos-pesquisa"
+          className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700"
+        >
+          Voltar
+        </Link>
+      </div>
+    </header>
+  );
+}
+
+
+function SelectTipoModelo({
+  value,
+  onChange,
+}: {
+  value: TipoModuloPesquisa;
+
+  onChange: (
+    valor: TipoModuloPesquisa
+  ) => void;
+}) {
+  return (
+    <div className="mb-5">
+      <label className="mb-2 block text-sm font-semibold text-slate-700">
+        Tipo do modelo
+      </label>
+
+      <select
+        value={
+          value
+        }
+        onChange={(
+          event
+        ) =>
+          onChange(
+            event.target.value as TipoModuloPesquisa
+          )
+        }
+        className={
+          inputClassName
+        }
+      >
+        <option value={TipoModuloPesquisa.CLIMA}>
+          Pesquisa de Clima
+        </option>
+
+        <option value={TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL}>
+          Diagnóstico Organizacional
+        </option>
+
+        <option value={TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL}>
+          Avaliação Psicossocial
+        </option>
+      </select>
+    </div>
+  );
+}
+
+
+function TipoModeloBadge({
+  tipo,
+}: {
+  tipo: TipoModuloPesquisa;
+}) {
+  if (
+    tipo ===
+    TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+  ) {
+    return (
+      <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
+        Diagnóstico Organizacional
+      </span>
+    );
+  }
+
+  if (
+    tipo ===
+    TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
+  ) {
+    return (
+      <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
+        Avaliação Psicossocial
+      </span>
+    );
+  }
+
+  return (
+    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
+      Pesquisa de Clima
+    </span>
+  );
+}
+
+
 function CardResumo({
   titulo,
   valor,
 }: {
   titulo: string;
+
   valor: number;
 }) {
   return (
@@ -1139,22 +2300,27 @@ function CardResumo({
   );
 }
 
+
 function StatusBadge({
   ativo,
 }: {
-  ativo:
-    boolean;
+  ativo: boolean;
 }) {
-  return ativo ? (
-    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
-      Ativo
-    </span>
-  ) : (
-    <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
-      Inativo
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-bold ${
+        ativo
+          ? "bg-green-100 text-green-700"
+          : "bg-red-100 text-red-700"
+      }`}
+    >
+      {ativo
+        ? "Ativo"
+        : "Inativo"}
     </span>
   );
 }
+
 
 function Campo({
   label,
@@ -1165,6 +2331,7 @@ function Campo({
   placeholder,
 }: {
   label: string;
+
   value: string;
 
   onChange: (
@@ -1172,7 +2339,9 @@ function Campo({
   ) => void;
 
   type?: string;
+
   required?: boolean;
+
   placeholder?: string;
 }) {
   return (
@@ -1197,8 +2366,7 @@ function Campo({
           event
         ) =>
           onChange(
-            event.target
-              .value
+            event.target.value
           )
         }
         placeholder={
@@ -1212,6 +2380,7 @@ function Campo({
   );
 }
 
+
 function CampoArea({
   label,
   value,
@@ -1220,6 +2389,7 @@ function CampoArea({
   placeholder,
 }: {
   label: string;
+
   value: string;
 
   onChange: (
@@ -1227,6 +2397,7 @@ function CampoArea({
   ) => void;
 
   required?: boolean;
+
   placeholder?: string;
 }) {
   return (
@@ -1251,8 +2422,7 @@ function CampoArea({
           event
         ) =>
           onChange(
-            event.target
-              .value
+            event.target.value
           )
         }
         placeholder={
@@ -1266,15 +2436,14 @@ function CampoArea({
   );
 }
 
+
 function Th({
   children,
   direita = false,
 }: {
-  children:
-    React.ReactNode;
+  children: React.ReactNode;
 
-  direita?:
-    boolean;
+  direita?: boolean;
 }) {
   return (
     <th
@@ -1291,15 +2460,14 @@ function Th({
   );
 }
 
+
 function LinhaVazia({
   colunas,
   texto,
 }: {
-  colunas:
-    number;
+  colunas: number;
 
-  texto:
-    string;
+  texto: string;
 }) {
   return (
     <tr>
@@ -1317,13 +2485,30 @@ function LinhaVazia({
   );
 }
 
+
+function EstadoVazio({
+  texto,
+}: {
+  texto: string;
+}) {
+  return (
+    <div className="rounded-3xl bg-white p-10 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
+      {
+        texto
+      }
+    </div>
+  );
+}
+
+
 function AlertaErro({
   mensagem,
 }: {
-  mensagem:
-    string | null;
+  mensagem: string | null;
 }) {
-  if (!mensagem) {
+  if (
+    !mensagem
+  ) {
     return null;
   }
 

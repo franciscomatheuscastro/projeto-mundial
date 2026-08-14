@@ -1,4 +1,6 @@
-import { randomUUID } from "crypto";
+import {
+  randomUUID,
+} from "crypto";
 
 import {
   Prisma,
@@ -7,7 +9,16 @@ import {
   TipoPergunta,
 } from "@prisma/client";
 
-import { prisma } from "@/src/lib/prisma";
+import {
+  prisma,
+} from "@/src/lib/prisma";
+
+import {
+  ConfiguracaoAnaliseModelo,
+  criarConfiguracaoAnalisePadrao,
+  DimensaoModelo,
+  FaixaInterpretacaoModelo,
+} from "@/src/core/model/ModeloPesquisa";
 
 import {
   PerguntaPesquisaCliente,
@@ -16,130 +27,787 @@ import {
   RespostaPesquisaItem,
 } from "@/src/core/model/PesquisaCliente";
 
-function normalizarPerguntas(
-  perguntas: unknown
-): PerguntaPesquisaCliente[] {
-  if (!Array.isArray(perguntas)) {
+
+/* =========================================================
+ * TIPOS INTERNOS DOS MOTORES ANALÍTICOS
+ * ======================================================= */
+
+type ClassificacaoFavorabilidade =
+  | "FAVORAVEL"
+  | "NEUTRO"
+  | "DESFAVORAVEL";
+
+
+type AcumuladorClima = {
+  id: string;
+  nome: string;
+
+  favoravelPeso: number;
+  neutroPeso: number;
+  desfavoravelPeso: number;
+
+  totalPeso: number;
+  totalRespostas: number;
+};
+
+
+type AcumuladorScore = {
+  id: string;
+  nome: string;
+  fatorRisco: string | null;
+
+  somaPonderada: number;
+  pesoTotal: number;
+
+  totalRespostas: number;
+
+  respondentes: Set<string>;
+};
+
+
+/* =========================================================
+ * NORMALIZAÇÃO
+ * ======================================================= */
+
+function numeroSeguro(
+  valor: unknown,
+  padrao: number
+) {
+  const numero =
+    Number(valor);
+
+  return Number.isFinite(
+    numero
+  )
+    ? numero
+    : padrao;
+}
+
+
+function limitar(
+  valor: number,
+  minimo: number,
+  maximo: number
+) {
+  return Math.min(
+    maximo,
+    Math.max(
+      minimo,
+      valor
+    )
+  );
+}
+
+
+function chaveTexto(
+  valor: string
+) {
+  return valor
+    .trim()
+    .toLocaleLowerCase(
+      "pt-BR"
+    );
+}
+
+
+function normalizarDimensoes(
+  dimensoes: unknown
+): DimensaoModelo[] {
+  if (
+    !Array.isArray(
+      dimensoes
+    )
+  ) {
     return [];
   }
 
-  return perguntas.map((pergunta, index) => {
-    const item =
-      pergunta as Partial<PerguntaPesquisaCliente>;
 
-    return {
-      id:
-        item.id ||
-        randomUUID(),
+  return dimensoes
+    .map(
+      (
+        dimensao,
+        index
+      ) => {
+        const item =
+          dimensao as Partial<DimensaoModelo>;
 
-      titulo:
-        item.titulo ||
-        "Nova pergunta",
 
-      descricao:
-        item.descricao ||
-        null,
+        return {
+          id:
+            item.id ||
+            randomUUID(),
 
-      tipo:
-        item.tipo ||
-        TipoPergunta.NOTA,
+          nome:
+            item.nome?.trim() ||
+            `Dimensão ${index + 1}`,
 
-      ordem:
-        item.ordem ||
-        index + 1,
+          descricao:
+            item.descricao?.trim() ||
+            null,
 
-      obrigatoria:
-        item.obrigatoria ??
-        true,
+          ordem:
+            item.ordem ||
+            index + 1,
 
-      opcoes:
-        Array.isArray(
-          item.opcoes
-        )
-          ? item.opcoes
-          : [],
-    };
-  });
+          peso:
+            Math.max(
+              0,
+              numeroSeguro(
+                item.peso,
+                1
+              )
+            ),
+
+          fatorRisco:
+            item.fatorRisco?.trim() ||
+            null,
+        };
+      }
+    )
+    .sort(
+      (
+        a,
+        b
+      ) =>
+        a.ordem -
+        b.ordem
+    );
 }
+
+
+function normalizarFaixas(
+  faixas: unknown
+): FaixaInterpretacaoModelo[] {
+  if (
+    !Array.isArray(
+      faixas
+    )
+  ) {
+    return [];
+  }
+
+
+  return faixas
+    .map(
+      (
+        faixa,
+        index
+      ) => {
+        const item =
+          faixa as Partial<FaixaInterpretacaoModelo>;
+
+
+        return {
+          id:
+            item.id ||
+            randomUUID(),
+
+          nome:
+            item.nome?.trim() ||
+            item.classificacao?.trim() ||
+            `Faixa ${index + 1}`,
+
+          minimo:
+            numeroSeguro(
+              item.minimo,
+              0
+            ),
+
+          maximo:
+            numeroSeguro(
+              item.maximo,
+              100
+            ),
+
+          classificacao:
+            item.classificacao?.trim() ||
+            `FAIXA_${index + 1}`,
+
+          ordem:
+            item.ordem ||
+            index + 1,
+        };
+      }
+    )
+    .sort(
+      (
+        a,
+        b
+      ) =>
+        a.ordem -
+        b.ordem
+    );
+}
+
+
+function normalizarArrayNumerico(
+  valor: unknown
+): number[] {
+  if (
+    !Array.isArray(
+      valor
+    )
+  ) {
+    return [];
+  }
+
+
+  return valor
+    .map(
+      item =>
+        Number(
+          item
+        )
+    )
+    .filter(
+      item =>
+        Number.isFinite(
+          item
+        )
+    );
+}
+
+
+function normalizarConfiguracaoAnalise(
+  configuracao: unknown,
+  tipo: TipoModuloPesquisa
+): ConfiguracaoAnaliseModelo {
+  const padrao =
+    criarConfiguracaoAnalisePadrao(
+      tipo
+    );
+
+
+  if (
+    !configuracao ||
+    typeof configuracao !==
+      "object" ||
+    Array.isArray(
+      configuracao
+    )
+  ) {
+    return padrao;
+  }
+
+
+  const item =
+    configuracao as Partial<ConfiguracaoAnaliseModelo>;
+
+
+  return {
+    metodo:
+      tipo ===
+      TipoModuloPesquisa.CLIMA
+        ? "FAVORABILIDADE"
+        : tipo ===
+            TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+          ? "MATURIDADE"
+          : "RISCO_PSICOSSOCIAL",
+
+    escalaMinima:
+      numeroSeguro(
+        item.escalaMinima,
+        padrao.escalaMinima
+      ),
+
+    escalaMaxima:
+      numeroSeguro(
+        item.escalaMaxima,
+        padrao.escalaMaxima
+      ),
+
+    anonimatoMinimo:
+      Math.max(
+        1,
+        Math.round(
+          numeroSeguro(
+            item.anonimatoMinimo,
+            padrao.anonimatoMinimo
+          )
+        )
+      ),
+
+    favoravel:
+      tipo ===
+      TipoModuloPesquisa.CLIMA
+        ? normalizarArrayNumerico(
+            item.favoravel
+          )
+        : [],
+
+    neutro:
+      tipo ===
+      TipoModuloPesquisa.CLIMA
+        ? normalizarArrayNumerico(
+            item.neutro
+          )
+        : [],
+
+    desfavoravel:
+      tipo ===
+      TipoModuloPesquisa.CLIMA
+        ? normalizarArrayNumerico(
+            item.desfavoravel
+          )
+        : [],
+
+    faixas:
+      normalizarFaixas(
+        item.faixas
+      ),
+  };
+}
+
+
+function normalizarPerguntas(
+  perguntas: unknown,
+  dimensoes: DimensaoModelo[] = []
+): PerguntaPesquisaCliente[] {
+  if (
+    !Array.isArray(
+      perguntas
+    )
+  ) {
+    return [];
+  }
+
+
+  const idsDimensoes =
+    new Set(
+      dimensoes.map(
+        dimensao =>
+          dimensao.id
+      )
+    );
+
+
+  return perguntas.map(
+    (
+      pergunta,
+      index
+    ) => {
+      const item =
+        pergunta as Partial<PerguntaPesquisaCliente>;
+
+
+      const dimensaoId =
+        item.dimensaoId &&
+        (
+          dimensoes.length ===
+            0 ||
+          idsDimensoes.has(
+            item.dimensaoId
+          )
+        )
+          ? item.dimensaoId
+          : null;
+
+
+      return {
+        id:
+          item.id ||
+          randomUUID(),
+
+        titulo:
+          item.titulo?.trim() ||
+          "Nova pergunta",
+
+        descricao:
+          item.descricao?.trim() ||
+          null,
+
+        tipo:
+          item.tipo ||
+          TipoPergunta.NOTA,
+
+        ordem:
+          item.ordem ||
+          index + 1,
+
+        obrigatoria:
+          item.obrigatoria ??
+          true,
+
+        opcoes:
+          Array.isArray(
+            item.opcoes
+          )
+            ? item.opcoes
+                .map(
+                  opcao =>
+                    String(
+                      opcao
+                    ).trim()
+                )
+                .filter(
+                  Boolean
+                )
+            : [],
+
+        dimensaoId,
+
+        peso:
+          Math.max(
+            0,
+            numeroSeguro(
+              item.peso,
+              1
+            )
+          ),
+
+        sentidoPontuacao:
+          item.sentidoPontuacao ===
+          "NEGATIVO"
+            ? "NEGATIVO"
+            : "POSITIVO",
+
+        fatorRisco:
+          item.fatorRisco?.trim() ||
+          null,
+      };
+    }
+  );
+}
+
 
 function normalizarRespostas(
   respostas: unknown
 ): RespostaPesquisaItem[] {
-  if (!Array.isArray(respostas)) {
+  if (
+    !Array.isArray(
+      respostas
+    )
+  ) {
     return [];
   }
 
-  return respostas.map((resposta) => {
-    const item =
-      resposta as Partial<RespostaPesquisaItem>;
 
-    return {
-      id:
-        item.id ||
-        randomUUID(),
+  return respostas.map(
+    resposta => {
+      const item =
+        resposta as Partial<RespostaPesquisaItem>;
 
-      perguntaId:
-        item.perguntaId ||
-        "",
 
-      valor:
-        String(
-          item.valor ??
+      return {
+        id:
+          item.id ||
+          randomUUID(),
+
+        perguntaId:
+          item.perguntaId ||
+          "",
+
+        valor:
+          String(
+            item.valor ??
             ""
-        ),
-    };
-  });
+          ).trim(),
+      };
+    }
+  );
 }
+
 
 function criarDataInicio(
   data?: string
 ): Date | undefined {
-  if (!data) {
+  if (
+    !data
+  ) {
     return undefined;
   }
+
 
   const resultado =
     new Date(
       `${data}T00:00:00-03:00`
     );
 
-  if (
-    Number.isNaN(
-      resultado.getTime()
-    )
-  ) {
-    return undefined;
-  }
 
-  return resultado;
+  return Number.isNaN(
+    resultado.getTime()
+  )
+    ? undefined
+    : resultado;
 }
+
 
 function criarDataFim(
   data?: string
 ): Date | undefined {
-  if (!data) {
+  if (
+    !data
+  ) {
     return undefined;
   }
+
 
   const resultado =
     new Date(
       `${data}T23:59:59.999-03:00`
     );
 
+
+  return Number.isNaN(
+    resultado.getTime()
+  )
+    ? undefined
+    : resultado;
+}
+
+
+/* =========================================================
+ * FUNÇÕES DE CÁLCULO
+ * ======================================================= */
+
+/*
+ * Converte uma nota da escala original para 0–100.
+ *
+ * 1 em escala 1–5 = 0
+ * 3 = 50
+ * 5 = 100
+ */
+function normalizarNotaPercentual(
+  valor: number,
+  escalaMinima: number,
+  escalaMaxima: number
+) {
   if (
-    Number.isNaN(
-      resultado.getTime()
-    )
+    escalaMaxima <=
+    escalaMinima
   ) {
-    return undefined;
+    return 0;
   }
 
-  return resultado;
+
+  const nota =
+    limitar(
+      valor,
+      escalaMinima,
+      escalaMaxima
+    );
+
+
+  return (
+    (
+      nota -
+      escalaMinima
+    ) /
+    (
+      escalaMaxima -
+      escalaMinima
+    )
+  ) * 100;
 }
+
+
+/*
+ * Inverte a nota dentro da própria escala.
+ *
+ * Exemplo 1–5:
+ *
+ * 1 -> 5
+ * 2 -> 4
+ * 3 -> 3
+ * 4 -> 2
+ * 5 -> 1
+ */
+function inverterNota(
+  valor: number,
+  minimo: number,
+  maximo: number
+) {
+  return (
+    minimo +
+    maximo -
+    valor
+  );
+}
+
+
+/*
+ * Para CLIMA e DIAGNÓSTICO:
+ * quanto maior o resultado final, melhor.
+ */
+function notaOrientadaPositivamente(
+  valor: number,
+  pergunta: PerguntaPesquisaCliente,
+  configuracao: ConfiguracaoAnaliseModelo
+) {
+  if (
+    pergunta.sentidoPontuacao ===
+    "NEGATIVO"
+  ) {
+    return inverterNota(
+      valor,
+      configuracao.escalaMinima,
+      configuracao.escalaMaxima
+    );
+  }
+
+
+  return valor;
+}
+
+
+/*
+ * Para PSICOSSOCIAL:
+ * quanto maior o resultado final, maior a exposição.
+ *
+ * Pergunta negativa:
+ * "Tenho volume excessivo de trabalho."
+ * nota alta = maior risco.
+ *
+ * Pergunta positiva:
+ * "Recebo apoio da liderança."
+ * nota alta = menor risco.
+ * Logo precisa ser invertida.
+ */
+function notaOrientadaParaRisco(
+  valor: number,
+  pergunta: PerguntaPesquisaCliente,
+  configuracao: ConfiguracaoAnaliseModelo
+) {
+  if (
+    pergunta.sentidoPontuacao ===
+    "POSITIVO"
+  ) {
+    return inverterNota(
+      valor,
+      configuracao.escalaMinima,
+      configuracao.escalaMaxima
+    );
+  }
+
+
+  return valor;
+}
+
+
+function encontrarFaixa(
+  score: number,
+  faixas: FaixaInterpretacaoModelo[]
+) {
+  const encontrada =
+    faixas.find(
+      faixa =>
+        score >=
+          faixa.minimo &&
+        score <=
+          faixa.maximo
+    );
+
+
+  return encontrada
+    ? {
+        nome:
+          encontrada.nome,
+
+        classificacao:
+          encontrada.classificacao,
+      }
+    : null;
+}
+
+
+function assinaturaFaixas(
+  faixas: FaixaInterpretacaoModelo[]
+) {
+  return JSON.stringify(
+    [...faixas]
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          a.ordem -
+          b.ordem
+      )
+      .map(
+        faixa => ({
+          minimo:
+            faixa.minimo,
+
+          maximo:
+            faixa.maximo,
+
+          classificacao:
+            faixa.classificacao,
+        })
+      )
+  );
+}
+
+
+/*
+ * Só usamos faixas no consolidado se todas as
+ * aplicações estiverem usando exatamente as mesmas.
+ *
+ * Isso evita comparar/classificar instrumentos
+ * metodologicamente diferentes como se fossem iguais.
+ */
+function obterFaixasCompativeis(
+  pesquisasBanco: any[]
+): FaixaInterpretacaoModelo[] {
+  if (
+    pesquisasBanco.length ===
+    0
+  ) {
+    return [];
+  }
+
+
+  const configuracoes =
+    pesquisasBanco.map(
+      pesquisa =>
+        normalizarConfiguracaoAnalise(
+          pesquisa.configuracaoAnalise,
+          pesquisa.tipo
+        )
+    );
+
+
+  const primeira =
+    configuracoes[0]
+      .faixas;
+
+
+  if (
+    primeira.length ===
+    0
+  ) {
+    return [];
+  }
+
+
+  const assinatura =
+    assinaturaFaixas(
+      primeira
+    );
+
+
+  const todasCompativeis =
+    configuracoes.every(
+      configuracao =>
+        assinaturaFaixas(
+          configuracao.faixas
+        ) ===
+        assinatura
+    );
+
+
+  return todasCompativeis
+    ? primeira
+    : [];
+}
+
+
+/* =========================================================
+ * COMPATIBILIDADE COM RELATÓRIOS ANTIGOS
+ * ======================================================= */
 
 function calcularIndicadoresNotas(
   perguntasRaw: unknown,
-
   respostasPesquisa: {
     respostas: unknown;
   }[]
@@ -149,22 +817,28 @@ function calcularIndicadoresNotas(
       perguntasRaw
     );
 
+
   const perguntasNota =
     new Set(
       perguntas
         .filter(
-          (pergunta) =>
+          pergunta =>
             pergunta.tipo ===
             TipoPergunta.NOTA
         )
         .map(
-          (pergunta) =>
+          pergunta =>
             pergunta.id
         )
     );
 
-  let soma = 0;
-  let quantidade = 0;
+
+  let soma =
+    0;
+
+  let quantidade =
+    0;
+
 
   for (
     const respostaPesquisa
@@ -174,6 +848,7 @@ function calcularIndicadoresNotas(
       normalizarRespostas(
         respostaPesquisa.respostas
       );
+
 
     for (
       const resposta
@@ -187,51 +862,1674 @@ function calcularIndicadoresNotas(
         continue;
       }
 
+
       const valor =
         Number(
           resposta.valor
         );
 
+
       if (
-        Number.isNaN(
+        !Number.isFinite(
           valor
         )
       ) {
         continue;
       }
 
-      soma += valor;
+
+      soma +=
+        valor;
+
       quantidade++;
     }
   }
 
+
   return {
     soma,
+
     quantidade,
 
     media:
-      quantidade > 0
+      quantidade >
+      0
         ? soma /
           quantidade
         : null,
   };
 }
 
+
+/* =========================================================
+ * MOTOR DE CLIMA
+ * ======================================================= */
+
+function classificarFavorabilidade(
+  valor: number,
+  configuracao: ConfiguracaoAnaliseModelo
+): ClassificacaoFavorabilidade | null {
+  if (
+    configuracao.favoravel.includes(
+      valor
+    )
+  ) {
+    return "FAVORAVEL";
+  }
+
+
+  if (
+    configuracao.neutro.includes(
+      valor
+    )
+  ) {
+    return "NEUTRO";
+  }
+
+
+  if (
+    configuracao.desfavoravel.includes(
+      valor
+    )
+  ) {
+    return "DESFAVORAVEL";
+  }
+
+
+  return null;
+}
+
+
+function analisarPesquisaClima(
+  pesquisa: any
+) {
+  const dimensoes =
+    normalizarDimensoes(
+      pesquisa.dimensoes
+    );
+
+
+  const perguntas =
+    normalizarPerguntas(
+      pesquisa.perguntas,
+      dimensoes
+    );
+
+
+  const configuracao =
+    normalizarConfiguracaoAnalise(
+      pesquisa.configuracaoAnalise,
+      TipoModuloPesquisa.CLIMA
+    );
+
+
+  const mapaDimensoes =
+    new Map<
+      string,
+      AcumuladorClima
+    >();
+
+
+  for (
+    const dimensao
+    of dimensoes
+  ) {
+    mapaDimensoes.set(
+      dimensao.id,
+      {
+        id:
+          dimensao.id,
+
+        nome:
+          dimensao.nome,
+
+        favoravelPeso:
+          0,
+
+        neutroPeso:
+          0,
+
+        desfavoravelPeso:
+          0,
+
+        totalPeso:
+          0,
+
+        totalRespostas:
+          0,
+      }
+    );
+  }
+
+
+  const mapaPerguntas =
+    new Map(
+      perguntas.map(
+        pergunta => [
+          pergunta.id,
+          pergunta,
+        ]
+      )
+    );
+
+
+  let favoravelGeral =
+    0;
+
+  let neutroGeral =
+    0;
+
+  let desfavoravelGeral =
+    0;
+
+  let pesoGeral =
+    0;
+
+
+  const comentariosAbertos: string[] =
+    [];
+
+
+  for (
+    const respostaPesquisa
+    of pesquisa.respostas
+  ) {
+    const respostas =
+      normalizarRespostas(
+        respostaPesquisa.respostas
+      );
+
+
+    for (
+      const resposta
+      of respostas
+    ) {
+      const pergunta =
+        mapaPerguntas.get(
+          resposta.perguntaId
+        );
+
+
+      if (
+        !pergunta
+      ) {
+        continue;
+      }
+
+
+      /*
+       * Comentários/textos.
+       */
+      if (
+        pergunta.tipo !==
+          TipoPergunta.NOTA &&
+        pergunta.tipo !==
+          TipoPergunta.MULTIPLA_ESCOLHA
+      ) {
+        const texto =
+          resposta.valor.trim();
+
+
+        if (
+          texto
+        ) {
+          comentariosAbertos.push(
+            texto
+          );
+        }
+
+        continue;
+      }
+
+
+      if (
+        pergunta.tipo !==
+        TipoPergunta.NOTA
+      ) {
+        continue;
+      }
+
+
+      const valorOriginal =
+        Number(
+          resposta.valor
+        );
+
+
+      if (
+        !Number.isFinite(
+          valorOriginal
+        )
+      ) {
+        continue;
+      }
+
+
+      /*
+       * Favorabilidade sempre é interpretada como:
+       *
+       * nota maior = melhor percepção.
+       */
+      const valorOrientado =
+        notaOrientadaPositivamente(
+          valorOriginal,
+          pergunta,
+          configuracao
+        );
+
+
+      const classificacao =
+        classificarFavorabilidade(
+          valorOrientado,
+          configuracao
+        );
+
+
+      if (
+        !classificacao
+      ) {
+        continue;
+      }
+
+
+      const pesoPergunta =
+        Math.max(
+          0,
+          pergunta.peso ||
+            1
+        );
+
+
+      const dimensao =
+        pergunta.dimensaoId
+          ? mapaDimensoes.get(
+              pergunta.dimensaoId
+            )
+          : undefined;
+
+
+      if (
+        dimensao
+      ) {
+        dimensao.totalPeso +=
+          pesoPergunta;
+
+        dimensao.totalRespostas++;
+
+
+        if (
+          classificacao ===
+          "FAVORAVEL"
+        ) {
+          dimensao.favoravelPeso +=
+            pesoPergunta;
+        }
+
+
+        if (
+          classificacao ===
+          "NEUTRO"
+        ) {
+          dimensao.neutroPeso +=
+            pesoPergunta;
+        }
+
+
+        if (
+          classificacao ===
+          "DESFAVORAVEL"
+        ) {
+          dimensao.desfavoravelPeso +=
+            pesoPergunta;
+        }
+      }
+
+
+      pesoGeral +=
+        pesoPergunta;
+
+
+      if (
+        classificacao ===
+        "FAVORAVEL"
+      ) {
+        favoravelGeral +=
+          pesoPergunta;
+      }
+
+
+      if (
+        classificacao ===
+        "NEUTRO"
+      ) {
+        neutroGeral +=
+          pesoPergunta;
+      }
+
+
+      if (
+        classificacao ===
+        "DESFAVORAVEL"
+      ) {
+        desfavoravelGeral +=
+          pesoPergunta;
+      }
+    }
+  }
+
+
+  const dimensoesResultado =
+    Array.from(
+      mapaDimensoes.values()
+    )
+      .filter(
+        dimensao =>
+          dimensao.totalPeso >
+          0
+      )
+      .map(
+        dimensao => ({
+          id:
+            dimensao.id,
+
+          nome:
+            dimensao.nome,
+
+          totalRespostas:
+            dimensao.totalRespostas,
+
+          favoravel:
+            (
+              dimensao.favoravelPeso /
+              dimensao.totalPeso
+            ) *
+            100,
+
+          neutro:
+            (
+              dimensao.neutroPeso /
+              dimensao.totalPeso
+            ) *
+            100,
+
+          desfavoravel:
+            (
+              dimensao.desfavoravelPeso /
+              dimensao.totalPeso
+            ) *
+            100,
+
+          favoravelPeso:
+            dimensao.favoravelPeso,
+
+          neutroPeso:
+            dimensao.neutroPeso,
+
+          desfavoravelPeso:
+            dimensao.desfavoravelPeso,
+
+          totalPeso:
+            dimensao.totalPeso,
+        })
+      );
+
+
+  return {
+    indiceGeralClima:
+      pesoGeral >
+      0
+        ? (
+            favoravelGeral /
+            pesoGeral
+          ) *
+          100
+        : null,
+
+    dimensoes:
+      dimensoesResultado,
+
+    comentariosAbertos,
+
+    favoravelPeso:
+      favoravelGeral,
+
+    neutroPeso:
+      neutroGeral,
+
+    desfavoravelPeso:
+      desfavoravelGeral,
+
+    totalPeso:
+      pesoGeral,
+  };
+}
+
+
+function montarAnaliseClima(
+  pesquisasBanco: any[]
+) {
+  const mapaDimensoes =
+    new Map<
+      string,
+      {
+        id: string;
+        nome: string;
+
+        favoravelPeso: number;
+        neutroPeso: number;
+        desfavoravelPeso: number;
+
+        totalPeso: number;
+        totalRespostas: number;
+      }
+    >();
+
+
+  let favoravelGeral =
+    0;
+
+  let neutroGeral =
+    0;
+
+  let desfavoravelGeral =
+    0;
+
+  let pesoGeral =
+    0;
+
+
+  const comentariosAbertos: string[] =
+    [];
+
+
+  const historico: {
+    rotulo: string;
+    indice: number;
+  }[] =
+    [];
+
+
+  for (
+    const pesquisa
+    of [...pesquisasBanco].reverse()
+  ) {
+    const resultado =
+      analisarPesquisaClima(
+        pesquisa
+      );
+
+
+    favoravelGeral +=
+      resultado.favoravelPeso;
+
+    neutroGeral +=
+      resultado.neutroPeso;
+
+    desfavoravelGeral +=
+      resultado.desfavoravelPeso;
+
+    pesoGeral +=
+      resultado.totalPeso;
+
+
+    comentariosAbertos.push(
+      ...resultado.comentariosAbertos
+    );
+
+
+    if (
+      resultado.indiceGeralClima !==
+      null
+    ) {
+      historico.push({
+        rotulo:
+          pesquisa.titulo,
+
+        indice:
+          resultado.indiceGeralClima,
+      });
+    }
+
+
+    for (
+      const dimensao
+      of resultado.dimensoes
+    ) {
+      const chave =
+        chaveTexto(
+          dimensao.nome
+        );
+
+
+      const atual =
+        mapaDimensoes.get(
+          chave
+        ) || {
+          id:
+            dimensao.id,
+
+          nome:
+            dimensao.nome,
+
+          favoravelPeso:
+            0,
+
+          neutroPeso:
+            0,
+
+          desfavoravelPeso:
+            0,
+
+          totalPeso:
+            0,
+
+          totalRespostas:
+            0,
+        };
+
+
+      atual.favoravelPeso +=
+        dimensao.favoravelPeso;
+
+      atual.neutroPeso +=
+        dimensao.neutroPeso;
+
+      atual.desfavoravelPeso +=
+        dimensao.desfavoravelPeso;
+
+      atual.totalPeso +=
+        dimensao.totalPeso;
+
+      atual.totalRespostas +=
+        dimensao.totalRespostas;
+
+
+      mapaDimensoes.set(
+        chave,
+        atual
+      );
+    }
+  }
+
+
+  const dimensoes =
+    Array.from(
+      mapaDimensoes.values()
+    )
+      .filter(
+        item =>
+          item.totalPeso >
+          0
+      )
+      .map(
+        item => ({
+          id:
+            item.id,
+
+          nome:
+            item.nome,
+
+          totalRespostas:
+            item.totalRespostas,
+
+          favoravel:
+            (
+              item.favoravelPeso /
+              item.totalPeso
+            ) *
+            100,
+
+          neutro:
+            (
+              item.neutroPeso /
+              item.totalPeso
+            ) *
+            100,
+
+          desfavoravel:
+            (
+              item.desfavoravelPeso /
+              item.totalPeso
+            ) *
+            100,
+        })
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          b.favoravel -
+          a.favoravel
+      );
+
+
+  return {
+    indiceGeralClima:
+      pesoGeral >
+      0
+        ? (
+            favoravelGeral /
+            pesoGeral
+          ) *
+          100
+        : null,
+
+    dimensoes,
+
+    comentariosAbertos,
+
+    historico,
+  };
+}
+
+
+/* =========================================================
+ * MOTOR DE DIAGNÓSTICO ORGANIZACIONAL
+ * ======================================================= */
+
+function analisarPesquisaDiagnostico(
+  pesquisa: any
+) {
+  const dimensoes =
+    normalizarDimensoes(
+      pesquisa.dimensoes
+    );
+
+
+  const perguntas =
+    normalizarPerguntas(
+      pesquisa.perguntas,
+      dimensoes
+    );
+
+
+  const configuracao =
+    normalizarConfiguracaoAnalise(
+      pesquisa.configuracaoAnalise,
+      TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+    );
+
+
+  const mapaPerguntas =
+    new Map(
+      perguntas.map(
+        pergunta => [
+          pergunta.id,
+          pergunta,
+        ]
+      )
+    );
+
+
+  const mapaDimensoes =
+    new Map<
+      string,
+      AcumuladorScore
+    >();
+
+
+  for (
+    const dimensao
+    of dimensoes
+  ) {
+    mapaDimensoes.set(
+      dimensao.id,
+      {
+        id:
+          dimensao.id,
+
+        nome:
+          dimensao.nome,
+
+        fatorRisco:
+          dimensao.fatorRisco ??
+          null,
+
+        somaPonderada:
+          0,
+
+        pesoTotal:
+          0,
+
+        totalRespostas:
+          0,
+
+        respondentes:
+          new Set<string>(),
+      }
+    );
+  }
+
+
+  let somaGeral =
+    0;
+
+  let pesoGeral =
+    0;
+
+
+  for (
+    const respostaPesquisa
+    of pesquisa.respostas
+  ) {
+    const respostas =
+      normalizarRespostas(
+        respostaPesquisa.respostas
+      );
+
+
+    for (
+      const resposta
+      of respostas
+    ) {
+      const pergunta =
+        mapaPerguntas.get(
+          resposta.perguntaId
+        );
+
+
+      if (
+        !pergunta ||
+        pergunta.tipo !==
+          TipoPergunta.NOTA
+      ) {
+        continue;
+      }
+
+
+      const valor =
+        Number(
+          resposta.valor
+        );
+
+
+      if (
+        !Number.isFinite(
+          valor
+        )
+      ) {
+        continue;
+      }
+
+
+      const orientado =
+        notaOrientadaPositivamente(
+          valor,
+          pergunta,
+          configuracao
+        );
+
+
+      const score =
+        normalizarNotaPercentual(
+          orientado,
+          configuracao.escalaMinima,
+          configuracao.escalaMaxima
+        );
+
+
+      const dimensao =
+        pergunta.dimensaoId
+          ? mapaDimensoes.get(
+              pergunta.dimensaoId
+            )
+          : undefined;
+
+
+      const pesoPergunta =
+        Math.max(
+          0,
+          pergunta.peso ||
+            1
+        );
+
+
+      const pesoDimensao =
+        pergunta.dimensaoId
+          ? dimensoes.find(
+              item =>
+                item.id ===
+                pergunta.dimensaoId
+            )?.peso ||
+            1
+          : 1;
+
+
+      const pesoFinal =
+        pesoPergunta *
+        pesoDimensao;
+
+
+      somaGeral +=
+        score *
+        pesoFinal;
+
+      pesoGeral +=
+        pesoFinal;
+
+
+      if (
+        dimensao
+      ) {
+        dimensao.somaPonderada +=
+          score *
+          pesoFinal;
+
+        dimensao.pesoTotal +=
+          pesoFinal;
+
+        dimensao.totalRespostas++;
+
+        dimensao.respondentes.add(
+          respostaPesquisa.id
+        );
+      }
+    }
+  }
+
+
+  const dimensoesResultado =
+    Array.from(
+      mapaDimensoes.values()
+    )
+      .filter(
+        item =>
+          item.pesoTotal >
+          0
+      )
+      .map(
+        item => {
+          const score =
+            item.somaPonderada /
+            item.pesoTotal;
+
+
+          const faixa =
+            encontrarFaixa(
+              score,
+              configuracao.faixas
+            );
+
+
+          return {
+            id:
+              item.id,
+
+            nome:
+              item.nome,
+
+            score,
+
+            classificacao:
+              faixa?.classificacao ||
+              faixa?.nome ||
+              "SEM_CLASSIFICACAO",
+
+            totalRespostas:
+              item.totalRespostas,
+
+            somaPonderada:
+              item.somaPonderada,
+
+            pesoTotal:
+              item.pesoTotal,
+          };
+        }
+      );
+
+
+  return {
+    scoreOrganizacional:
+      pesoGeral >
+      0
+        ? somaGeral /
+          pesoGeral
+        : null,
+
+    dimensoes:
+      dimensoesResultado,
+
+    somaGeral,
+
+    pesoGeral,
+  };
+}
+
+
+function montarAnaliseDiagnostico(
+  pesquisasBanco: any[]
+) {
+  const mapaDimensoes =
+    new Map<
+      string,
+      {
+        id: string;
+        nome: string;
+
+        somaPonderada: number;
+        pesoTotal: number;
+
+        totalRespostas: number;
+      }
+    >();
+
+
+  let somaGeral =
+    0;
+
+  let pesoGeral =
+    0;
+
+
+  for (
+    const pesquisa
+    of pesquisasBanco
+  ) {
+    const resultado =
+      analisarPesquisaDiagnostico(
+        pesquisa
+      );
+
+
+    somaGeral +=
+      resultado.somaGeral;
+
+    pesoGeral +=
+      resultado.pesoGeral;
+
+
+    for (
+      const dimensao
+      of resultado.dimensoes
+    ) {
+      const chave =
+        chaveTexto(
+          dimensao.nome
+        );
+
+
+      const atual =
+        mapaDimensoes.get(
+          chave
+        ) || {
+          id:
+            dimensao.id,
+
+          nome:
+            dimensao.nome,
+
+          somaPonderada:
+            0,
+
+          pesoTotal:
+            0,
+
+          totalRespostas:
+            0,
+        };
+
+
+      atual.somaPonderada +=
+        dimensao.somaPonderada;
+
+      atual.pesoTotal +=
+        dimensao.pesoTotal;
+
+      atual.totalRespostas +=
+        dimensao.totalRespostas;
+
+
+      mapaDimensoes.set(
+        chave,
+        atual
+      );
+    }
+  }
+
+
+  /*
+   * Só classifica o consolidado se os instrumentos
+   * estiverem usando exatamente as mesmas faixas.
+   */
+  const faixas =
+    obterFaixasCompativeis(
+      pesquisasBanco
+    );
+
+
+  const dimensoes =
+    Array.from(
+      mapaDimensoes.values()
+    )
+      .filter(
+        item =>
+          item.pesoTotal >
+          0
+      )
+      .map(
+        item => {
+          const score =
+            item.somaPonderada /
+            item.pesoTotal;
+
+
+          const faixa =
+            encontrarFaixa(
+              score,
+              faixas
+            );
+
+
+          return {
+            id:
+              item.id,
+
+            nome:
+              item.nome,
+
+            score,
+
+            classificacao:
+              faixa?.classificacao ||
+              faixa?.nome ||
+              "SEM CLASSIFICAÇÃO",
+
+            totalRespostas:
+              item.totalRespostas,
+          };
+        }
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          b.score -
+          a.score
+      );
+
+
+  /*
+   * Classificação executiva relativa.
+   *
+   * Não inventamos faixas técnicas para "força"
+   * ou "prioridade".
+   *
+   * Apenas organizamos as dimensões do melhor
+   * para o pior desempenho.
+   */
+  const quantidade =
+    dimensoes.length;
+
+
+  const tamanhoGrupo =
+    quantidade >
+    0
+      ? Math.max(
+          1,
+          Math.ceil(
+            quantidade /
+            3
+          )
+        )
+      : 0;
+
+
+  const forcas =
+    dimensoes
+      .slice(
+        0,
+        tamanhoGrupo
+      )
+      .map(
+        item =>
+          item.nome
+      );
+
+
+  const prioridades =
+    dimensoes
+      .slice(
+        Math.max(
+          tamanhoGrupo,
+          quantidade -
+            tamanhoGrupo
+        )
+      )
+      .map(
+        item =>
+          item.nome
+      );
+
+
+  const nomesForcas =
+    new Set(
+      forcas
+    );
+
+
+  const nomesPrioridades =
+    new Set(
+      prioridades
+    );
+
+
+  const pontosAtencao =
+    dimensoes
+      .filter(
+        item =>
+          !nomesForcas.has(
+            item.nome
+          ) &&
+          !nomesPrioridades.has(
+            item.nome
+          )
+      )
+      .map(
+        item =>
+          item.nome
+      );
+
+
+  return {
+    scoreOrganizacional:
+      pesoGeral >
+      0
+        ? somaGeral /
+          pesoGeral
+        : null,
+
+    dimensoes,
+
+    forcas,
+
+    pontosAtencao,
+
+    prioridades,
+  };
+}
+
+
+/* =========================================================
+ * MOTOR PSICOSSOCIAL
+ * ======================================================= */
+
+function analisarPesquisaPsicossocial(
+  pesquisa: any
+) {
+  const dimensoes =
+    normalizarDimensoes(
+      pesquisa.dimensoes
+    );
+
+
+  const perguntas =
+    normalizarPerguntas(
+      pesquisa.perguntas,
+      dimensoes
+    );
+
+
+  const configuracao =
+    normalizarConfiguracaoAnalise(
+      pesquisa.configuracaoAnalise,
+      TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
+    );
+
+
+  const mapaPerguntas =
+    new Map(
+      perguntas.map(
+        pergunta => [
+          pergunta.id,
+          pergunta,
+        ]
+      )
+    );
+
+
+  const mapaDimensoes =
+    new Map<
+      string,
+      AcumuladorScore
+    >();
+
+
+  for (
+    const dimensao
+    of dimensoes
+  ) {
+    mapaDimensoes.set(
+      dimensao.id,
+      {
+        id:
+          dimensao.id,
+
+        nome:
+          dimensao.nome,
+
+        fatorRisco:
+          dimensao.fatorRisco ??
+          null,
+
+        somaPonderada:
+          0,
+
+        pesoTotal:
+          0,
+
+        totalRespostas:
+          0,
+
+        respondentes:
+          new Set<string>(),
+      }
+    );
+  }
+
+  for (
+    const respostaPesquisa
+    of pesquisa.respostas
+  ) {
+    const respostas =
+      normalizarRespostas(
+        respostaPesquisa.respostas
+      );
+
+
+    for (
+      const resposta
+      of respostas
+    ) {
+      const pergunta =
+        mapaPerguntas.get(
+          resposta.perguntaId
+        );
+
+
+      if (
+        !pergunta ||
+        pergunta.tipo !==
+          TipoPergunta.NOTA
+      ) {
+        continue;
+      }
+
+
+      const valor =
+        Number(
+          resposta.valor
+        );
+
+
+      if (
+        !Number.isFinite(
+          valor
+        )
+      ) {
+        continue;
+      }
+
+
+      /*
+       * Agora 100 significa MAIOR exposição.
+       */
+      const orientado =
+        notaOrientadaParaRisco(
+          valor,
+          pergunta,
+          configuracao
+        );
+
+
+      const score =
+        normalizarNotaPercentual(
+          orientado,
+          configuracao.escalaMinima,
+          configuracao.escalaMaxima
+        );
+
+
+      const dimensao =
+        pergunta.dimensaoId
+          ? mapaDimensoes.get(
+              pergunta.dimensaoId
+            )
+          : undefined;
+
+
+      if (
+        !dimensao
+      ) {
+        continue;
+      }
+
+
+      const pesoPergunta =
+        Math.max(
+          0,
+          pergunta.peso ||
+            1
+        );
+
+
+      const pesoDimensao =
+        dimensoes.find(
+          item =>
+            item.id ===
+            pergunta.dimensaoId
+        )?.peso ||
+        1;
+
+
+      const pesoFinal =
+        pesoPergunta *
+        pesoDimensao;
+
+
+      dimensao.somaPonderada +=
+        score *
+        pesoFinal;
+
+      dimensao.pesoTotal +=
+        pesoFinal;
+
+      dimensao.totalRespostas++;
+
+      dimensao.respondentes.add(
+        respostaPesquisa.id
+      );
+    }
+  }
+
+
+  return {
+    anonimatoMinimo:
+      configuracao.anonimatoMinimo,
+
+    faixas:
+      configuracao.faixas,
+
+    fatores:
+      Array.from(
+        mapaDimensoes.values()
+      )
+        .filter(
+          item =>
+            item.pesoTotal >
+            0
+        )
+        .map(
+          item => ({
+            id:
+              item.id,
+
+            nome:
+              item.nome,
+
+            fatorRisco:
+              item.fatorRisco,
+
+            score:
+              item.somaPonderada /
+              item.pesoTotal,
+
+            totalRespostas:
+              item.respondentes.size,
+
+            totalItensRespondidos:
+              item.totalRespostas,
+
+            respondentes:
+              item.respondentes,
+
+            somaPonderada:
+              item.somaPonderada,
+
+            pesoTotal:
+              item.pesoTotal,
+          })
+        ),
+  };
+}
+
+
+function montarAnalisePsicossocial(
+  pesquisasBanco: any[]
+) {
+  const mapaFatores =
+    new Map<
+      string,
+      {
+        id: string;
+        nome: string;
+        fatorRisco: string | null;
+
+        somaPonderada: number;
+        pesoTotal: number;
+
+        respondentes: Set<string>;
+      }
+    >();
+
+
+  let anonimatoMinimo =
+    1;
+
+
+  for (
+    const pesquisa
+    of pesquisasBanco
+  ) {
+    const resultado =
+      analisarPesquisaPsicossocial(
+        pesquisa
+      );
+
+
+    /*
+     * Regra conservadora:
+     * se diferentes instrumentos exigirem mínimos
+     * diferentes, usamos o maior.
+     */
+    anonimatoMinimo =
+      Math.max(
+        anonimatoMinimo,
+        resultado.anonimatoMinimo
+      );
+
+
+    for (
+      const fator
+      of resultado.fatores
+    ) {
+      const nomeChave =
+        fator.fatorRisco ||
+        fator.nome;
+
+
+      const chave =
+        chaveTexto(
+          nomeChave
+        );
+
+
+      const atual =
+        mapaFatores.get(
+          chave
+        ) || {
+          id:
+            fator.id,
+
+          nome:
+            fator.nome,
+
+          fatorRisco:
+            fator.fatorRisco,
+
+          somaPonderada:
+            0,
+
+          pesoTotal:
+            0,
+
+          respondentes:
+            new Set<string>(),
+        };
+
+
+      atual.somaPonderada +=
+        fator.somaPonderada;
+
+      atual.pesoTotal +=
+        fator.pesoTotal;
+
+
+      for (
+        const respondente
+        of fator.respondentes
+      ) {
+        atual.respondentes.add(
+          respondente
+        );
+      }
+
+
+      mapaFatores.set(
+        chave,
+        atual
+      );
+    }
+  }
+
+
+  /*
+   * Só aplicamos classificação de risco no
+   * consolidado se todas as metodologias possuírem
+   * exatamente as mesmas faixas.
+   */
+  const faixas =
+    obterFaixasCompativeis(
+      pesquisasBanco
+    );
+
+
+  const fatores =
+    Array.from(
+      mapaFatores.values()
+    )
+      .map(
+        item => {
+          const totalRespondentes =
+            item.respondentes.size;
+
+
+          const bloqueadoAnonimato =
+            totalRespondentes <
+            anonimatoMinimo;
+
+
+          const score =
+            item.pesoTotal >
+            0
+              ? item.somaPonderada /
+                item.pesoTotal
+              : null;
+
+
+          const faixa =
+            score !==
+              null &&
+            !bloqueadoAnonimato
+              ? encontrarFaixa(
+                  score,
+                  faixas
+                )
+              : null;
+
+
+          return {
+            id:
+              item.id,
+
+            nome:
+              item.nome,
+
+            fatorRisco:
+              item.fatorRisco,
+
+            score:
+              bloqueadoAnonimato
+                ? null
+                : score,
+
+            classificacao:
+              bloqueadoAnonimato
+                ? null
+                : faixa?.classificacao ||
+                  faixa?.nome ||
+                  null,
+
+            totalRespostas:
+              totalRespondentes,
+
+            bloqueadoAnonimato,
+          };
+        }
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          (
+            b.score ??
+            -1
+          ) -
+          (
+            a.score ??
+            -1
+          )
+      );
+
+
+  return {
+    fatores,
+
+    anonimatoMinimo,
+
+    totalGruposBloqueados:
+      fatores.filter(
+        fator =>
+          fator.bloqueadoAnonimato
+      ).length,
+  };
+}
+
+
+/* =========================================================
+ * REPOSITÓRIO
+ * ======================================================= */
+
 export default class RepositorioPesquisaCliente {
   static async salvar(
     pesquisa: PesquisaCliente,
-
     tipoEsperado: TipoModuloPesquisa =
       TipoModuloPesquisa.CLIMA
   ) {
     const titulo =
       pesquisa.titulo?.trim();
 
-    if (!titulo) {
+
+    if (
+      !titulo
+    ) {
       throw new Error(
         "Título é obrigatório."
       );
     }
+
 
     if (
       !pesquisa.clienteId
@@ -241,6 +2539,7 @@ export default class RepositorioPesquisaCliente {
       );
     }
 
+
     if (
       !pesquisa.modeloId
     ) {
@@ -249,41 +2548,45 @@ export default class RepositorioPesquisaCliente {
       );
     }
 
+
     const [
       cliente,
       modelo,
     ] =
       await Promise.all([
-        prisma.cliente.findUnique(
-          {
-            where: {
-              id:
-                pesquisa.clienteId,
-            },
-          }
-        ),
+        prisma.cliente.findUnique({
+          where: {
+            id:
+              pesquisa.clienteId,
+          },
+        }),
 
-        prisma.modeloPesquisa.findUnique(
-          {
-            where: {
-              id:
-                pesquisa.modeloId,
-            },
-          }
-        ),
+        prisma.modeloPesquisa.findUnique({
+          where: {
+            id:
+              pesquisa.modeloId,
+          },
+        }),
       ]);
 
-    if (!cliente) {
+
+    if (
+      !cliente
+    ) {
       throw new Error(
         "Cliente não encontrado."
       );
     }
 
-    if (!modelo) {
+
+    if (
+      !modelo
+    ) {
       throw new Error(
         "Modelo não encontrado."
       );
     }
+
 
     if (
       modelo.tipo !==
@@ -294,10 +2597,26 @@ export default class RepositorioPesquisaCliente {
       );
     }
 
+
+    const dimensoesModelo =
+      normalizarDimensoes(
+        modelo.dimensoes
+      );
+
+
     const perguntasModelo =
       normalizarPerguntas(
-        modelo.perguntas
+        modelo.perguntas,
+        dimensoesModelo
       );
+
+
+    const configuracaoModelo =
+      normalizarConfiguracaoAnalise(
+        modelo.configuracaoAnalise,
+        modelo.tipo
+      );
+
 
     if (
       perguntasModelo.length ===
@@ -308,55 +2627,42 @@ export default class RepositorioPesquisaCliente {
       );
     }
 
-    const perguntas =
-      normalizarPerguntas(
-        pesquisa.perguntas &&
-          pesquisa.perguntas.length >
-            0
-          ? pesquisa.perguntas
-          : perguntasModelo
-      );
 
-    const dados = {
-      titulo,
-
-      descricao:
-        pesquisa.descricao?.trim() ||
-        null,
-
-      clienteId:
-        pesquisa.clienteId,
-
-      modeloId:
-        pesquisa.modeloId,
-
-      tipo:
-        tipoEsperado,
-
-      status:
-        pesquisa.status ??
-        StatusPesquisaCliente.ABERTA,
-
-      perguntas:
-        perguntas as unknown as Prisma.InputJsonValue,
-    };
-
-    if (pesquisa.id) {
+    /*
+     * EDIÇÃO
+     */
+    if (
+      pesquisa.id
+    ) {
       const atual =
-        await prisma.pesquisaCliente.findUnique(
-          {
-            where: {
-              id:
-                pesquisa.id,
-            },
-          }
-        );
+        await prisma.pesquisaCliente.findUnique({
+          where: {
+            id:
+              pesquisa.id,
+          },
 
-      if (!atual) {
+          include: {
+            _count: {
+              select: {
+                respostas:
+                  true,
+
+                convites:
+                  true,
+              },
+            },
+          },
+        });
+
+
+      if (
+        !atual
+      ) {
         throw new Error(
           "Aplicação não encontrada."
         );
       }
+
 
       if (
         atual.tipo !==
@@ -367,92 +2673,213 @@ export default class RepositorioPesquisaCliente {
         );
       }
 
-      const resultado =
-        await prisma.pesquisaCliente.update(
-          {
-            where: {
-              id:
-                pesquisa.id,
-            },
 
-            data:
-              dados,
+      const possuiMovimento =
+        atual._count.respostas >
+          0 ||
+        atual._count.convites >
+          0;
 
-            include:
-              this.includeCompleto(),
-          }
+
+      if (
+        possuiMovimento &&
+        atual.modeloId !==
+          pesquisa.modeloId
+      ) {
+        throw new Error(
+          "O modelo não pode ser alterado porque esta aplicação já possui convites ou respostas."
         );
+      }
+
+
+      if (
+        possuiMovimento &&
+        atual.clienteId !==
+          pesquisa.clienteId
+      ) {
+        throw new Error(
+          "O cliente não pode ser alterado porque esta aplicação já possui convites ou respostas."
+        );
+      }
+
+
+      const manteveModelo =
+        atual.modeloId ===
+        pesquisa.modeloId;
+
+
+      const dimensoes =
+        manteveModelo
+          ? normalizarDimensoes(
+              atual.dimensoes
+            )
+          : dimensoesModelo;
+
+
+      const perguntas =
+        manteveModelo
+          ? normalizarPerguntas(
+              atual.perguntas,
+              dimensoes
+            )
+          : perguntasModelo;
+
+
+      const configuracaoAnalise =
+        manteveModelo
+          ? normalizarConfiguracaoAnalise(
+              atual.configuracaoAnalise,
+              atual.tipo
+            )
+          : configuracaoModelo;
+
+
+      const resultado =
+        await prisma.pesquisaCliente.update({
+          where: {
+            id:
+              pesquisa.id,
+          },
+
+          data: {
+            titulo,
+
+            descricao:
+              pesquisa.descricao?.trim() ||
+              null,
+
+            clienteId:
+              pesquisa.clienteId,
+
+            modeloId:
+              pesquisa.modeloId,
+
+            tipo:
+              tipoEsperado,
+
+            status:
+              pesquisa.status ??
+              atual.status,
+
+            perguntas:
+              perguntas as unknown as Prisma.InputJsonValue,
+
+            dimensoes:
+              dimensoes as unknown as Prisma.InputJsonValue,
+
+            configuracaoAnalise:
+              configuracaoAnalise as unknown as Prisma.InputJsonValue,
+          },
+
+          include:
+            this.includeCompleto(),
+        });
+
 
       return this.formatarDetalhada(
         resultado
       );
     }
 
+
+    /*
+     * CRIAÇÃO / SNAPSHOT
+     */
     const resultado =
-      await prisma.pesquisaCliente.create(
-        {
-          data: {
-            ...dados,
+      await prisma.pesquisaCliente.create({
+        data: {
+          titulo,
 
-            token:
-              pesquisa.token ||
-              randomUUID(),
-          },
+          descricao:
+            pesquisa.descricao?.trim() ||
+            null,
 
-          include:
-            this.includeCompleto(),
-        }
-      );
+          clienteId:
+            pesquisa.clienteId,
+
+          modeloId:
+            pesquisa.modeloId,
+
+          tipo:
+            tipoEsperado,
+
+          status:
+            pesquisa.status ??
+            StatusPesquisaCliente.ABERTA,
+
+          token:
+            pesquisa.token ||
+            randomUUID(),
+
+          perguntas:
+            perguntasModelo as unknown as Prisma.InputJsonValue,
+
+          dimensoes:
+            dimensoesModelo as unknown as Prisma.InputJsonValue,
+
+          configuracaoAnalise:
+            configuracaoModelo as unknown as Prisma.InputJsonValue,
+        },
+
+        include:
+          this.includeCompleto(),
+      });
+
 
     return this.formatarDetalhada(
       resultado
     );
   }
 
+
   static async obterTodos(
     tipo: TipoModuloPesquisa =
       TipoModuloPesquisa.CLIMA
   ) {
     const pesquisas =
-      await prisma.pesquisaCliente.findMany(
-        {
-          where: {
-            tipo,
-          },
+      await prisma.pesquisaCliente.findMany({
+        where: {
+          tipo,
+        },
 
-          orderBy: {
-            criadoEm:
-              "desc",
-          },
+        orderBy: {
+          criadoEm:
+            "desc",
+        },
 
-          include: {
-            cliente: {
-              select: {
-                id: true,
-                nome: true,
-              },
-            },
+        include: {
+          cliente: {
+            select: {
+              id:
+                true,
 
-            modelo: {
-              select: {
-                id: true,
-                titulo:
-                  true,
-              },
-            },
-
-            _count: {
-              select: {
-                respostas:
-                  true,
-              },
+              nome:
+                true,
             },
           },
-        }
-      );
+
+          modelo: {
+            select: {
+              id:
+                true,
+
+              titulo:
+                true,
+            },
+          },
+
+          _count: {
+            select: {
+              respostas:
+                true,
+            },
+          },
+        },
+      });
+
 
     return pesquisas.map(
-      (pesquisa) => ({
+      pesquisa => ({
         id:
           pesquisa.id,
 
@@ -484,131 +2911,134 @@ export default class RepositorioPesquisaCliente {
           pesquisa.modelo,
 
         totalRespostas:
-          pesquisa._count
-            .respostas,
+          pesquisa._count.respostas,
       })
     );
   }
 
+
   static async obterPorId(
     id: string,
-
     tipo?: TipoModuloPesquisa
   ) {
     const pesquisa =
-      await prisma.pesquisaCliente.findFirst(
-        {
-          where: {
-            id,
+      await prisma.pesquisaCliente.findFirst({
+        where: {
+          id,
 
-            ...(tipo
-              ? {
-                  tipo,
-                }
-              : {}),
-          },
+          ...(tipo
+            ? {
+                tipo,
+              }
+            : {}),
+        },
 
-          include:
-            this.includeCompleto(),
-        }
-      );
+        include:
+          this.includeCompleto(),
+      });
 
-    if (!pesquisa) {
+
+    if (
+      !pesquisa
+    ) {
       throw new Error(
         "Aplicação não encontrada."
       );
     }
+
 
     return this.formatarDetalhada(
       pesquisa
     );
   }
 
+
   static async excluir(
     id: string,
-
     tipo?: TipoModuloPesquisa
   ) {
     const pesquisa =
-      await prisma.pesquisaCliente.findFirst(
-        {
-          where: {
-            id,
+      await prisma.pesquisaCliente.findFirst({
+        where: {
+          id,
 
-            ...(tipo
-              ? {
-                  tipo,
-                }
-              : {}),
-          },
-        }
-      );
+          ...(tipo
+            ? {
+                tipo,
+              }
+            : {}),
+        },
+      });
 
-    if (!pesquisa) {
+
+    if (
+      !pesquisa
+    ) {
       throw new Error(
         "Aplicação não encontrada."
       );
     }
 
-    await prisma.pesquisaCliente.delete(
-      {
-        where: {
-          id,
-        },
-      }
-    );
+
+    await prisma.pesquisaCliente.delete({
+      where: {
+        id,
+      },
+    });
+
 
     return id;
   }
 
+
   static async alterarStatus(
     id: string,
-
     status: StatusPesquisaCliente,
-
     tipo?: TipoModuloPesquisa
   ) {
     const pesquisaAtual =
-      await prisma.pesquisaCliente.findFirst(
-        {
-          where: {
-            id,
+      await prisma.pesquisaCliente.findFirst({
+        where: {
+          id,
 
-            ...(tipo
-              ? {
-                  tipo,
-                }
-              : {}),
-          },
-        }
-      );
+          ...(tipo
+            ? {
+                tipo,
+              }
+            : {}),
+        },
+      });
 
-    if (!pesquisaAtual) {
+
+    if (
+      !pesquisaAtual
+    ) {
       throw new Error(
         "Aplicação não encontrada."
       );
     }
 
+
     const pesquisa =
-      await prisma.pesquisaCliente.update(
-        {
-          where: {
-            id,
-          },
+      await prisma.pesquisaCliente.update({
+        where: {
+          id,
+        },
 
-          data: {
-            status,
-          },
+        data: {
+          status,
+        },
 
-          include:
-            this.includeCompleto(),
-        }
-      );
+        include:
+          this.includeCompleto(),
+      });
+
 
     return this.formatarDetalhada(
       pesquisa
     );
   }
+
 
   static async obterDadosFormulario(
     tipo: TipoModuloPesquisa =
@@ -619,79 +3049,93 @@ export default class RepositorioPesquisaCliente {
       modelos,
     ] =
       await Promise.all([
-        prisma.cliente.findMany(
-          {
-            where: {
-              ativo:
-                true,
-            },
+        prisma.cliente.findMany({
+          where: {
+            ativo:
+              true,
+          },
 
-            orderBy: {
-              nome:
-                "asc",
-            },
-          }
-        ),
+          orderBy: {
+            nome:
+              "asc",
+          },
+        }),
 
-        prisma.modeloPesquisa.findMany(
-          {
-            where: {
-              ativo:
-                true,
+        prisma.modeloPesquisa.findMany({
+          where: {
+            ativo:
+              true,
 
-              tipo,
-            },
+            tipo,
+          },
 
-            orderBy: {
-              titulo:
-                "asc",
-            },
-          }
-        ),
+          orderBy: {
+            titulo:
+              "asc",
+          },
+        }),
       ]);
+
 
     return {
       clientes,
 
       modelos:
         modelos.map(
-          (modelo) => ({
-            id:
-              modelo.id,
+          modelo => {
+            const dimensoes =
+              normalizarDimensoes(
+                modelo.dimensoes
+              );
 
-            titulo:
-              modelo.titulo,
 
-            descricao:
-              modelo.descricao,
+            return {
+              id:
+                modelo.id,
 
-            tipo:
-              modelo.tipo,
+              titulo:
+                modelo.titulo,
 
-            ativo:
-              modelo.ativo,
+              descricao:
+                modelo.descricao,
 
-            modeloPadrao:
-              modelo.modeloPadrao,
+              tipo:
+                modelo.tipo,
 
-            criadoEm:
-              modelo.criadoEm,
+              ativo:
+                modelo.ativo,
 
-            atualizadoEm:
-              modelo.atualizadoEm,
+              modeloPadrao:
+                modelo.modeloPadrao,
 
-            perguntas:
-              normalizarPerguntas(
-                modelo.perguntas
-              ),
-          })
+              criadoEm:
+                modelo.criadoEm,
+
+              atualizadoEm:
+                modelo.atualizadoEm,
+
+              perguntas:
+                normalizarPerguntas(
+                  modelo.perguntas,
+                  dimensoes
+                ),
+
+              dimensoes,
+
+              configuracaoAnalise:
+                normalizarConfiguracaoAnalise(
+                  modelo.configuracaoAnalise,
+                  modelo.tipo
+                ),
+            };
+          }
         ),
     };
   }
 
+
   static async obterRelatorio(
     id: string,
-
     tipo?: TipoModuloPesquisa
   ) {
     const pesquisa =
@@ -700,11 +3144,18 @@ export default class RepositorioPesquisaCliente {
         tipo
       );
 
+
     return this.montarRelatorio(
       pesquisa
     );
   }
 
+
+  /*
+   * =====================================================
+   * RELATÓRIO CONSOLIDADO
+   * =====================================================
+   */
   static async obterDadosRelatorio(
     tipo: TipoModuloPesquisa =
       TipoModuloPesquisa.CLIMA,
@@ -720,15 +3171,18 @@ export default class RepositorioPesquisaCliente {
         filtros.dataInicio
       );
 
+
     const dataFim =
       criarDataFim(
         filtros.dataFim
       );
 
+
     const where: Prisma.PesquisaClienteWhereInput =
       {
         tipo,
       };
+
 
     if (
       filtros.clienteId
@@ -737,6 +3191,7 @@ export default class RepositorioPesquisaCliente {
         filtros.clienteId;
     }
 
+
     if (
       dataInicio ||
       dataFim
@@ -744,12 +3199,14 @@ export default class RepositorioPesquisaCliente {
       where.criadoEm =
         {};
 
+
       if (
         dataInicio
       ) {
         where.criadoEm.gte =
           dataInicio;
       }
+
 
       if (
         dataFim
@@ -759,116 +3216,147 @@ export default class RepositorioPesquisaCliente {
       }
     }
 
+
     const [
       pesquisasBanco,
       clientes,
     ] =
       await Promise.all([
-        prisma.pesquisaCliente.findMany(
-          {
-            where,
+        prisma.pesquisaCliente.findMany({
+          where,
 
-            orderBy: {
-              criadoEm:
-                "desc",
-            },
+          orderBy: {
+            criadoEm:
+              "desc",
+          },
 
-            include: {
-              cliente: {
-                select: {
-                  id: true,
-                  nome: true,
-                  empresa:
-                    true,
-                },
-              },
+          include: {
+            cliente: {
+              select: {
+                id:
+                  true,
 
-              modelo: {
-                select: {
-                  id: true,
-                  titulo:
-                    true,
-                },
-              },
+                nome:
+                  true,
 
-              respostas: {
-                select: {
-                  id: true,
-                  respostas:
-                    true,
-                },
-              },
-
-              convites: {
-                select: {
-                  id: true,
-                  respondido:
-                    true,
-                },
+                empresa:
+                  true,
               },
             },
-          }
-        ),
 
-        prisma.cliente.findMany(
-          {
-            orderBy: {
-              nome:
-                "asc",
+            modelo: {
+              select: {
+                id:
+                  true,
+
+                titulo:
+                  true,
+              },
             },
 
-            select: {
-              id: true,
-              nome: true,
-              empresa:
-                true,
+            respostas: {
+              select: {
+                id:
+                  true,
+
+                respostas:
+                  true,
+
+                criadoEm:
+                  true,
+              },
             },
-          }
-        ),
+
+            convites: {
+              select: {
+                id:
+                  true,
+
+                respondido:
+                  true,
+              },
+            },
+          },
+        }),
+
+        prisma.cliente.findMany({
+          orderBy: {
+            nome:
+              "asc",
+          },
+
+          select: {
+            id:
+              true,
+
+            nome:
+              true,
+
+            empresa:
+              true,
+          },
+        }),
       ]);
 
+
+    /*
+     * -------------------------------------------------
+     * Indicadores operacionais
+     * -------------------------------------------------
+     */
     let somaNotasGeral =
       0;
 
     let quantidadeNotasGeral =
       0;
 
+
     const pesquisas =
       pesquisasBanco.map(
-        (pesquisa) => {
+        pesquisa => {
           const totalRespostas =
-            pesquisa.respostas
-              .length;
+            pesquisa.respostas.length;
+
 
           const totalConvites =
-            pesquisa.convites
-              .length;
+            pesquisa.convites.length;
+
 
           const totalConvitesRespondidos =
             pesquisa.convites.filter(
-              (convite) =>
+              convite =>
                 convite.respondido
             ).length;
+
 
           const taxaParticipacao =
             totalConvites >
             0
-              ? (totalConvitesRespondidos /
-                  totalConvites) *
+              ? (
+                  totalConvitesRespondidos /
+                  totalConvites
+                ) *
                 100
               : null;
 
+
+          /*
+           * Média antiga mantida SOMENTE por
+           * retrocompatibilidade.
+           */
           const notas =
             calcularIndicadoresNotas(
               pesquisa.perguntas,
               pesquisa.respostas
             );
 
+
           somaNotasGeral +=
             notas.soma;
 
           quantidadeNotasGeral +=
             notas.quantidade;
+
 
           return {
             id:
@@ -891,8 +3379,7 @@ export default class RepositorioPesquisaCliente {
                 pesquisa.cliente.nome,
 
               empresa:
-                pesquisa.cliente
-                  .empresa,
+                pesquisa.cliente.empresa,
             },
 
             modelo: {
@@ -900,8 +3387,7 @@ export default class RepositorioPesquisaCliente {
                 pesquisa.modelo.id,
 
               titulo:
-                pesquisa.modelo
-                  .titulo,
+                pesquisa.modelo.titulo,
             },
 
             totalRespostas,
@@ -924,29 +3410,34 @@ export default class RepositorioPesquisaCliente {
         }
       );
 
+
     const totalPesquisas =
       pesquisas.length;
 
+
     const totalAbertas =
       pesquisas.filter(
-        (pesquisa) =>
+        pesquisa =>
           pesquisa.status ===
           StatusPesquisaCliente.ABERTA
       ).length;
 
+
     const totalFechadas =
       pesquisas.filter(
-        (pesquisa) =>
+        pesquisa =>
           pesquisa.status ===
           StatusPesquisaCliente.FECHADA
       ).length;
 
+
     const totalArquivadas =
       pesquisas.filter(
-        (pesquisa) =>
+        pesquisa =>
           pesquisa.status ===
           StatusPesquisaCliente.ARQUIVADA
       ).length;
+
 
     const totalRespostas =
       pesquisas.reduce(
@@ -959,6 +3450,7 @@ export default class RepositorioPesquisaCliente {
         0
       );
 
+
     const totalConvites =
       pesquisas.reduce(
         (
@@ -969,6 +3461,7 @@ export default class RepositorioPesquisaCliente {
           pesquisa.totalConvites,
         0
       );
+
 
     const totalConvitesRespondidos =
       pesquisas.reduce(
@@ -981,12 +3474,17 @@ export default class RepositorioPesquisaCliente {
         0
       );
 
+
     const taxaParticipacao =
-      totalConvites > 0
-        ? (totalConvitesRespondidos /
-            totalConvites) *
+      totalConvites >
+      0
+        ? (
+            totalConvitesRespondidos /
+            totalConvites
+          ) *
           100
         : null;
+
 
     const mediaGeral =
       quantidadeNotasGeral >
@@ -995,11 +3493,18 @@ export default class RepositorioPesquisaCliente {
           quantidadeNotasGeral
         : null;
 
+
+    /*
+     * -------------------------------------------------
+     * Consolidação por cliente
+     * -------------------------------------------------
+     */
     const mapaClientes =
       new Map<
         string,
         {
           clienteId: string;
+
           clienteNome: string;
 
           empresa:
@@ -1007,7 +3512,9 @@ export default class RepositorioPesquisaCliente {
             | null;
 
           totalPesquisas: number;
+
           totalRespostas: number;
+
           totalConvites: number;
 
           totalConvitesRespondidos: number;
@@ -1017,6 +3524,7 @@ export default class RepositorioPesquisaCliente {
           quantidadeNotas: number;
         }
       >();
+
 
     for (
       const pesquisa
@@ -1033,8 +3541,7 @@ export default class RepositorioPesquisaCliente {
             pesquisa.cliente.nome,
 
           empresa:
-            pesquisa.cliente
-              .empresa,
+            pesquisa.cliente.empresa,
 
           totalPesquisas:
             0,
@@ -1055,8 +3562,8 @@ export default class RepositorioPesquisaCliente {
             0,
         };
 
-      atual.totalPesquisas +=
-        1;
+
+      atual.totalPesquisas++;
 
       atual.totalRespostas +=
         pesquisa.totalRespostas;
@@ -1073,18 +3580,20 @@ export default class RepositorioPesquisaCliente {
       atual.quantidadeNotas +=
         pesquisa.quantidadeNotas;
 
+
       mapaClientes.set(
         pesquisa.cliente.id,
         atual
       );
     }
 
+
     const porCliente =
       Array.from(
         mapaClientes.values()
       )
         .map(
-          (item) => ({
+          item => ({
             clienteId:
               item.clienteId,
 
@@ -1109,8 +3618,10 @@ export default class RepositorioPesquisaCliente {
             taxaParticipacao:
               item.totalConvites >
               0
-                ? (item.totalConvitesRespondidos /
-                    item.totalConvites) *
+                ? (
+                    item.totalConvitesRespondidos /
+                    item.totalConvites
+                  ) *
                   100
                 : null,
 
@@ -1123,10 +3634,35 @@ export default class RepositorioPesquisaCliente {
           })
         )
         .sort(
-          (a, b) =>
+          (
+            a,
+            b
+          ) =>
             b.totalRespostas -
             a.totalRespostas
         );
+
+
+    /*
+     * -------------------------------------------------
+     * Motor analítico específico
+     * -------------------------------------------------
+     */
+    const analise =
+      tipo ===
+      TipoModuloPesquisa.CLIMA
+        ? montarAnaliseClima(
+            pesquisasBanco
+          )
+        : tipo ===
+            TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+          ? montarAnaliseDiagnostico(
+              pesquisasBanco
+            )
+          : montarAnalisePsicossocial(
+              pesquisasBanco
+            );
+
 
     return {
       tipo,
@@ -1164,6 +3700,12 @@ export default class RepositorioPesquisaCliente {
 
         taxaParticipacao,
 
+        /*
+         * Legado.
+         *
+         * Os novos componentes NÃO devem interpretar
+         * este campo como indicador oficial.
+         */
         mediaGeral,
       },
 
@@ -1178,14 +3720,15 @@ export default class RepositorioPesquisaCliente {
           }) =>
             pesquisa
         ),
+
+      analise,
     };
   }
 
+
   static async gerarConvites(
     pesquisaId: string,
-
     quantidade: number,
-
     tipo?: TipoModuloPesquisa
   ) {
     if (
@@ -1196,8 +3739,11 @@ export default class RepositorioPesquisaCliente {
       );
     }
 
+
     if (
-      !quantidade ||
+      !Number.isInteger(
+        quantidade
+      ) ||
       quantidade <
         1
     ) {
@@ -1205,6 +3751,7 @@ export default class RepositorioPesquisaCliente {
         "Informe uma quantidade válida de convites."
       );
     }
+
 
     if (
       quantidade >
@@ -1215,27 +3762,40 @@ export default class RepositorioPesquisaCliente {
       );
     }
 
+
     const pesquisa =
-      await prisma.pesquisaCliente.findFirst(
-        {
-          where: {
-            id:
-              pesquisaId,
+      await prisma.pesquisaCliente.findFirst({
+        where: {
+          id:
+            pesquisaId,
 
-            ...(tipo
-              ? {
-                  tipo,
-                }
-              : {}),
-          },
-        }
-      );
+          ...(tipo
+            ? {
+                tipo,
+              }
+            : {}),
+        },
+      });
 
-    if (!pesquisa) {
+
+    if (
+      !pesquisa
+    ) {
       throw new Error(
         "Aplicação não encontrada."
       );
     }
+
+
+    if (
+      pesquisa.status !==
+      StatusPesquisaCliente.ABERTA
+    ) {
+      throw new Error(
+        "Não é possível gerar convites para uma aplicação fechada ou arquivada."
+      );
+    }
+
 
     const convites =
       Array.from({
@@ -1247,15 +3807,24 @@ export default class RepositorioPesquisaCliente {
 
           token:
             randomUUID(),
+
+          unidade:
+            null,
+
+          setor:
+            null,
+
+          cargo:
+            null,
         })
       );
 
-    await prisma.convitePesquisa.createMany(
-      {
-        data:
-          convites,
-      }
-    );
+
+    await prisma.convitePesquisa.createMany({
+      data:
+        convites,
+    });
+
 
     return this.obterPorId(
       pesquisaId,
@@ -1263,53 +3832,57 @@ export default class RepositorioPesquisaCliente {
     );
   }
 
+
   static async obterMinhas(
     clienteId: string,
-
     tipo: TipoModuloPesquisa =
       TipoModuloPesquisa.CLIMA
   ) {
     const pesquisas =
-      await prisma.pesquisaCliente.findMany(
-        {
-          where: {
-            clienteId,
-            tipo,
-          },
+      await prisma.pesquisaCliente.findMany({
+        where: {
+          clienteId,
+          tipo,
+        },
 
-          orderBy: {
-            criadoEm:
-              "desc",
-          },
+        orderBy: {
+          criadoEm:
+            "desc",
+        },
 
-          include: {
-            cliente: {
-              select: {
-                id: true,
-                nome: true,
-              },
-            },
+        include: {
+          cliente: {
+            select: {
+              id:
+                true,
 
-            modelo: {
-              select: {
-                id: true,
-                titulo:
-                  true,
-              },
-            },
-
-            _count: {
-              select: {
-                respostas:
-                  true,
-              },
+              nome:
+                true,
             },
           },
-        }
-      );
+
+          modelo: {
+            select: {
+              id:
+                true,
+
+              titulo:
+                true,
+            },
+          },
+
+          _count: {
+            select: {
+              respostas:
+                true,
+            },
+          },
+        },
+      });
+
 
     return pesquisas.map(
-      (pesquisa) => ({
+      pesquisa => ({
         id:
           pesquisa.id,
 
@@ -1341,54 +3914,54 @@ export default class RepositorioPesquisaCliente {
           pesquisa.modelo,
 
         totalRespostas:
-          pesquisa._count
-            .respostas,
+          pesquisa._count.respostas,
       })
     );
   }
 
+
   static async obterPorIdECliente(
     id: string,
-
     clienteId: string,
-
     tipo?: TipoModuloPesquisa
   ) {
     const pesquisa =
-      await prisma.pesquisaCliente.findFirst(
-        {
-          where: {
-            id,
-            clienteId,
+      await prisma.pesquisaCliente.findFirst({
+        where: {
+          id,
 
-            ...(tipo
-              ? {
-                  tipo,
-                }
-              : {}),
-          },
+          clienteId,
 
-          include:
-            this.includeCompleto(),
-        }
-      );
+          ...(tipo
+            ? {
+                tipo,
+              }
+            : {}),
+        },
 
-    if (!pesquisa) {
+        include:
+          this.includeCompleto(),
+      });
+
+
+    if (
+      !pesquisa
+    ) {
       throw new Error(
         "Aplicação não encontrada."
       );
     }
+
 
     return this.formatarDetalhada(
       pesquisa
     );
   }
 
+
   static async obterRelatorioPorCliente(
     id: string,
-
     clienteId: string,
-
     tipo?: TipoModuloPesquisa
   ) {
     const pesquisa =
@@ -1398,76 +3971,83 @@ export default class RepositorioPesquisaCliente {
         tipo
       );
 
+
     return this.montarRelatorio(
       pesquisa
     );
   }
 
+
+  /*
+   * Relatório individual antigo continua funcionando.
+   *
+   * Depois podemos também fazer o relatório individual
+   * retornar a análise especializada de cada módulo.
+   */
   private static montarRelatorio(
     pesquisa: any
   ) {
     const perguntas: PerguntaPesquisaCliente[] =
-      Array.isArray(pesquisa.perguntas)
+      Array.isArray(
+        pesquisa.perguntas
+      )
         ? pesquisa.perguntas
         : [];
 
+
     type ResumoPergunta = {
       pergunta: PerguntaPesquisaCliente;
+
       totalRespostas: number;
+
       media: number;
+
       respostas: RespostaPesquisaItem[];
     };
 
+
     const perguntasComResumo: ResumoPergunta[] =
       perguntas.map(
-        (
-          pergunta: PerguntaPesquisaCliente
-        ): ResumoPergunta => {
-          const respostasDaPergunta: RespostaPesquisaItem[] =
+        pergunta => {
+          const respostasDaPergunta =
             (
               pesquisa.respostas as RespostaPesquisaCliente[]
             ).flatMap(
-              (
-                respostaCliente: RespostaPesquisaCliente
-              ) =>
+              respostaCliente =>
                 respostaCliente.respostas.filter(
-                  (
-                    resposta: RespostaPesquisaItem
-                  ) =>
+                  resposta =>
                     resposta.perguntaId ===
                     pergunta.id
                 )
             );
 
-          const valoresNumericos: number[] =
+
+          const valoresNumericos =
             pergunta.tipo ===
             TipoPergunta.NOTA
               ? respostasDaPergunta
                   .map(
-                    (
-                      resposta: RespostaPesquisaItem
-                    ) =>
+                    resposta =>
                       Number(
                         resposta.valor
                       )
                   )
                   .filter(
-                    (
-                      valor: number
-                    ) =>
-                      !Number.isNaN(
+                    valor =>
+                      Number.isFinite(
                         valor
                       )
                   )
               : [];
+
 
           const media =
             valoresNumericos.length >
             0
               ? valoresNumericos.reduce(
                   (
-                    total: number,
-                    valor: number
+                    total,
+                    valor
                   ) =>
                     total +
                     valor,
@@ -1475,6 +4055,7 @@ export default class RepositorioPesquisaCliente {
                 ) /
                 valoresNumericos.length
               : 0;
+
 
           return {
             pergunta,
@@ -1490,24 +4071,24 @@ export default class RepositorioPesquisaCliente {
         }
       );
 
+
     const mediasValidas =
       perguntasComResumo.filter(
-        (
-          item: ResumoPergunta
-        ) =>
+        item =>
           item.pergunta.tipo ===
             TipoPergunta.NOTA &&
           item.totalRespostas >
             0
       );
 
+
     const mediaGeral =
       mediasValidas.length >
       0
         ? mediasValidas.reduce(
             (
-              total: number,
-              item: ResumoPergunta
+              total,
+              item
             ) =>
               total +
               item.media,
@@ -1515,6 +4096,7 @@ export default class RepositorioPesquisaCliente {
           ) /
           mediasValidas.length
         : 0;
+
 
     return {
       ...pesquisa,
@@ -1524,6 +4106,7 @@ export default class RepositorioPesquisaCliente {
       mediaGeral,
     };
   }
+
 
   private static includeCompleto() {
     return {
@@ -1549,18 +4132,50 @@ export default class RepositorioPesquisaCliente {
     };
   }
 
+
   private static formatarDetalhada(
     pesquisa: any
   ) {
+    const dimensoesPesquisa =
+      normalizarDimensoes(
+        pesquisa.dimensoes
+      );
+
+
     const perguntasPesquisa =
       normalizarPerguntas(
-        pesquisa.perguntas
+        pesquisa.perguntas,
+        dimensoesPesquisa
       );
+
+
+    const configuracaoPesquisa =
+      normalizarConfiguracaoAnalise(
+        pesquisa.configuracaoAnalise,
+        pesquisa.tipo
+      );
+
+
+    const dimensoesModelo =
+      normalizarDimensoes(
+        pesquisa.modelo?.dimensoes
+      );
+
 
     const perguntasModelo =
       normalizarPerguntas(
-        pesquisa.modelo?.perguntas
+        pesquisa.modelo?.perguntas,
+        dimensoesModelo
       );
+
+
+    const configuracaoModelo =
+      normalizarConfiguracaoAnalise(
+        pesquisa.modelo?.configuracaoAnalise,
+        pesquisa.modelo?.tipo ??
+          pesquisa.tipo
+      );
+
 
     return {
       id:
@@ -1590,6 +4205,12 @@ export default class RepositorioPesquisaCliente {
       perguntas:
         perguntasPesquisa,
 
+      dimensoes:
+        dimensoesPesquisa,
+
+      configuracaoAnalise:
+        configuracaoPesquisa,
+
       criadoEm:
         pesquisa.criadoEm,
 
@@ -1611,6 +4232,15 @@ export default class RepositorioPesquisaCliente {
           0
             ? perguntasModelo
             : perguntasPesquisa,
+
+        dimensoes:
+          dimensoesModelo.length >
+          0
+            ? dimensoesModelo
+            : dimensoesPesquisa,
+
+        configuracaoAnalise:
+          configuracaoModelo,
       },
 
       respostas:
@@ -1629,6 +4259,9 @@ export default class RepositorioPesquisaCliente {
 
             email:
               resposta.email,
+
+            unidade:
+              resposta.unidade,
 
             setor:
               resposta.setor,
@@ -1672,6 +4305,9 @@ export default class RepositorioPesquisaCliente {
             email:
               convite.email,
 
+            unidade:
+              convite.unidade,
+
             setor:
               convite.setor,
 
@@ -1693,8 +4329,7 @@ export default class RepositorioPesquisaCliente {
         ),
 
       totalConvites:
-        pesquisa.convites
-          ?.length ||
+        pesquisa.convites?.length ||
         0,
 
       totalConvitesRespondidos:

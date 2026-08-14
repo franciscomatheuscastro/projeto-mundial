@@ -57,6 +57,9 @@ model ModeloPesquisa {
   perguntas    Json               @default("[]")
   pesquisas    PesquisaCliente[]
 
+  dimensoes            Json @default("[]") // NOVO
+  configuracaoAnalise  Json @default("{}") // NOVO
+
   @@index([tipo])
   @@index([ativo])
 }
@@ -80,6 +83,9 @@ model PesquisaCliente {
   planosAcao   PlanoAcao[]
   respostas    RespostaPesquisa[]
 
+  dimensoes            Json @default("[]") // NOVO
+  configuracaoAnalise  Json @default("{}") // NOVO
+
   @@index([tipo])
   @@index([clienteId, tipo])
   @@index([status])
@@ -98,6 +104,9 @@ model RespostaPesquisa {
   conviteId  String?          @unique
   convite    ConvitePesquisa? @relation(fields: [conviteId], references: [id])
   pesquisa   PesquisaCliente  @relation(fields: [pesquisaId], references: [id], onDelete: Cascade)
+
+  unidade String? // NOVO
+ 
 }
 
 model PlanoAcao {
@@ -153,6 +162,9 @@ model ConvitePesquisa {
   atualizadoEm DateTime          @updatedAt
   pesquisa     PesquisaCliente   @relation(fields: [pesquisaId], references: [id], onDelete: Cascade)
   resposta     RespostaPesquisa?
+
+  unidade String? // NOVO
+
 }
 
 model ColaboradorCliente {
@@ -175,6 +187,8 @@ model ColaboradorCliente {
   tratativasResponsavel         TratativaDenuncia[] @relation("ResponsavelTratativa")
 
   denunciasVisualizadas DenunciaVisualizador[] @relation("DenunciasVisualizadasColaborador")
+
+  unidade String? // NOVO
 
   @@index([clienteId])
   @@index([ativo])

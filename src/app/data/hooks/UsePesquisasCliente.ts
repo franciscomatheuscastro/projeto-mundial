@@ -1,8 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
-import { StatusPesquisaCliente } from "@prisma/client";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  useTransition,
+} from "react";
+
+import {
+  StatusPesquisaCliente,
+} from "@prisma/client";
+
 import Backend from "@/src/backend";
+
 import {
   DadosFormularioPesquisaCliente,
   PesquisaCliente,
@@ -11,277 +21,583 @@ import {
   PesquisaClienteResumo,
 } from "@/src/core/model/PesquisaCliente";
 
-type Contexto = "mundial" | "cliente";
+
+type Contexto =
+  | "mundial"
+  | "cliente";
+
 
 export function usePesquisasCliente(
   carregarAoIniciar = true,
   contexto: Contexto = "mundial"
 ) {
-  const [pesquisas, setPesquisas] = useState<PesquisaClienteResumo[]>([]);
-  const [pesquisaSelecionada, setPesquisaSelecionada] =
-    useState<PesquisaClienteDetalhada | null>(null);
+  const [
+    pesquisas,
+    setPesquisas,
+  ] =
+    useState<
+      PesquisaClienteResumo[]
+    >([]);
 
-  const [relatorio, setRelatorio] =
-    useState<PesquisaClienteRelatorio | null>(null);
 
-  const [dadosFormulario, setDadosFormulario] =
+  const [
+    pesquisaSelecionada,
+    setPesquisaSelecionada,
+  ] =
+    useState<
+      PesquisaClienteDetalhada | null
+    >(null);
+
+
+  const [
+    relatorio,
+    setRelatorio,
+  ] =
+    useState<
+      PesquisaClienteRelatorio | null
+    >(null);
+
+
+  const [
+    dadosFormulario,
+    setDadosFormulario,
+  ] =
     useState<DadosFormularioPesquisaCliente>({
       clientes: [],
       modelos: [],
     });
 
-  const [erro, setErro] = useState<string | null>(null);
-  const [carregando, setCarregando] = useState(carregarAoIniciar);
-  const [processando, startTransition] = useTransition();
 
-  const carregarPesquisas = useCallback(async () => {
-    try {
-      setCarregando(true);
-      setErro(null);
+  const [
+    erro,
+    setErro,
+  ] =
+    useState<string | null>(
+      null
+    );
 
-      const dados =
-        contexto === "cliente"
-          ? await Backend.pesquisasCliente.obterMinhas()
-          : await Backend.pesquisasCliente.obterTodos();
 
-      setPesquisas(dados);
-    } catch (error) {
-      setErro(
-        error instanceof Error ? error.message : "Erro ao carregar pesquisas."
-      );
-    } finally {
-      setCarregando(false);
-    }
-  }, [contexto]);
+  const [
+    carregando,
+    setCarregando,
+  ] =
+    useState(
+      carregarAoIniciar
+    );
 
-  const carregarPesquisaPorId = useCallback(
-    async (id: string) => {
-      try {
-        setCarregando(true);
-        setErro(null);
 
-        const dados =
-          contexto === "cliente"
-            ? await Backend.pesquisasCliente.obterMinhaPorId(id)
-            : await Backend.pesquisasCliente.obterPorId(id);
+  const [
+    processando,
+    startTransition,
+  ] =
+    useTransition();
 
-        setPesquisaSelecionada(dados);
-        return dados;
-      } catch (error) {
+
+  const tratarErro =
+    useCallback(
+      (
+        error: unknown,
+        mensagemPadrao: string
+      ) => {
         const mensagem =
-          error instanceof Error ? error.message : "Erro ao carregar pesquisa.";
+          error instanceof Error
+            ? error.message
+            : mensagemPadrao;
 
-        setErro(mensagem);
-        setPesquisaSelecionada(null);
-        throw error;
-      } finally {
-        setCarregando(false);
-      }
-    },
-    [contexto]
-  );
+        setErro(
+          mensagem
+        );
 
-  const gerarConvites = useCallback(
-    async (pesquisaId: string, quantidade: number) => {
-      return new Promise<PesquisaClienteDetalhada>((resolve, reject) => {
-        startTransition(async () => {
-          try {
-            setErro(null);
+        return mensagem;
+      },
+      []
+    );
 
-            const resultado =
-              await Backend.pesquisasCliente.gerarConvites(
-                pesquisaId,
-                quantidade
-              );
 
-            setPesquisaSelecionada(resultado);
+  const carregarPesquisas =
+    useCallback(
+      async () => {
+        try {
+          setCarregando(
+            true
+          );
 
-            if (carregarAoIniciar) {
-              await carregarPesquisas();
-            }
+          setErro(
+            null
+          );
 
-            resolve(resultado);
-          } catch (error) {
-            const mensagem =
-              error instanceof Error
-                ? error.message
-                : "Erro ao gerar convites.";
+          const dados =
+            contexto ===
+            "cliente"
+              ? await Backend.pesquisasCliente.obterMinhas()
+              : await Backend.pesquisasCliente.obterTodos();
 
-            setErro(mensagem);
-            reject(error);
-          }
-        });
-      });
-    },
-    [carregarPesquisas, carregarAoIniciar]
-  );
+          setPesquisas(
+            dados
+          );
 
-  const carregarRelatorio = useCallback(
-    async (id: string) => {
-      try {
-        setCarregando(true);
-        setErro(null);
+          return dados;
+        } catch (error) {
+          tratarErro(
+            error,
+            "Erro ao carregar pesquisas."
+          );
 
-        const dados =
-          contexto === "cliente"
-            ? await Backend.pesquisasCliente.obterMeuRelatorio(id)
-            : await Backend.pesquisasCliente.obterRelatorio(id);
+          throw error;
+        } finally {
+          setCarregando(
+            false
+          );
+        }
+      },
+      [
+        contexto,
+        tratarErro,
+      ]
+    );
 
-        setRelatorio(dados);
-        return dados;
-      } catch (error) {
-        const mensagem =
-          error instanceof Error ? error.message : "Erro ao carregar relatório.";
 
-        setErro(mensagem);
-        setRelatorio(null);
-        throw error;
-      } finally {
-        setCarregando(false);
-      }
-    },
-    [contexto]
-  );
+  const carregarPesquisaPorId =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        try {
+          setCarregando(
+            true
+          );
 
-  const carregarDadosFormulario = useCallback(async () => {
-    try {
-      setCarregando(true);
-      setErro(null);
+          setErro(
+            null
+          );
 
-      const dados = await Backend.pesquisasCliente.obterDadosFormulario();
-      setDadosFormulario(dados);
+          const dados =
+            contexto ===
+            "cliente"
+              ? await Backend.pesquisasCliente.obterMinhaPorId(
+                  id
+                )
+              : await Backend.pesquisasCliente.obterPorId(
+                  id
+                );
 
-      return dados;
-    } catch (error) {
-      const mensagem =
-        error instanceof Error
-          ? error.message
-          : "Erro ao carregar dados do formulário.";
+          setPesquisaSelecionada(
+            dados
+          );
 
-      setErro(mensagem);
-      throw error;
-    } finally {
-      setCarregando(false);
-    }
-  }, []);
+          return dados;
+        } catch (error) {
+          tratarErro(
+            error,
+            "Erro ao carregar pesquisa."
+          );
 
-  const excluirPesquisa = useCallback(
-    async (id: string) => {
-      return new Promise<void>((resolve, reject) => {
-        startTransition(async () => {
-          try {
-            setErro(null);
+          setPesquisaSelecionada(
+            null
+          );
 
-            await Backend.pesquisasCliente.excluir(id);
-            await carregarPesquisas();
+          throw error;
+        } finally {
+          setCarregando(
+            false
+          );
+        }
+      },
+      [
+        contexto,
+        tratarErro,
+      ]
+    );
 
-            setPesquisaSelecionada((atual) =>
-              atual?.id === id ? null : atual
+
+  const carregarRelatorio =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        try {
+          setCarregando(
+            true
+          );
+
+          setErro(
+            null
+          );
+
+          const dados =
+            contexto ===
+            "cliente"
+              ? await Backend.pesquisasCliente.obterMeuRelatorio(
+                  id
+                )
+              : await Backend.pesquisasCliente.obterRelatorio(
+                  id
+                );
+
+          setRelatorio(
+            dados
+          );
+
+          return dados;
+        } catch (error) {
+          tratarErro(
+            error,
+            "Erro ao carregar relatório."
+          );
+
+          setRelatorio(
+            null
+          );
+
+          throw error;
+        } finally {
+          setCarregando(
+            false
+          );
+        }
+      },
+      [
+        contexto,
+        tratarErro,
+      ]
+    );
+
+
+  const carregarDadosFormulario =
+    useCallback(
+      async () => {
+        try {
+          setCarregando(
+            true
+          );
+
+          setErro(
+            null
+          );
+
+          const dados =
+            await Backend.pesquisasCliente.obterDadosFormulario();
+
+          setDadosFormulario(
+            dados
+          );
+
+          return dados;
+        } catch (error) {
+          tratarErro(
+            error,
+            "Erro ao carregar dados do formulário."
+          );
+
+          throw error;
+        } finally {
+          setCarregando(
+            false
+          );
+        }
+      },
+      [
+        tratarErro,
+      ]
+    );
+
+
+  const salvarPesquisa =
+    useCallback(
+      async (
+        pesquisa: PesquisaCliente
+      ) => {
+        return new Promise<PesquisaClienteDetalhada>(
+          (
+            resolve,
+            reject
+          ) => {
+            startTransition(
+              async () => {
+                try {
+                  setErro(
+                    null
+                  );
+
+                  const resultado =
+                    await Backend.pesquisasCliente.salvar(
+                      pesquisa
+                    );
+
+                  setPesquisaSelecionada(
+                    resultado
+                  );
+
+                  if (
+                    carregarAoIniciar
+                  ) {
+                    await carregarPesquisas();
+                  }
+
+                  resolve(
+                    resultado
+                  );
+                } catch (error) {
+                  tratarErro(
+                    error,
+                    "Erro ao salvar pesquisa."
+                  );
+
+                  reject(
+                    error
+                  );
+                }
+              }
             );
-
-            resolve();
-          } catch (error) {
-            const mensagem =
-              error instanceof Error
-                ? error.message
-                : "Erro ao excluir pesquisa.";
-
-            setErro(mensagem);
-            reject(error);
           }
-        });
-      });
-    },
-    [carregarPesquisas]
-  );
+        );
+      },
+      [
+        carregarAoIniciar,
+        carregarPesquisas,
+        tratarErro,
+      ]
+    );
 
-  const salvarPesquisa = useCallback(
-    async (pesquisa: PesquisaCliente) => {
-      return new Promise<PesquisaClienteDetalhada>((resolve, reject) => {
-        startTransition(async () => {
-          try {
-            setErro(null);
 
-            const resultado = await Backend.pesquisasCliente.salvar(pesquisa);
+  const excluirPesquisa =
+    useCallback(
+      async (
+        id: string
+      ) => {
+        return new Promise<void>(
+          (
+            resolve,
+            reject
+          ) => {
+            startTransition(
+              async () => {
+                try {
+                  setErro(
+                    null
+                  );
 
-            if (carregarAoIniciar) {
-              await carregarPesquisas();
-            }
+                  await Backend.pesquisasCliente.excluir(
+                    id
+                  );
 
-            setPesquisaSelecionada(resultado);
-            resolve(resultado);
-          } catch (error) {
-            const mensagem =
-              error instanceof Error
-                ? error.message
-                : "Erro ao salvar pesquisa.";
+                  setPesquisas(
+                    atual =>
+                      atual.filter(
+                        item =>
+                          item.id !==
+                          id
+                      )
+                  );
 
-            setErro(mensagem);
-            reject(error);
-          }
-        });
-      });
-    },
-    [carregarPesquisas, carregarAoIniciar]
-  );
+                  setPesquisaSelecionada(
+                    atual =>
+                      atual?.id ===
+                      id
+                        ? null
+                        : atual
+                  );
 
-  const alterarStatus = useCallback(
-    async (id: string, status: StatusPesquisaCliente) => {
-      return new Promise<PesquisaClienteDetalhada>((resolve, reject) => {
-        startTransition(async () => {
-          try {
-            setErro(null);
+                  if (
+                    carregarAoIniciar
+                  ) {
+                    await carregarPesquisas();
+                  }
 
-            const resultado = await Backend.pesquisasCliente.alterarStatus(
-              id,
-              status
+                  resolve();
+                } catch (error) {
+                  tratarErro(
+                    error,
+                    "Erro ao excluir pesquisa."
+                  );
+
+                  reject(
+                    error
+                  );
+                }
+              }
             );
-
-            setPesquisaSelecionada(resultado);
-
-            if (carregarAoIniciar) {
-              await carregarPesquisas();
-            }
-
-            resolve(resultado);
-          } catch (error) {
-            const mensagem =
-              error instanceof Error
-                ? error.message
-                : "Erro ao alterar status da pesquisa.";
-
-            setErro(mensagem);
-            reject(error);
           }
-        });
-      });
-    },
-    [carregarPesquisas, carregarAoIniciar]
-  );
+        );
+      },
+      [
+        carregarAoIniciar,
+        carregarPesquisas,
+        tratarErro,
+      ]
+    );
+
+
+  const alterarStatus =
+    useCallback(
+      async (
+        id: string,
+        status: StatusPesquisaCliente
+      ) => {
+        return new Promise<PesquisaClienteDetalhada>(
+          (
+            resolve,
+            reject
+          ) => {
+            startTransition(
+              async () => {
+                try {
+                  setErro(
+                    null
+                  );
+
+                  const resultado =
+                    await Backend.pesquisasCliente.alterarStatus(
+                      id,
+                      status
+                    );
+
+                  setPesquisaSelecionada(
+                    resultado
+                  );
+
+                  setPesquisas(
+                    atual =>
+                      atual.map(
+                        item =>
+                          item.id ===
+                          id
+                            ? {
+                                ...item,
+                                status,
+                              }
+                            : item
+                      )
+                  );
+
+                  if (
+                    carregarAoIniciar
+                  ) {
+                    await carregarPesquisas();
+                  }
+
+                  resolve(
+                    resultado
+                  );
+                } catch (error) {
+                  tratarErro(
+                    error,
+                    "Erro ao alterar status da pesquisa."
+                  );
+
+                  reject(
+                    error
+                  );
+                }
+              }
+            );
+          }
+        );
+      },
+      [
+        carregarAoIniciar,
+        carregarPesquisas,
+        tratarErro,
+      ]
+    );
+
+
+  const gerarConvites =
+    useCallback(
+      async (
+        pesquisaId: string,
+        quantidade: number
+      ) => {
+        return new Promise<PesquisaClienteDetalhada>(
+          (
+            resolve,
+            reject
+          ) => {
+            startTransition(
+              async () => {
+                try {
+                  setErro(
+                    null
+                  );
+
+                  const resultado =
+                    await Backend.pesquisasCliente.gerarConvites(
+                      pesquisaId,
+                      quantidade
+                    );
+
+                  setPesquisaSelecionada(
+                    resultado
+                  );
+
+                  if (
+                    carregarAoIniciar
+                  ) {
+                    await carregarPesquisas();
+                  }
+
+                  resolve(
+                    resultado
+                  );
+                } catch (error) {
+                  tratarErro(
+                    error,
+                    "Erro ao gerar convites."
+                  );
+
+                  reject(
+                    error
+                  );
+                }
+              }
+            );
+          }
+        );
+      },
+      [
+        carregarAoIniciar,
+        carregarPesquisas,
+        tratarErro,
+      ]
+    );
+
 
   useEffect(() => {
-    if (carregarAoIniciar) {
-      carregarPesquisas();
+    if (
+      carregarAoIniciar
+    ) {
+      void carregarPesquisas().catch(
+        () =>
+          undefined
+      );
     }
-  }, [carregarAoIniciar, carregarPesquisas]);
+  }, [
+    carregarAoIniciar,
+    carregarPesquisas,
+  ]);
+
 
   return {
     pesquisas,
+
     pesquisaSelecionada,
     setPesquisaSelecionada,
+
     relatorio,
+
     dadosFormulario,
 
     carregando,
     processando,
     erro,
 
-    excluirPesquisa,
     carregarPesquisas,
     carregarPesquisaPorId,
     carregarRelatorio,
     carregarDadosFormulario,
+
     salvarPesquisa,
+    excluirPesquisa,
     alterarStatus,
     gerarConvites,
   };
