@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 
+import InformacoesAdicionaisRelatorio from "./InformacoesAdicionaisRelatorio";
+
+import type {
+  InformacaoAdicionalRelatorio,
+} from "./InformacoesAdicionaisRelatorio";
+
 
 export type DimensaoClima = {
   id: string;
@@ -137,6 +143,8 @@ export type DadosRelatorioClima = {
     mediaGeral: number | null;
   }[];
 
+
+  informacoesAdicionais: InformacaoAdicionalRelatorio[];
 
   analise?: AnaliseClima;
 };
@@ -394,48 +402,17 @@ export default function RelatorioPesquisasClimaTela({
             )}
 
 
-            {!!analise
-              .comentariosAbertos
-              ?.length && (
-              <section className="mb-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
-                    Percepção qualitativa
-                  </p>
-
-                  <h2 className="mt-1 text-lg font-black text-slate-900">
-                    Comentários abertos
-                  </h2>
-
-                  <p className="mt-1 text-sm text-slate-500">
-                    Percepções qualitativas registradas pelos participantes.
-                  </p>
-                </div>
-
-
-                <div className="mt-5 space-y-3">
-                  {analise.comentariosAbertos.map(
-                    (
-                      comentario,
-                      index
-                    ) => (
-                      <div
-                        key={
-                          index
-                        }
-                        className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm leading-6 text-slate-700"
-                      >
-                        {
-                          comentario
-                        }
-                      </div>
-                    )
-                  )}
-                </div>
-              </section>
-            )}
           </>
         )}
+
+
+        <InformacoesAdicionaisRelatorio
+          itens={
+            dados.informacoesAdicionais ||
+            []
+          }
+          variante="clima"
+        />
 
 
         <TabelaPesquisas

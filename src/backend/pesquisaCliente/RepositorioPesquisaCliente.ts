@@ -68,6 +68,67 @@ type AcumuladorScore = {
 };
 
 
+type DistribuicaoInformacaoAdicional = {
+  valor: string;
+  quantidade: number;
+  percentual: number;
+};
+
+
+type InformacaoAdicionalRelatorio = {
+  id: string;
+
+  perguntaId: string;
+
+  titulo: string;
+
+  descricao: string | null;
+
+  tipo: TipoPergunta;
+
+  dimensao: {
+    id: string;
+    nome: string;
+  } | null;
+
+  totalRespostas: number;
+
+  distribuicao: DistribuicaoInformacaoAdicional[];
+
+  respostasTexto: string[];
+};
+
+
+type AcumuladorInformacaoAdicional = {
+  id: string;
+
+  perguntaId: string;
+
+  titulo: string;
+
+  descricao: string | null;
+
+  tipo: TipoPergunta;
+
+  dimensao: {
+    id: string;
+    nome: string;
+  } | null;
+
+  totalRespostas: number;
+
+  distribuicao: Map<
+    string,
+    {
+      valor: string;
+      quantidade: number;
+    }
+  >;
+
+  respostasTexto: string[];
+};
+
+
 /* =========================================================
  * NORMALIZAÇÃO
  * ======================================================= */
@@ -799,6 +860,457 @@ function obterFaixasCompativeis(
   return todasCompativeis
     ? primeira
     : [];
+}
+
+
+
+/* =========================================================
+ * INFORMAÇÕES ADICIONAIS
+ * ======================================================= */
+
+/*
+ * Perguntas não quantitativas são consolidadas separadamente.
+ *
+ * IMPORTANTE:
+ * - NÃO entram nos scores dos módulos;
+ * - NÃO alteram favorabilidade;
+ * - NÃO alteram maturidade;
+ * - NÃO alteram risco psicossocial.
+ *
+ * SIM_NAO / MULTIPLA_ESCOLHA
+ * -> distribuição por alternativa.
+ *
+ * TEXTO / TEXTO_LONGO
+ * -> respostas qualitativas.
+ */
+function montarInformacoesAdicionais(
+  pesquisasBanco: any[]
+): InformacaoAdicionalRelatorio[] {
+  const mapa =
+    new Map<
+      string,
+      AcumuladorInformacaoAdicional
+    >();
+
+
+  for (
+    const pesquisa
+    of pesquisasBanco
+  ) {
+    const dimensoes =
+      normalizarDimensoes(
+        pesquisa.dimensoes
+      );
+
+
+    const perguntas =
+      normalizarPerguntas(
+        pesquisa.perguntas,
+        dimensoes
+      );
+
+
+    const mapaDimensoes =
+      new Map(
+        dimensoes.map(
+          dimensao => [
+            dimensao.id,
+            dimensao,
+          ]
+        )
+      );
+
+
+    const perguntasAdicionais =
+      perguntas.filter(
+        pergunta =>
+          pergunta.tipo !==
+          TipoPergunta.NOTA
+      );
+
+
+    const mapaPerguntas =
+      new Map(
+        perguntasAdicionais.map(
+          pergunta => [
+            pergunta.id,
+            pergunta,
+          ]
+        )
+      );
+
+
+    /*
+     * Criamos primeiro os acumuladores das perguntas.
+     * Isso mantém a estrutura consistente mesmo antes
+     * de percorrer as respostas.
+     */
+    for (
+      const pergunta
+      of perguntasAdicionais
+    ) {
+      const dimensao =
+        pergunta.dimensaoId
+          ? mapaDimensoes.get(
+              pergunta.dimensaoId
+            )
+          : null;
+
+
+      /*
+       * A chave consolida a mesma pergunta entre
+       * diferentes aplicações do mesmo modelo.
+       */
+      const chave =
+        [
+          pesquisa.modeloId ||
+            "modelo",
+
+          pergunta.tipo,
+
+          chaveTexto(
+            pergunta.titulo
+          ),
+
+          chaveTexto(
+            dimensao?.nome ||
+            ""
+          ),
+        ].join(
+          "::"
+        );
+
+
+      if (
+        !mapa.has(
+          chave
+        )
+      ) {
+        mapa.set(
+          chave,
+          {
+            id:
+              `${pesquisa.modeloId || "modelo"}-${pergunta.id}`,
+
+            perguntaId:
+              pergunta.id,
+
+            titulo:
+              pergunta.titulo,
+
+            descricao:
+              pergunta.descricao ||
+              null,
+
+            tipo:
+              pergunta.tipo,
+
+            dimensao:
+              dimensao
+                ? {
+                    id:
+                      dimensao.id,
+
+                    nome:
+                      dimensao.nome,
+                  }
+                : null,
+
+            totalRespostas:
+              0,
+
+            distribuicao:
+              new Map(),
+
+            respostasTexto:
+              [],
+          }
+        );
+      }
+    }
+
+
+    /*
+     * Agora consolidamos as respostas efetivamente recebidas.
+     */
+    for (
+      const respostaPesquisa
+      of pesquisa.respostas
+    ) {
+      const respostas =
+        normalizarRespostas(
+          respostaPesquisa.respostas
+        );
+
+
+      for (
+        const resposta
+        of respostas
+      ) {
+        const pergunta =
+          mapaPerguntas.get(
+            resposta.perguntaId
+          );
+
+
+        if (
+          !pergunta
+        ) {
+          continue;
+        }
+
+
+        const valor =
+          resposta.valor.trim();
+
+
+        if (
+          !valor
+        ) {
+          continue;
+        }
+
+
+        const dimensao =
+          pergunta.dimensaoId
+            ? mapaDimensoes.get(
+                pergunta.dimensaoId
+              )
+            : null;
+
+
+        const chave =
+          [
+            pesquisa.modeloId ||
+              "modelo",
+
+            pergunta.tipo,
+
+            chaveTexto(
+              pergunta.titulo
+            ),
+
+            chaveTexto(
+              dimensao?.nome ||
+              ""
+            ),
+          ].join(
+            "::"
+          );
+
+
+        const acumulador =
+          mapa.get(
+            chave
+          );
+
+
+        if (
+          !acumulador
+        ) {
+          continue;
+        }
+
+
+        acumulador.totalRespostas++;
+
+
+        /*
+         * SIM / NÃO e múltipla escolha:
+         * distribuição quantitativa complementar.
+         */
+        if (
+          pergunta.tipo ===
+            TipoPergunta.SIM_NAO ||
+          pergunta.tipo ===
+            TipoPergunta.MULTIPLA_ESCOLHA
+        ) {
+          const chaveValor =
+            chaveTexto(
+              valor
+            );
+
+
+          const atual =
+            acumulador.distribuicao.get(
+              chaveValor
+            ) || {
+              valor,
+              quantidade:
+                0,
+            };
+
+
+          atual.quantidade++;
+
+
+          acumulador.distribuicao.set(
+            chaveValor,
+            atual
+          );
+
+
+          continue;
+        }
+
+
+        /*
+         * Texto curto e texto longo:
+         * preservamos cada resposta para leitura qualitativa.
+         */
+        if (
+          pergunta.tipo ===
+            TipoPergunta.TEXTO ||
+          pergunta.tipo ===
+            TipoPergunta.TEXTO_LONGO
+        ) {
+          acumulador.respostasTexto.push(
+            valor
+          );
+        }
+      }
+    }
+  }
+
+
+  return Array.from(
+    mapa.values()
+  )
+    .filter(
+      item =>
+        item.totalRespostas >
+        0
+    )
+    .map(
+      item => {
+        const distribuicao =
+          Array.from(
+            item.distribuicao.values()
+          )
+            .map(
+              opcao => ({
+                valor:
+                  opcao.valor,
+
+                quantidade:
+                  opcao.quantidade,
+
+                percentual:
+                  item.totalRespostas >
+                  0
+                    ? (
+                        opcao.quantidade /
+                        item.totalRespostas
+                      ) *
+                      100
+                    : 0,
+              })
+            )
+            .sort(
+              (
+                a,
+                b
+              ) => {
+                /*
+                 * Para SIM_NAO, mantemos SIM antes de NÃO.
+                 */
+                if (
+                  item.tipo ===
+                  TipoPergunta.SIM_NAO
+                ) {
+                  const ordem = (
+                    valor: string
+                  ) => {
+                    const normalizado =
+                      chaveTexto(
+                        valor
+                      );
+
+
+                    if (
+                      normalizado ===
+                      "sim"
+                    ) {
+                      return 0;
+                    }
+
+
+                    if (
+                      normalizado ===
+                        "não" ||
+                      normalizado ===
+                        "nao"
+                    ) {
+                      return 1;
+                    }
+
+
+                    return 2;
+                  };
+
+
+                  return (
+                    ordem(
+                      a.valor
+                    ) -
+                    ordem(
+                      b.valor
+                    )
+                  );
+                }
+
+
+                /*
+                 * Múltipla escolha:
+                 * alternativas mais escolhidas primeiro.
+                 */
+                return (
+                  b.quantidade -
+                  a.quantidade
+                );
+              }
+            );
+
+
+        return {
+          id:
+            item.id,
+
+          perguntaId:
+            item.perguntaId,
+
+          titulo:
+            item.titulo,
+
+          descricao:
+            item.descricao,
+
+          tipo:
+            item.tipo,
+
+          dimensao:
+            item.dimensao,
+
+          totalRespostas:
+            item.totalRespostas,
+
+          distribuicao,
+
+          respostasTexto:
+            item.respostasTexto,
+        };
+      }
+    )
+    .sort(
+      (
+        a,
+        b
+      ) =>
+        a.titulo.localeCompare(
+          b.titulo,
+          "pt-BR"
+        )
+    );
 }
 
 
@@ -3529,6 +4041,22 @@ export default class RepositorioPesquisaCliente {
             );
 
 
+    /*
+     * Consolidação complementar:
+     *
+     * SIM_NAO
+     * MULTIPLA_ESCOLHA
+     * TEXTO
+     * TEXTO_LONGO
+     *
+     * Não interfere na lógica analítica dos módulos.
+     */
+    const informacoesAdicionais =
+      montarInformacoesAdicionais(
+        pesquisasBanco
+      );
+
+
     return {
       tipo,
 
@@ -3585,6 +4113,11 @@ export default class RepositorioPesquisaCliente {
           }) =>
             pesquisa
         ),
+
+      /*
+       * Dados complementares dos tipos não quantitativos.
+       */
+      informacoesAdicionais,
 
       analise,
     };

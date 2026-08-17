@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 
+import InformacoesAdicionaisRelatorio from "./InformacoesAdicionaisRelatorio";
+
+import type {
+  InformacaoAdicionalRelatorio,
+} from "./InformacoesAdicionaisRelatorio";
+
 
 export type DimensaoDiagnostico = {
   id: string;
@@ -102,6 +108,8 @@ export type DadosRelatorioDiagnostico = {
 
     mediaGeral: number | null;
   }[];
+
+  informacoesAdicionais: InformacaoAdicionalRelatorio[];
 
   analise?: AnaliseDiagnostico;
 };
@@ -285,6 +293,15 @@ export default function RelatorioDiagnosticoOrganizacionalTela({
             </div>
           </>
         )}
+
+
+        <InformacoesAdicionaisRelatorio
+          itens={
+            dados.informacoesAdicionais ||
+            []
+          }
+          variante="diagnostico"
+        />
 
 
         <TabelaAplicacoes

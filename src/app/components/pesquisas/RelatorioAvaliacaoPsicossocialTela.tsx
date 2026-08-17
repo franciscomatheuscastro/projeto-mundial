@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 
+import InformacoesAdicionaisRelatorio from "./InformacoesAdicionaisRelatorio";
+
+import type {
+  InformacaoAdicionalRelatorio,
+} from "./InformacoesAdicionaisRelatorio";
+
 
 export type FatorPsicossocial = {
   id: string;
@@ -124,6 +130,8 @@ export type DadosRelatorioPsicossocial = {
     mediaGeral: number | null;
   }[];
 
+
+  informacoesAdicionais: InformacaoAdicionalRelatorio[];
 
   analise?: AnalisePsicossocial;
 };
@@ -357,6 +365,15 @@ export default function RelatorioAvaliacaoPsicossocialTela({
             )}
           </section>
         )}
+
+
+        <InformacoesAdicionaisRelatorio
+          itens={
+            dados.informacoesAdicionais ||
+            []
+          }
+          variante="psicossocial"
+        />
 
 
         <TabelaAvaliacoes

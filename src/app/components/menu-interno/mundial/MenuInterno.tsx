@@ -210,7 +210,7 @@ function MenuNavegacao({
             mobile
           }
         >
-          Relatório de Clima
+          Relatório Clima
         </MenuLink>
       </GrupoMenu>
 
