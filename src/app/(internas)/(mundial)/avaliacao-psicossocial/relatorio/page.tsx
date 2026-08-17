@@ -24,7 +24,9 @@ import type {
 type Props = {
   searchParams: Promise<{
     dataInicio?: string;
+
     dataFim?: string;
+
     clienteId?: string;
   }>;
 };
@@ -53,17 +55,19 @@ export default async function RelatorioAvaliacaoPsicossocialPage({
   const resultado =
     await obterDadosRelatorioModuloPesquisa(
       TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL,
-      filtros
+      {
+        dataInicio:
+          filtros.dataInicio,
+
+        dataFim:
+          filtros.dataFim,
+
+        clienteId:
+          filtros.clienteId,
+      }
     );
 
 
-  /*
-   * A action é compartilhada entre
-   * Clima, Diagnóstico e Psicossocial.
-   *
-   * Aqui garantimos que este retorno
-   * pertence ao módulo Psicossocial.
-   */
   if (
     resultado.tipo !==
     TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
@@ -74,9 +78,6 @@ export default async function RelatorioAvaliacaoPsicossocialPage({
   }
 
 
-  /*
-   * Narrowing da união retornada pelo backend.
-   */
   if (
     !resultado.analise ||
     !(
@@ -92,14 +93,34 @@ export default async function RelatorioAvaliacaoPsicossocialPage({
 
   const dados: DadosRelatorioPsicossocial =
     {
-      ...resultado,
-
       tipo:
         resultado.tipo,
+
+      filtros:
+        resultado.filtros,
+
+      clientes:
+        resultado.clientes,
+
+      resumo:
+        resultado.resumo,
+
+      porCliente:
+        resultado.porCliente,
+
+      pesquisas:
+        resultado.pesquisas,
+
+      informacoesAdicionais:
+        resultado.informacoesAdicionais ??
+        [],
 
       analise: {
         fatores:
           resultado.analise.fatores,
+
+        heatmap:
+          resultado.analise.heatmap,
       },
     };
 

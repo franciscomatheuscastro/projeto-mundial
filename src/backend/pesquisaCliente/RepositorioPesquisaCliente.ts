@@ -129,6 +129,26 @@ type AcumuladorInformacaoAdicional = {
 };
 
 
+type CelulaHeatmapPsicossocial = {
+  fator: string;
+  score: number | null;
+  classificacao: string | null;
+};
+
+
+type LinhaHeatmapPsicossocial = {
+  setor: string;
+  totalRespondentes: number;
+  fatores: CelulaHeatmapPsicossocial[];
+};
+
+
+type HeatmapPsicossocial = {
+  fatores: string[];
+  setores: LinhaHeatmapPsicossocial[];
+};
+
+
 /* =========================================================
  * NORMALIZAÇÃO
  * ======================================================= */
@@ -2765,8 +2785,18 @@ function montarAnalisePsicossocial(
         mapaFatores.get(
           chave
         ) || {
+          /*
+           * O relatório consolidado é agrupado pelo fator de risco
+           * (ou pelo nome da dimensão quando não houver fator).
+           *
+           * Não usamos diretamente fator.id aqui, pois o mesmo id
+           * de dimensão pode existir em snapshots diferentes com
+           * nomes/fatores de risco distintos. Isso gerava ids
+           * duplicados no array final e, consequentemente, keys
+           * duplicadas no React.
+           */
           id:
-            fator.id,
+            `${fator.id}::${chave}`,
 
           nome:
             fator.nome,
@@ -2881,6 +2911,483 @@ function montarAnalisePsicossocial(
 
   return {
     fatores,
+  };
+}
+
+
+
+/* =========================================================
+ * HEATMAP PSICOSSOCIAL — SETOR × FATOR
+ * ======================================================= */
+
+/*
+ * O heatmap usa somente perguntas do tipo NOTA.
+ *
+ * Cada resposta é analisada individualmente:
+ * 1. calcula-se o score de risco de cada dimensão;
+ * 2. dimensões com o mesmo fator de risco são consolidadas;
+ * 3. os resultados são agrupados pelo setor informado.
+ *
+ * Respostas sem setor continuam fazendo parte do relatório
+ * geral, mas não entram no recorte por setor.
+ */
+function montarHeatmapPsicossocial(
+  pesquisasBanco: any[]
+): HeatmapPsicossocial {
+  type AcumuladorCelula = {
+    somaPonderada: number;
+    pesoTotal: number;
+  };
+
+
+  type AcumuladorSetor = {
+    setor: string;
+
+    respondentes: Set<string>;
+
+    fatores: Map<
+      string,
+      {
+        nome: string;
+        somaPonderada: number;
+        pesoTotal: number;
+      }
+    >;
+  };
+
+
+  const setores =
+    new Map<
+      string,
+      AcumuladorSetor
+    >();
+
+
+  const nomesFatores =
+    new Map<
+      string,
+      string
+    >();
+
+
+  for (
+    const pesquisa
+    of pesquisasBanco
+  ) {
+    const dimensoes =
+      normalizarDimensoes(
+        pesquisa.dimensoes
+      );
+
+
+    const perguntas =
+      normalizarPerguntas(
+        pesquisa.perguntas,
+        dimensoes
+      );
+
+
+    const configuracao =
+      normalizarConfiguracaoAnalise(
+        pesquisa.configuracaoAnalise,
+        TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
+      );
+
+
+    const mapaDimensoes =
+      new Map(
+        dimensoes.map(
+          dimensao => [
+            dimensao.id,
+            dimensao,
+          ]
+        )
+      );
+
+
+    const mapaPerguntas =
+      new Map(
+        perguntas.map(
+          pergunta => [
+            pergunta.id,
+            pergunta,
+          ]
+        )
+      );
+
+
+    for (
+      const respostaPesquisa
+      of pesquisa.respostas
+    ) {
+      const setor =
+        String(
+          respostaPesquisa.setor ??
+          ""
+        ).trim();
+
+
+      /*
+       * Sem setor não existe recorte confiável.
+       * A resposta permanece no consolidado geral.
+       */
+      if (
+        !setor
+      ) {
+        continue;
+      }
+
+
+      const chaveSetor =
+        chaveTexto(
+          setor
+        );
+
+
+      const atualSetor =
+        setores.get(
+          chaveSetor
+        ) || {
+          setor,
+
+          respondentes:
+            new Set<string>(),
+
+          fatores:
+            new Map(),
+        };
+
+
+      atualSetor.respondentes.add(
+        `${pesquisa.id}:${respostaPesquisa.id}`
+      );
+
+
+      /*
+       * Primeiro consolidamos todas as perguntas
+       * respondidas dentro de cada dimensão.
+       */
+      const acumuladoresDimensao =
+        new Map<
+          string,
+          {
+            soma: number;
+            quantidade: number;
+          }
+        >();
+
+
+      const respostas =
+        normalizarRespostas(
+          respostaPesquisa.respostas
+        );
+
+
+      for (
+        const resposta
+        of respostas
+      ) {
+        const pergunta =
+          mapaPerguntas.get(
+            resposta.perguntaId
+          );
+
+
+        if (
+          !pergunta ||
+          pergunta.tipo !==
+            TipoPergunta.NOTA ||
+          !pergunta.dimensaoId
+        ) {
+          continue;
+        }
+
+
+        const dimensao =
+          mapaDimensoes.get(
+            pergunta.dimensaoId
+          );
+
+
+        if (
+          !dimensao
+        ) {
+          continue;
+        }
+
+
+        const valor =
+          Number(
+            resposta.valor
+          );
+
+
+        if (
+          !Number.isFinite(
+            valor
+          )
+        ) {
+          continue;
+        }
+
+
+        const orientado =
+          notaOrientadaParaRisco(
+            valor,
+            pergunta,
+            configuracao
+          );
+
+
+        const score =
+          normalizarNotaPercentual(
+            orientado,
+            configuracao.escalaMinima,
+            configuracao.escalaMaxima
+          );
+
+
+        const acumulador =
+          acumuladoresDimensao.get(
+            dimensao.id
+          ) || {
+            soma:
+              0,
+
+            quantidade:
+              0,
+          };
+
+
+        acumulador.soma +=
+          score;
+
+        acumulador.quantidade++;
+
+
+        acumuladoresDimensao.set(
+          dimensao.id,
+          acumulador
+        );
+      }
+
+
+      /*
+       * Depois transformamos as dimensões em fatores
+       * e aplicamos o peso cadastrado na dimensão.
+       */
+      for (
+        const [
+          dimensaoId,
+          acumulador,
+        ]
+        of acumuladoresDimensao
+      ) {
+        if (
+          acumulador.quantidade <=
+          0
+        ) {
+          continue;
+        }
+
+
+        const dimensao =
+          mapaDimensoes.get(
+            dimensaoId
+          );
+
+
+        if (
+          !dimensao
+        ) {
+          continue;
+        }
+
+
+        const nomeFator =
+          dimensao.fatorRisco ||
+          dimensao.nome;
+
+
+        const chaveFator =
+          chaveTexto(
+            nomeFator
+          );
+
+
+        nomesFatores.set(
+          chaveFator,
+          nomeFator
+        );
+
+
+        const peso =
+          Math.max(
+            0,
+            numeroSeguro(
+              dimensao.peso,
+              1
+            )
+          );
+
+
+        if (
+          peso <=
+          0
+        ) {
+          continue;
+        }
+
+
+        const scoreDimensao =
+          acumulador.soma /
+          acumulador.quantidade;
+
+
+        const atualFator =
+          atualSetor.fatores.get(
+            chaveFator
+          ) || {
+            nome:
+              nomeFator,
+
+            somaPonderada:
+              0,
+
+            pesoTotal:
+              0,
+          };
+
+
+        atualFator.somaPonderada +=
+          scoreDimensao *
+          peso;
+
+        atualFator.pesoTotal +=
+          peso;
+
+
+        atualSetor.fatores.set(
+          chaveFator,
+          atualFator
+        );
+      }
+
+
+      setores.set(
+        chaveSetor,
+        atualSetor
+      );
+    }
+  }
+
+
+  const faixas =
+    obterFaixasCompativeis(
+      pesquisasBanco
+    );
+
+
+  const fatoresOrdenados =
+    Array.from(
+      nomesFatores.entries()
+    )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          a[1].localeCompare(
+            b[1],
+            "pt-BR"
+          )
+      );
+
+
+  const linhas =
+    Array.from(
+      setores.values()
+    )
+      .map(
+        setor => ({
+          setor:
+            setor.setor,
+
+          totalRespondentes:
+            setor.respondentes.size,
+
+          fatores:
+            fatoresOrdenados.map(
+              ([
+                chaveFator,
+                nomeFator,
+              ]) => {
+                const acumulador =
+                  setor.fatores.get(
+                    chaveFator
+                  );
+
+
+                const score =
+                  acumulador &&
+                  acumulador.pesoTotal >
+                    0
+                    ? acumulador.somaPonderada /
+                      acumulador.pesoTotal
+                    : null;
+
+
+                const faixa =
+                  score !==
+                    null
+                    ? encontrarFaixa(
+                        score,
+                        faixas
+                      )
+                    : null;
+
+
+                return {
+                  fator:
+                    nomeFator,
+
+                  score,
+
+                  classificacao:
+                    faixa?.classificacao ||
+                    faixa?.nome ||
+                    null,
+                };
+              }
+            ),
+        })
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          b.totalRespondentes -
+          a.totalRespondentes ||
+          a.setor.localeCompare(
+            b.setor,
+            "pt-BR"
+          )
+      );
+
+
+  return {
+    fatores:
+      fatoresOrdenados.map(
+        ([
+          ,
+          nome,
+        ]) =>
+          nome
+      ),
+
+    setores:
+      linhas,
   };
 }
 
@@ -3639,6 +4146,9 @@ export default class RepositorioPesquisaCliente {
                 respostas:
                   true,
 
+                setor:
+                  true,
+
                 criadoEm:
                   true,
               },
@@ -4036,9 +4546,20 @@ export default class RepositorioPesquisaCliente {
           ? montarAnaliseDiagnostico(
               pesquisasBanco
             )
-          : montarAnalisePsicossocial(
-              pesquisasBanco
-            );
+          : {
+              ...montarAnalisePsicossocial(
+                pesquisasBanco
+              ),
+
+              /*
+               * O radar usa diretamente "fatores".
+               * O heatmap precisa do recorte por setor.
+               */
+              heatmap:
+                montarHeatmapPsicossocial(
+                  pesquisasBanco
+                ),
+            };
 
 
     /*

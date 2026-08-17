@@ -32,38 +32,22 @@ import type {
 
 /* =========================================================
  * CONSTANTES CLIENT-SAFE
- *
- * Não utilizar TipoPergunta.NOTA,
- * TipoModuloPesquisa.CLIMA etc. neste componente.
- *
- * O Prisma permanece somente como tipagem.
  * ======================================================= */
 
 const TIPO_MODULO = {
-  CLIMA:
-    "CLIMA",
-
+  CLIMA: "CLIMA",
   DIAGNOSTICO_ORGANIZACIONAL:
     "DIAGNOSTICO_ORGANIZACIONAL",
-
   AVALIACAO_PSICOSSOCIAL:
     "AVALIACAO_PSICOSSOCIAL",
 } as const;
 
 
 const TIPO_PERGUNTA = {
-  NOTA:
-    "NOTA",
-
-  SIM_NAO:
-    "SIM_NAO",
-
-  TEXTO:
-    "TEXTO",
-
-  TEXTO_LONGO:
-    "TEXTO_LONGO",
-
+  NOTA: "NOTA",
+  SIM_NAO: "SIM_NAO",
+  TEXTO: "TEXTO",
+  TEXTO_LONGO: "TEXTO_LONGO",
   MULTIPLA_ESCOLHA:
     "MULTIPLA_ESCOLHA",
 } as const;
@@ -83,12 +67,23 @@ type Props = {
 };
 
 
+type EtapaEditor =
+  | "dados"
+  | "analise"
+  | "dimensoes"
+  | "perguntas";
+
+
 /* =========================================================
  * ESTILO
  * ======================================================= */
 
 const inputClassName =
   "min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
+
+
+const sectionClassName =
+  "scroll-mt-28 rounded-3xl bg-white shadow-sm ring-1 ring-slate-200";
 
 
 /* =========================================================
@@ -106,18 +101,13 @@ function gerarIdLocal(
     return `${prefixo}-${crypto.randomUUID()}`;
   }
 
+
   return `${prefixo}-${Date.now()}-${Math.random()
     .toString(36)
     .slice(2)}`;
 }
 
 
-/*
- * Configuração client-safe.
- *
- * Evitamos chamar criarConfiguracaoAnalisePadrao()
- * do model dentro deste componente Client.
- */
 function criarConfiguracaoAnalisePadraoCliente(
   tipo: TipoModuloPesquisa
 ): ConfiguracaoAnaliseModelo {
@@ -200,6 +190,99 @@ function criarConfiguracaoAnalisePadraoCliente(
 }
 
 
+function nomeModulo(
+  tipo: TipoModuloPesquisa
+) {
+  if (
+    tipo ===
+    TIPO_MODULO.DIAGNOSTICO_ORGANIZACIONAL
+  ) {
+    return "Diagnóstico Organizacional";
+  }
+
+
+  if (
+    tipo ===
+    TIPO_MODULO.AVALIACAO_PSICOSSOCIAL
+  ) {
+    return "Avaliação Psicossocial";
+  }
+
+
+  return "Pesquisa de Clima";
+}
+
+
+function nomeMetodo(
+  metodo: string
+) {
+  if (
+    metodo ===
+    "FAVORABILIDADE"
+  ) {
+    return "Favorabilidade";
+  }
+
+
+  if (
+    metodo ===
+    "MATURIDADE"
+  ) {
+    return "Maturidade";
+  }
+
+
+  if (
+    metodo ===
+    "RISCO_PSICOSSOCIAL"
+  ) {
+    return "Risco psicossocial";
+  }
+
+
+  return metodo;
+}
+
+
+function nomeTipoPergunta(
+  tipo: TipoPergunta
+) {
+  if (
+    tipo ===
+    TIPO_PERGUNTA.NOTA
+  ) {
+    return "Nota";
+  }
+
+
+  if (
+    tipo ===
+    TIPO_PERGUNTA.SIM_NAO
+  ) {
+    return "Sim ou Não";
+  }
+
+
+  if (
+    tipo ===
+    TIPO_PERGUNTA.TEXTO
+  ) {
+    return "Texto curto";
+  }
+
+
+  if (
+    tipo ===
+    TIPO_PERGUNTA.TEXTO_LONGO
+  ) {
+    return "Texto longo";
+  }
+
+
+  return "Múltipla escolha";
+}
+
+
 /* =========================================================
  * COMPONENTE PRINCIPAL
  * ======================================================= */
@@ -214,27 +297,16 @@ export default function ModelosPesquisaTela({
 
   const {
     modelos,
-
     modeloSelecionado,
-
     carregando,
-
     processando,
-
     erro,
-
     carregarModeloPorId,
-
     salvarModelo,
-
     adicionarPergunta,
-
     salvarPergunta,
-
     excluirPergunta,
-
     duplicarModelo,
-
     excluirModelo,
   } =
     useModelosPesquisa();
@@ -290,9 +362,14 @@ export default function ModelosPesquisaTela({
     );
 
 
-  /* =======================================================
-   * CARREGAR MODELO
-   * ===================================================== */
+  const [
+    etapaAtiva,
+    setEtapaAtiva,
+  ] =
+    useState<EtapaEditor>(
+      "dados"
+    );
+
 
   useEffect(() => {
     if (
@@ -314,10 +391,6 @@ export default function ModelosPesquisaTela({
   ]);
 
 
-  /* =======================================================
-   * SINCRONIZAR MODELO
-   * ===================================================== */
-
   useEffect(() => {
     if (
       modo ===
@@ -328,29 +401,24 @@ export default function ModelosPesquisaTela({
         modeloSelecionado.titulo
       );
 
-
       setDescricao(
         modeloSelecionado.descricao ??
           ""
       );
 
-
       setTipo(
         modeloSelecionado.tipo
       );
-
 
       setAtivo(
         modeloSelecionado.ativo ??
           true
       );
 
-
       setDimensoes(
         modeloSelecionado.dimensoes ??
           []
       );
-
 
       setConfiguracaoAnalise(
         modeloSelecionado.configuracaoAnalise ??
@@ -364,10 +432,6 @@ export default function ModelosPesquisaTela({
     modeloSelecionado,
   ]);
 
-
-  /* =======================================================
-   * ALTERAR TIPO
-   * ===================================================== */
 
   function alterarTipo(
     novoTipo: TipoModuloPesquisa
@@ -385,12 +449,6 @@ export default function ModelosPesquisaTela({
     );
 
 
-    /*
-     * Cada módulo possui um motor analítico diferente.
-     *
-     * Ao trocar o módulo reiniciamos somente
-     * a configuração analítica.
-     */
     setConfiguracaoAnalise(
       criarConfiguracaoAnalisePadraoCliente(
         novoTipo
@@ -398,10 +456,6 @@ export default function ModelosPesquisaTela({
     );
   }
 
-
-  /* =======================================================
-   * SALVAR MODELO
-   * ===================================================== */
 
   async function enviarModelo(
     event: FormEvent<HTMLFormElement>
@@ -420,7 +474,6 @@ export default function ModelosPesquisaTela({
         titulo,
 
         descricao:
-
           descricao.trim() ||
           null,
 
@@ -446,14 +499,9 @@ export default function ModelosPesquisaTela({
       `/modelos-pesquisa/${resultado.id}`
     );
 
-
     router.refresh();
   }
 
-
-  /* =======================================================
-   * DUPLICAR
-   * ===================================================== */
 
   async function duplicarAtual() {
     if (
@@ -473,14 +521,9 @@ export default function ModelosPesquisaTela({
       `/modelos-pesquisa/${novoModelo.id}`
     );
 
-
     router.refresh();
   }
 
-
-  /* =======================================================
-   * EXCLUIR MODELO
-   * ===================================================== */
 
   async function excluirModeloAtual(
     id: string
@@ -503,14 +546,9 @@ export default function ModelosPesquisaTela({
       "/modelos-pesquisa"
     );
 
-
     router.refresh();
   }
 
-
-  /* =======================================================
-   * DIMENSÕES
-   * ===================================================== */
 
   function adicionarDimensao() {
     setDimensoes(
@@ -556,7 +594,6 @@ export default function ModelosPesquisaTela({
             id
               ? {
                   ...dimensao,
-
                   ...dados,
                 }
               : dimensao
@@ -879,7 +916,7 @@ export default function ModelosPesquisaTela({
         />
 
 
-        <section className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
+        <section className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
           <form
             onSubmit={
               enviarModelo
@@ -891,6 +928,15 @@ export default function ModelosPesquisaTela({
                 erro
               }
             />
+
+
+            <div className="mb-6">
+              <EtapaTitulo
+                numero="1"
+                titulo="Identificação do modelo"
+                descricao="Defina o módulo, título e objetivo deste instrumento."
+              />
+            </div>
 
 
             <SelectTipoModelo
@@ -928,20 +974,31 @@ export default function ModelosPesquisaTela({
             />
 
 
-            <ConfiguracaoAnaliseEditor
-              tipo={
-                tipo
-              }
-              configuracao={
-                configuracaoAnalise
-              }
-              onChange={
-                setConfiguracaoAnalise
-              }
-            />
+            <div className="mt-7 border-t border-slate-200 pt-6">
+              <EtapaTitulo
+                numero="2"
+                titulo="Método de análise"
+                descricao="Configure a escala e a interpretação dos resultados."
+              />
 
 
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+              <div className="mt-5 rounded-3xl bg-slate-50 p-5 ring-1 ring-slate-200">
+                <ConfiguracaoAnaliseEditor
+                  tipo={
+                    tipo
+                  }
+                  configuracao={
+                    configuracaoAnalise
+                  }
+                  onChange={
+                    setConfiguracaoAnalise
+                  }
+                />
+              </div>
+            </div>
+
+
+            <div className="mt-7 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-between">
               <Link
                 href="/modelos-pesquisa"
                 className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700"
@@ -954,7 +1011,7 @@ export default function ModelosPesquisaTela({
                 disabled={
                   processando
                 }
-                className="min-h-12 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
+                className="min-h-12 rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60"
               >
                 {processando
                   ? "Criando..."
@@ -972,317 +1029,728 @@ export default function ModelosPesquisaTela({
    * EDITAR MODELO
    * ===================================================== */
 
+  const totalPerguntas =
+    modeloSelecionado?.perguntas.length ??
+    0;
+
+
   return (
     <main className="min-h-screen bg-slate-100">
       <CabecalhoEditor
         titulo="Editar Modelo"
-        descricao="Configure dimensões, metodologia e perguntas do instrumento."
+        descricao="Configure uma etapa por vez para manter o cadastro mais claro e objetivo."
       />
 
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[380px_1fr] lg:px-8">
-        <aside className="h-fit space-y-5">
-          <form
-            onSubmit={
-              enviarModelo
+      <div className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-2 px-4 py-3 sm:px-6 lg:px-8">
+          <TipoModeloBadge
+            tipo={
+              tipo
             }
-            className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6"
+          />
+
+
+          <ResumoChip
+            label="Dimensões"
+            value={
+              dimensoes.length
+            }
+          />
+
+
+          <ResumoChip
+            label="Perguntas"
+            value={
+              totalPerguntas
+            }
+          />
+
+
+          <ResumoChip
+            label="Método"
+            value={
+              nomeMetodo(
+                configuracaoAnalise.metodo
+              )
+            }
+          />
+
+
+          <span
+            className={`rounded-full px-3 py-1.5 text-xs font-bold ${
+              ativo
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-slate-100 text-slate-600"
+            }`}
           >
-            <AlertaErro
-              mensagem={
-                erro
-              }
-            />
+            {ativo
+              ? "Modelo ativo"
+              : "Modelo inativo"}
+          </span>
+        </div>
+      </div>
 
 
-            <SelectTipoModelo
-              value={
-                tipo
-              }
-              onChange={
-                alterarTipo
-              }
-            />
+      <section className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[290px_minmax(0,1fr)] lg:px-8">
+        {/* =================================================
+         * NAVEGAÇÃO DAS ETAPAS
+         * =============================================== */}
+
+        <aside className="lg:sticky lg:top-6 lg:h-fit">
+          <div className="rounded-3xl bg-slate-950 p-5 text-white shadow-sm">
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-blue-300">
+              Cadastro do modelo
+            </p>
 
 
-            <Campo
-              label="Título"
-              value={
-                titulo
-              }
-              onChange={
-                setTitulo
-              }
-              required
-            />
+            <h2 className="mt-2 text-lg font-black">
+              Etapas
+            </h2>
 
 
-            <CampoArea
-              label="Descrição"
-              value={
-                descricao
-              }
-              onChange={
-                setDescricao
-              }
-            />
+            <p className="mt-1 text-sm leading-6 text-slate-300">
+              Selecione uma etapa. Somente o conteúdo escolhido será exibido ao
+              lado.
+            </p>
 
 
-            <label className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
-              <input
-                type="checkbox"
-                checked={
-                  ativo
+            <nav className="mt-5 space-y-2">
+              <AtalhoEditor
+                numero="1"
+                titulo="Dados gerais"
+                descricao="Identificação e status"
+                ativo={
+                  etapaAtiva ===
+                  "dados"
                 }
-                onChange={(
-                  event
-                ) =>
-                  setAtivo(
-                    event.target.checked
+                onClick={() =>
+                  setEtapaAtiva(
+                    "dados"
                   )
                 }
               />
 
-              Modelo ativo
-            </label>
+
+              <AtalhoEditor
+                numero="2"
+                titulo="Configuração da análise"
+                descricao="Escala e interpretação"
+                ativo={
+                  etapaAtiva ===
+                  "analise"
+                }
+                onClick={() =>
+                  setEtapaAtiva(
+                    "analise"
+                  )
+                }
+              />
 
 
-            <button
-              disabled={
-                processando
-              }
-              className="min-h-12 w-full rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
-            >
-              {processando
-                ? "Salvando..."
-                : "Salvar modelo"}
-            </button>
+              <AtalhoEditor
+                numero="3"
+                titulo="Dimensões"
+                descricao={`${dimensoes.length} cadastrada(s)`}
+                ativo={
+                  etapaAtiva ===
+                  "dimensoes"
+                }
+                onClick={() =>
+                  setEtapaAtiva(
+                    "dimensoes"
+                  )
+                }
+              />
 
 
-            <button
-              type="button"
-              onClick={() =>
-                void duplicarAtual()
-              }
-              disabled={
-                processando
-              }
-              className="mt-3 min-h-12 w-full rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 disabled:opacity-60"
-            >
-              Duplicar modelo
-            </button>
-          </form>
+              <AtalhoEditor
+                numero="4"
+                titulo="Perguntas"
+                descricao={`${totalPerguntas} cadastrada(s)`}
+                ativo={
+                  etapaAtiva ===
+                  "perguntas"
+                }
+                onClick={() =>
+                  setEtapaAtiva(
+                    "perguntas"
+                  )
+                }
+              />
+            </nav>
 
 
-          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <ConfiguracaoAnaliseEditor
-              tipo={
-                tipo
-              }
-              configuracao={
-                configuracaoAnalise
-              }
-              onChange={
-                setConfiguracaoAnalise
-              }
-            />
+            <div className="mt-5 border-t border-white/10 pt-4">
+              <p className="text-xs font-semibold text-slate-400">
+                Modelo atual
+              </p>
 
 
-            <p className="mt-2 text-xs text-amber-700">
-              Alterações nesta configuração só são persistidas quando você
-              clicar em “Salvar modelo”.
-            </p>
+              <p className="mt-1 line-clamp-2 text-sm font-bold text-white">
+                {titulo ||
+                  "Modelo sem título"}
+              </p>
+
+
+              <p className="mt-1 text-xs text-slate-400">
+                {nomeModulo(
+                  tipo
+                )}
+              </p>
+            </div>
           </div>
         </aside>
 
 
-        <div className="space-y-6">
+        {/* =================================================
+         * CONTEÚDO DA ETAPA ATIVA
+         * =============================================== */}
+
+        <div className="min-w-0">
           {/* =================================================
-           * DIMENSÕES
+           * ETAPA 1 - DADOS GERAIS
            * =============================================== */}
 
-          <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
-                  Estrutura analítica
-                </p>
-
-
-                <h2 className="mt-1 text-lg font-black text-slate-900">
-                  Dimensões
-                </h2>
-
-
-                <p className="text-sm text-slate-500">
-                  Agrupe as perguntas para permitir cálculos e relatórios por
-                  dimensão.
-                </p>
+          {etapaAtiva ===
+            "dados" && (
+            <form
+              onSubmit={
+                enviarModelo
+              }
+              className={`${sectionClassName} overflow-hidden`}
+            >
+              <div className="border-b border-slate-200 px-5 py-5 sm:px-7">
+                <EtapaTitulo
+                  numero="1"
+                  titulo="Dados gerais"
+                  descricao="Defina o módulo, identificação e status do instrumento."
+                />
               </div>
 
 
-              <button
-                type="button"
-                onClick={
-                  adicionarDimensao
-                }
-                className="min-h-12 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white"
-              >
-                + Dimensão
-              </button>
-            </div>
-
-
-            {dimensoes.length ===
-            0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
-                Nenhuma dimensão cadastrada.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {dimensoes.map(
-                  dimensao => (
-                    <DimensaoCard
-                      key={
-                        dimensao.id
-                      }
-                      dimensao={
-                        dimensao
-                      }
-                      psicossocial={
-                        tipo ===
-                        TIPO_MODULO.AVALIACAO_PSICOSSOCIAL
-                      }
-                      onChange={(
-                        dados
-                      ) =>
-                        atualizarDimensao(
-                          dimensao.id,
-                          dados
-                        )
-                      }
-                      onExcluir={() =>
-                        excluirDimensao(
-                          dimensao.id
-                        )
-                      }
-                    />
-                  )
-                )}
-              </div>
-            )}
-          </section>
-
-
-          {/* =================================================
-           * PERGUNTAS
-           * =============================================== */}
-
-          <section>
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-lg font-black text-slate-900">
-                  Perguntas do formulário
-                </h2>
-
-
-                <p className="text-sm text-slate-500">
-                  Total:{" "}
-                  {modeloSelecionado?.perguntas.length ??
-                    0}{" "}
-                  pergunta(s)
-                </p>
-              </div>
-
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (
-                    modeloId
-                  ) {
-                    void adicionarPergunta(
-                      modeloId
-                    );
+              <div className="p-5 sm:p-7">
+                <AlertaErro
+                  mensagem={
+                    erro
                   }
-                }}
-                disabled={
-                  processando ||
-                  !modeloId
-                }
-                className="min-h-12 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
-              >
-                + Adicionar pergunta
-              </button>
-            </div>
+                />
 
 
-            <div className="space-y-4">
-              {carregando ||
-              !modeloSelecionado ? (
-                <EstadoVazio
-                  texto="Carregando modelo..."
+                <div className="grid gap-x-6 lg:grid-cols-2">
+                  <SelectTipoModelo
+                    value={
+                      tipo
+                    }
+                    onChange={
+                      alterarTipo
+                    }
+                  />
+
+
+                  <Campo
+                    label="Título"
+                    value={
+                      titulo
+                    }
+                    onChange={
+                      setTitulo
+                    }
+                    required
+                  />
+
+
+                  <div className="lg:col-span-2">
+                    <CampoArea
+                      label="Descrição"
+                      value={
+                        descricao
+                      }
+                      onChange={
+                        setDescricao
+                      }
+                      placeholder="Objetivo e contexto do instrumento"
+                    />
+                  </div>
+                </div>
+
+
+                <label className="mb-6 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={
+                      ativo
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setAtivo(
+                        event.target.checked
+                      )
+                    }
+                  />
+
+                  <div>
+                    <p className="font-bold text-slate-800">
+                      Modelo ativo
+                    </p>
+
+
+                    <p className="mt-0.5 text-xs font-normal text-slate-500">
+                      Modelos inativos permanecem cadastrados, mas não devem ser
+                      utilizados em novas aplicações.
+                    </p>
+                  </div>
+                </label>
+
+
+                <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:justify-between">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void duplicarAtual()
+                    }
+                    disabled={
+                      processando
+                    }
+                    className="min-h-12 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    Duplicar modelo
+                  </button>
+
+
+                  <button
+                    disabled={
+                      processando
+                    }
+                    className="min-h-12 rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {processando
+                      ? "Salvando..."
+                      : "Salvar dados gerais"}
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
+
+
+          {/* =================================================
+           * ETAPA 2 - ANÁLISE
+           * =============================================== */}
+
+          {etapaAtiva ===
+            "analise" && (
+            <form
+              onSubmit={
+                enviarModelo
+              }
+              className={`${sectionClassName} overflow-hidden`}
+            >
+              <div className="border-b border-slate-200 px-5 py-5 sm:px-7">
+                <EtapaTitulo
+                  numero="2"
+                  titulo="Configuração da análise"
+                  descricao="Configure a escala e a forma como os resultados serão interpretados."
                 />
-              ) : modeloSelecionado.perguntas.length ===
-                0 ? (
-                <EstadoVazio
-                  texto="Nenhuma pergunta cadastrada."
-                />
-              ) : (
-                modeloSelecionado.perguntas.map(
-                  pergunta => (
-                    <PerguntaCard
-                      key={
-                        pergunta.id
-                      }
-                      pergunta={
-                        pergunta
-                      }
-                      dimensoes={
-                        dimensoes
-                      }
-                      processando={
+              </div>
+
+
+              <div className="p-5 sm:p-7">
+                <div className="mx-auto max-w-4xl">
+                  <ConfiguracaoAnaliseEditor
+                    tipo={
+                      tipo
+                    }
+                    configuracao={
+                      configuracaoAnalise
+                    }
+                    onChange={
+                      setConfiguracaoAnalise
+                    }
+                  />
+
+
+                  <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="max-w-xl text-xs leading-5 text-amber-700">
+                      As alterações da configuração analítica são persistidas ao
+                      salvar esta etapa.
+                    </p>
+
+
+                    <button
+                      disabled={
                         processando
                       }
-                      onSalvar={async (
-                        atualizada
-                      ) => {
-                        if (
-                          !modeloId
-                        ) {
-                          return;
-                        }
+                      className="min-h-12 rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      {processando
+                        ? "Salvando..."
+                        : "Salvar configuração"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          )}
 
 
-                        await salvarPergunta(
-                          modeloId,
-                          atualizada
-                        );
-                      }}
-                      onExcluir={async (
-                        perguntaId
-                      ) => {
-                        if (
-                          !modeloId
-                        ) {
-                          return;
-                        }
+          {/* =================================================
+           * ETAPA 3 - DIMENSÕES
+           * =============================================== */}
+
+          {etapaAtiva ===
+            "dimensoes" && (
+            <form
+              onSubmit={
+                enviarModelo
+              }
+              className={`${sectionClassName} overflow-hidden`}
+            >
+              <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                <EtapaTitulo
+                  numero="3"
+                  titulo="Dimensões"
+                  descricao="Estruture os temas que agrupam e organizam as perguntas do instrumento."
+                />
 
 
-                        await excluirPergunta(
-                          modeloId,
-                          perguntaId
-                        );
-                      }}
-                    />
-                  )
-                )
-              )}
-            </div>
-          </section>
+                <button
+                  type="button"
+                  onClick={
+                    adicionarDimensao
+                  }
+                  className="min-h-11 shrink-0 rounded-2xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800"
+                >
+                  + Nova dimensão
+                </button>
+              </div>
+
+
+              <div className="p-5 sm:p-7">
+                {dimensoes.length ===
+                0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
+                    <p className="font-bold text-slate-700">
+                      Nenhuma dimensão cadastrada.
+                    </p>
+
+
+                    <p className="mt-1 text-sm text-slate-500">
+                      Crie a primeira dimensão para organizar a estrutura
+                      analítica.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-5 2xl:grid-cols-2">
+                    {dimensoes.map(
+                      (
+                        dimensao,
+                        index
+                      ) => (
+                        <DimensaoCard
+                          key={
+                            dimensao.id
+                          }
+                          indice={
+                            index +
+                            1
+                          }
+                          dimensao={
+                            dimensao
+                          }
+                          psicossocial={
+                            tipo ===
+                            TIPO_MODULO.AVALIACAO_PSICOSSOCIAL
+                          }
+                          onChange={(
+                            dados
+                          ) =>
+                            atualizarDimensao(
+                              dimensao.id,
+                              dados
+                            )
+                          }
+                          onExcluir={() =>
+                            excluirDimensao(
+                              dimensao.id
+                            )
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                )}
+
+
+                <div className="mt-6 flex justify-end border-t border-slate-200 pt-5">
+                  <button
+                    disabled={
+                      processando
+                    }
+                    className="min-h-12 rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {processando
+                      ? "Salvando..."
+                      : "Salvar dimensões"}
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
+
+
+          {/* =================================================
+           * ETAPA 4 - PERGUNTAS
+           * =============================================== */}
+
+          {etapaAtiva ===
+            "perguntas" && (
+            <section className={`${sectionClassName} overflow-hidden`}>
+              <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                <EtapaTitulo
+                  numero="4"
+                  titulo="Perguntas"
+                  descricao="Cadastre os itens do formulário e vincule cada pergunta à dimensão correta."
+                />
+
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (
+                      modeloId
+                    ) {
+                      void adicionarPergunta(
+                        modeloId
+                      );
+                    }
+                  }}
+                  disabled={
+                    processando ||
+                    !modeloId
+                  }
+                  className="min-h-11 shrink-0 rounded-2xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                >
+                  + Adicionar pergunta
+                </button>
+              </div>
+
+
+              <div className="bg-slate-50/70 p-5 sm:p-7">
+                {carregando ||
+                !modeloSelecionado ? (
+                  <EstadoVazio
+                    texto="Carregando modelo..."
+                  />
+                ) : modeloSelecionado.perguntas.length ===
+                  0 ? (
+                  <EstadoVazio
+                    texto="Nenhuma pergunta cadastrada."
+                  />
+                ) : (
+                  <div className="space-y-5">
+                    {modeloSelecionado.perguntas.map(
+                      (
+                        pergunta,
+                        index
+                      ) => (
+                        <PerguntaCard
+                          key={
+                            pergunta.id
+                          }
+                          indice={
+                            index +
+                            1
+                          }
+                          pergunta={
+                            pergunta
+                          }
+                          dimensoes={
+                            dimensoes
+                          }
+                          processando={
+                            processando
+                          }
+                          onSalvar={async (
+                            atualizada
+                          ) => {
+                            if (
+                              !modeloId
+                            ) {
+                              return;
+                            }
+
+
+                            await salvarPergunta(
+                              modeloId,
+                              atualizada
+                            );
+                          }}
+                          onExcluir={async (
+                            perguntaId
+                          ) => {
+                            if (
+                              !modeloId
+                            ) {
+                              return;
+                            }
+
+
+                            await excluirPergunta(
+                              modeloId,
+                              perguntaId
+                            );
+                          }}
+                        />
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
         </div>
       </section>
     </main>
+  );
+}
+
+
+/* =========================================================
+ * COMPONENTES DE ORGANIZAÇÃO
+ * ======================================================= */
+
+function EtapaTitulo({
+  numero,
+  titulo,
+  descricao,
+  compacto = false,
+}: {
+  numero: string;
+  titulo: string;
+  descricao: string;
+  compacto?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-xs font-black text-white">
+        {
+          numero
+        }
+      </span>
+
+
+      <div>
+        <h2
+          className={
+            compacto
+              ? "text-base font-black text-slate-900"
+              : "text-lg font-black text-slate-900"
+          }
+        >
+          {
+            titulo
+          }
+        </h2>
+
+
+        <p className="mt-0.5 text-sm leading-5 text-slate-500">
+          {
+            descricao
+          }
+        </p>
+      </div>
+    </div>
+  );
+}
+
+
+function AtalhoEditor({
+  numero,
+  titulo,
+  descricao,
+  ativo,
+  onClick,
+}: {
+  numero: string;
+  titulo: string;
+  descricao: string;
+  ativo: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={
+        onClick
+      }
+      className={`w-full rounded-2xl border px-3 py-3 text-left transition ${
+        ativo
+          ? "border-blue-400/50 bg-blue-600 text-white shadow-lg shadow-blue-950/20"
+          : "border-white/10 bg-white/5 text-slate-100 hover:bg-white/10"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-black ${
+            ativo
+              ? "bg-white text-blue-700"
+              : "bg-white/10 text-white"
+          }`}
+        >
+          {
+            numero
+          }
+        </span>
+
+
+        <div className="min-w-0">
+          <p className="text-sm font-bold">
+            {
+              titulo
+            }
+          </p>
+
+
+          <p
+            className={`mt-0.5 truncate text-xs ${
+              ativo
+                ? "text-blue-100"
+                : "text-slate-400"
+            }`}
+          >
+            {
+              descricao
+            }
+          </p>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+
+function ResumoChip({
+  label,
+  value,
+}: {
+  label: string;
+  value:
+    | string
+    | number;
+}) {
+  return (
+    <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
+      {
+        label
+      }:{" "}
+      <strong className="text-slate-900">
+        {
+          value
+        }
+      </strong>
+    </span>
   );
 }
 
@@ -1309,7 +1777,6 @@ function ConfiguracaoAnaliseEditor({
   ) {
     onChange({
       ...configuracao,
-
       ...dados,
     });
   }
@@ -1317,22 +1784,29 @@ function ConfiguracaoAnaliseEditor({
 
   return (
     <div>
-      <h3 className="mb-1 font-black text-slate-900">
-        Configuração de análise
-      </h3>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+            Método
+          </p>
 
 
-      <p className="mb-5 text-xs text-slate-500">
-        Método:{" "}
-        <strong>
-          {
-            configuracao.metodo
-          }
-        </strong>
-      </p>
+          <p className="mt-1 text-sm font-black text-slate-900">
+            {nomeMetodo(
+              configuracao.metodo
+            )}
+          </p>
+        </div>
 
 
-      <div className="grid gap-4 sm:grid-cols-2">
+        <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
+          {configuracao.escalaMinima} a{" "}
+          {configuracao.escalaMaxima}
+        </span>
+      </div>
+
+
+      <div className="grid gap-3 sm:grid-cols-2">
         <CampoNumero
           label="Escala mínima"
           value={
@@ -1368,58 +1842,66 @@ function ConfiguracaoAnaliseEditor({
 
       {tipo ===
         TIPO_MODULO.CLIMA && (
-        <div className="mt-5 rounded-2xl bg-blue-50 p-4">
-          <p className="mb-4 text-sm font-bold text-blue-900">
+        <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
+          <p className="text-sm font-black text-blue-900">
             Favorabilidade
           </p>
 
 
-          <ArrayNotas
-            label="Favorável"
-            value={
-              configuracao.favoravel
-            }
-            onChange={(
-              valor
-            ) =>
-              alterar({
-                favoravel:
-                  valor,
-              })
-            }
-          />
+          <p className="mt-1 text-xs leading-5 text-blue-700">
+            Classifique as notas da escala entre favorável, neutro e
+            desfavorável.
+          </p>
 
 
-          <ArrayNotas
-            label="Neutro"
-            value={
-              configuracao.neutro
-            }
-            onChange={(
-              valor
-            ) =>
-              alterar({
-                neutro:
-                  valor,
-              })
-            }
-          />
+          <div className="mt-4 space-y-3">
+            <ArrayNotas
+              label="Favorável"
+              value={
+                configuracao.favoravel
+              }
+              onChange={(
+                valor
+              ) =>
+                alterar({
+                  favoravel:
+                    valor,
+                })
+              }
+            />
 
 
-          <ArrayNotas
-            label="Desfavorável"
-            value={
-              configuracao.desfavoravel
-            }
-            onChange={(
-              valor
-            ) =>
-              alterar({
-                desfavoravel:
-                  valor,
-              })
-            }
-          />
+            <ArrayNotas
+              label="Neutro"
+              value={
+                configuracao.neutro
+              }
+              onChange={(
+                valor
+              ) =>
+                alterar({
+                  neutro:
+                    valor,
+                })
+              }
+            />
+
+
+            <ArrayNotas
+              label="Desfavorável"
+              value={
+                configuracao.desfavoravel
+              }
+              onChange={(
+                valor
+              ) =>
+                alterar({
+                  desfavoravel:
+                    valor,
+                })
+              }
+            />
+          </div>
         </div>
       )}
 
@@ -1506,7 +1988,6 @@ function FaixasEditor({
           id
             ? {
                 ...faixa,
-
                 ...dados,
               }
             : faixa
@@ -1542,18 +2023,18 @@ function FaixasEditor({
 
 
   return (
-    <div className="mt-5 rounded-2xl border border-slate-200 p-4">
-      <div className="flex items-center justify-between gap-3">
+    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-bold text-slate-900">
+          <p className="text-sm font-black text-slate-900">
             Faixas de interpretação
           </p>
 
 
-          <p className="text-xs text-slate-500">
+          <p className="mt-1 text-xs leading-5 text-slate-500">
             {psicossocial
-              ? "Cadastre somente faixas previstas pela metodologia psicossocial utilizada."
-              : "Defina as faixas utilizadas para interpretar o score organizacional."}
+              ? "Cadastre apenas as faixas previstas pela metodologia psicossocial utilizada."
+              : "Defina como o score organizacional será classificado."}
           </p>
         </div>
 
@@ -1563,7 +2044,7 @@ function FaixasEditor({
           onClick={
             adicionar
           }
-          className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white"
+          className="shrink-0 rounded-xl bg-slate-950 px-3 py-2 text-xs font-bold text-white"
         >
           + Faixa
         </button>
@@ -1572,13 +2053,40 @@ function FaixasEditor({
 
       <div className="mt-4 space-y-3">
         {faixas.map(
-          faixa => (
+          (
+            faixa,
+            index
+          ) => (
             <div
               key={
                 faixa.id
               }
-              className="rounded-2xl bg-slate-50 p-3"
+              className="rounded-2xl border border-slate-200 bg-white p-3"
             >
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className="text-xs font-black uppercase tracking-wide text-slate-400">
+                  Faixa{" "}
+                  {
+                    index +
+                    1
+                  }
+                </span>
+
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    excluir(
+                      faixa.id
+                    )
+                  }
+                  className="text-xs font-bold text-red-600"
+                >
+                  Excluir
+                </button>
+              </div>
+
+
               <div className="grid gap-3 sm:grid-cols-2">
                 <CampoCompacto
                   label="Nome"
@@ -1655,19 +2163,6 @@ function FaixasEditor({
                   }
                 />
               </div>
-
-
-              <button
-                type="button"
-                onClick={() =>
-                  excluir(
-                    faixa.id
-                  )
-                }
-                className="mt-3 text-xs font-bold text-red-600"
-              >
-                Excluir faixa
-              </button>
             </div>
           )
         )}
@@ -1675,9 +2170,11 @@ function FaixasEditor({
 
         {faixas.length ===
           0 && (
-          <p className="py-3 text-center text-xs text-slate-500">
-            Nenhuma faixa configurada.
-          </p>
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center">
+            <p className="text-xs font-semibold text-slate-500">
+              Nenhuma faixa configurada.
+            </p>
+          </div>
         )}
       </div>
     </div>
@@ -1690,11 +2187,14 @@ function FaixasEditor({
  * ======================================================= */
 
 function DimensaoCard({
+  indice,
   dimensao,
   psicossocial,
   onChange,
   onExcluir,
 }: {
+  indice: number;
+
   dimensao: DimensaoModelo;
 
   psicossocial: boolean;
@@ -1706,8 +2206,43 @@ function DimensaoCard({
   onExcluir: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 p-4">
-      <div className="grid gap-4 md:grid-cols-2">
+    <article className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-xs font-black text-blue-700 ring-1 ring-slate-200">
+            {
+              indice
+            }
+          </span>
+
+
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+              Dimensão
+            </p>
+
+
+            <p className="text-sm font-black text-slate-900">
+              {dimensao.nome ||
+                `Dimensão ${indice}`}
+            </p>
+          </div>
+        </div>
+
+
+        <button
+          type="button"
+          onClick={
+            onExcluir
+          }
+          className="rounded-xl px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50"
+        >
+          Excluir
+        </button>
+      </div>
+
+
+      <div className="grid gap-4 md:grid-cols-[1fr_120px]">
         <CampoCompacto
           label="Nome"
           value={
@@ -1752,6 +2287,7 @@ function DimensaoCard({
                 descricao,
               })
             }
+            placeholder="Opcional"
           />
         </div>
 
@@ -1776,18 +2312,7 @@ function DimensaoCard({
           </div>
         )}
       </div>
-
-
-      <button
-        type="button"
-        onClick={
-          onExcluir
-        }
-        className="mt-3 text-xs font-bold text-red-600"
-      >
-        Excluir dimensão
-      </button>
-    </div>
+    </article>
   );
 }
 
@@ -1797,12 +2322,15 @@ function DimensaoCard({
  * ======================================================= */
 
 function PerguntaCard({
+  indice,
   pergunta,
   dimensoes,
   processando,
   onSalvar,
   onExcluir,
 }: {
+  indice: number;
+
   pergunta: PerguntaModelo;
 
   dimensoes: DimensaoModelo[];
@@ -1885,6 +2413,14 @@ function PerguntaCard({
     );
 
 
+  const dimensaoSelecionada =
+    dimensoes.find(
+      dimensao =>
+        dimensao.id ===
+        dimensaoId
+    );
+
+
   async function salvar(
     event: FormEvent<HTMLFormElement>
   ) {
@@ -1946,29 +2482,54 @@ function PerguntaCard({
 
 
   return (
-    <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
+    <article className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+      <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-xs font-black text-slate-700">
+            {
+              indice
+            }
+          </span>
+
+
+          <div className="min-w-0">
+            <p className="truncate text-sm font-black text-slate-900">
+              {titulo ||
+                `Pergunta ${indice}`}
+            </p>
+
+
+            <div className="mt-1 flex flex-wrap gap-2">
+              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">
+                {nomeTipoPergunta(
+                  tipo
+                )}
+              </span>
+
+
+              <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-bold text-violet-700">
+                {dimensaoSelecionada?.nome ||
+                  "Sem dimensão"}
+              </span>
+
+
+              {obrigatoria && (
+                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                  Obrigatória
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+
       <form
         onSubmit={
           salvar
         }
+        className="p-5 sm:p-6"
       >
-        <div className="mb-4 flex items-center justify-between">
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-            Pergunta{" "}
-            {
-              pergunta.ordem
-            }
-          </span>
-
-
-          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-            {
-              tipo
-            }
-          </span>
-        </div>
-
-
         <Campo
           label="Enunciado"
           value={
@@ -2171,7 +2732,7 @@ function PerguntaCard({
         </label>
 
 
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+        <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-between">
           <button
             type="button"
             onClick={() =>
@@ -2182,7 +2743,7 @@ function PerguntaCard({
             disabled={
               processando
             }
-            className="min-h-12 rounded-2xl border border-red-200 px-5 py-3 text-sm font-bold text-red-600 disabled:opacity-60"
+            className="min-h-11 rounded-2xl border border-red-200 px-5 py-2.5 text-sm font-bold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
           >
             Excluir pergunta
           </button>
@@ -2192,7 +2753,7 @@ function PerguntaCard({
             disabled={
               processando
             }
-            className="min-h-12 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
+            className="min-h-11 rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60"
           >
             {processando
               ? "Salvando..."
@@ -2200,7 +2761,7 @@ function PerguntaCard({
           </button>
         </div>
       </form>
-    </div>
+    </article>
   );
 }
 
@@ -2487,7 +3048,7 @@ function CabecalhoEditor({
 }) {
   return (
     <header className="bg-white px-4 py-5 shadow-sm sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+      <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
             Construtor de Modelos
@@ -2511,7 +3072,7 @@ function CabecalhoEditor({
 
         <Link
           href="/modelos-pesquisa"
-          className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700"
+          className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
         >
           Voltar
         </Link>
@@ -2588,7 +3149,7 @@ function TipoModeloBadge({
     TIPO_MODULO.DIAGNOSTICO_ORGANIZACIONAL
   ) {
     return (
-      <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
+      <span className="rounded-full bg-purple-100 px-3 py-1.5 text-xs font-bold text-purple-700">
         Diagnóstico Organizacional
       </span>
     );
@@ -2600,7 +3161,7 @@ function TipoModeloBadge({
     TIPO_MODULO.AVALIACAO_PSICOSSOCIAL
   ) {
     return (
-      <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">
+      <span className="rounded-full bg-orange-100 px-3 py-1.5 text-xs font-bold text-orange-700">
         Avaliação Psicossocial
       </span>
     );
@@ -2608,7 +3169,7 @@ function TipoModeloBadge({
 
 
   return (
-    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
+    <span className="rounded-full bg-blue-100 px-3 py-1.5 text-xs font-bold text-blue-700">
       Pesquisa de Clima
     </span>
   );
