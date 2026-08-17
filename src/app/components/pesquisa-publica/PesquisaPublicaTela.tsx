@@ -221,10 +221,9 @@ export default function PesquisaPublicaTela({
                   type="email"
                 />
 
-                <Campo
-                  name="setor"
-                  label="Setor"
-                  placeholder="Ex: Operacional"
+                <CampoSetor
+                  setores={pesquisa.cliente.setores ?? []}
+                  valorPredefinido={pesquisa.convite?.setor ?? null}
                 />
 
                 <Campo
@@ -381,6 +380,51 @@ function Campo({
         className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
       />
     </div>
+  );
+}
+
+
+function CampoSetor({
+  setores,
+  valorPredefinido,
+}: {
+  setores: string[];
+  valorPredefinido?: string | null;
+}) {
+  if (valorPredefinido) {
+    return (
+      <div>
+        <label className="mb-2 block text-sm font-semibold text-slate-700">Setor</label>
+        <input
+          name="setor"
+          value={valorPredefinido}
+          readOnly
+          className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 outline-none"
+        />
+      </div>
+    );
+  }
+
+  if (setores.length > 0) {
+    return (
+      <div>
+        <label className="mb-2 block text-sm font-semibold text-slate-700">Setor</label>
+        <select
+          name="setor"
+          defaultValue=""
+          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+        >
+          <option value="">Selecione o setor</option>
+          {setores.map((setor) => (
+            <option key={setor} value={setor}>{setor}</option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  return (
+    <Campo name="setor" label="Setor" placeholder="Ex: Operacional" />
   );
 }
 

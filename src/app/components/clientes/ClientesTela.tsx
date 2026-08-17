@@ -164,6 +164,12 @@ export default function ClientesTela({
   const [ativo, setAtivo] =
     useState(true);
 
+  const [setores, setSetores] =
+    useState<string[]>([]);
+
+  const [novoSetor, setNovoSetor] =
+    useState("");
+
   const [
     criarUsuarioMaster,
     setCriarUsuarioMaster,
@@ -319,6 +325,10 @@ export default function ClientesTela({
         clienteSelecionado.ativo
       );
 
+      setSetores(
+        clienteSelecionado.setores ?? []
+      );
+
       setCriarUsuarioMaster(
         false
       );
@@ -465,6 +475,30 @@ export default function ClientesTela({
     }
   }
 
+  function adicionarSetor() {
+    const valor = novoSetor.trim();
+    if (!valor) return;
+
+    const duplicado = setores.some((setor) =>
+      setor.localeCompare(valor, "pt-BR", { sensitivity: "base" }) === 0
+    );
+
+    if (duplicado) {
+      setErroLocal("Este setor já está cadastrado.");
+      return;
+    }
+
+    setSetores((atual) =>
+      [...atual, valor].sort((a, b) => a.localeCompare(b, "pt-BR"))
+    );
+    setNovoSetor("");
+    setErroLocal(null);
+  }
+
+  function removerSetor(setor: string) {
+    setSetores((atual) => atual.filter((item) => item !== setor));
+  }
+
   async function enviarFormulario(
     event:
       FormEvent<HTMLFormElement>
@@ -543,6 +577,7 @@ export default function ClientesTela({
             observacoes.trim(),
 
           ativo,
+          setores,
         });
 
       if (
@@ -988,6 +1023,55 @@ export default function ClientesTela({
                 className="h-5 w-5 shrink-0 accent-blue-600"
               />
             </label>
+          </SecaoFormulario>
+
+          <SecaoFormulario
+            titulo="Estrutura organizacional"
+            descricao="Cadastre os setores que poderão ser selecionados nas pesquisas deste cliente."
+          >
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">Adicionar setor</label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  value={novoSetor}
+                  onChange={(event) => setNovoSetor(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      adicionarSetor();
+                    }
+                  }}
+                  placeholder="Ex.: Operacional"
+                  className={inputClassName}
+                />
+                <button
+                  type="button"
+                  onClick={adicionarSetor}
+                  className="min-h-12 shrink-0 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-700"
+                >
+                  + Adicionar
+                </button>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                Os nomes cadastrados serão usados no dropdown da pesquisa e nos relatórios.
+              </p>
+            </div>
+
+            {setores.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center">
+                <p className="text-sm font-semibold text-slate-600">Nenhum setor cadastrado.</p>
+                <p className="mt-1 text-xs text-slate-500">Sem setores cadastrados, a pesquisa mantém texto livre por compatibilidade.</p>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {setores.map((setor) => (
+                  <span key={setor} className="inline-flex items-center gap-2 rounded-full bg-blue-50 py-2 pl-3 pr-2 text-sm font-bold text-blue-800 ring-1 ring-blue-100">
+                    {setor}
+                    <button type="button" onClick={() => removerSetor(setor)} className="flex h-6 w-6 items-center justify-center rounded-full text-blue-600 transition hover:bg-blue-100 hover:text-red-600">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
           </SecaoFormulario>
 
           <SecaoFormulario

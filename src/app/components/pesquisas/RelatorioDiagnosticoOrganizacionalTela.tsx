@@ -151,15 +151,17 @@ export default function RelatorioDiagnosticoOrganizacionalTela({
               Voltar
             </Link>
 
-            <button
-              type="button"
-              onClick={() =>
-                window.print()
-              }
-              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-slate-700"
+            <Link
+              href={montarUrlRelatorioImpressao(
+                dados,
+                "/relatorios/diagnostico-organizacional"
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-slate-700"
             >
               Imprimir relatório
-            </button>
+            </Link>
           </div>
         </div>
       </header>
@@ -896,4 +898,51 @@ function formatarClassificacao(
           "pt-BR"
         )
     );
+}
+
+function montarUrlRelatorioImpressao(
+  dados: DadosRelatorioDiagnostico,
+  pathname: string
+) {
+  const params =
+    new URLSearchParams();
+
+
+  if (
+    dados.filtros.dataInicio
+  ) {
+    params.set(
+      "dataInicio",
+      dados.filtros.dataInicio
+    );
+  }
+
+
+  if (
+    dados.filtros.dataFim
+  ) {
+    params.set(
+      "dataFim",
+      dados.filtros.dataFim
+    );
+  }
+
+
+  if (
+    dados.filtros.clienteId
+  ) {
+    params.set(
+      "clienteId",
+      dados.filtros.clienteId
+    );
+  }
+
+
+  const query =
+    params.toString();
+
+
+  return query
+    ? `${pathname}?${query}`
+    : pathname;
 }

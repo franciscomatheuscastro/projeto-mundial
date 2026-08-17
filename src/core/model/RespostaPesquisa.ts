@@ -57,6 +57,14 @@ export type PesquisaPublica = {
     nome: string;
 
     empresa?: string | null;
+
+    /*
+     * Setores cadastrados no cliente.
+     *
+     * Utilizados para preencher o dropdown
+     * de setor no formulário público.
+     */
+    setores: string[];
   };
 
 

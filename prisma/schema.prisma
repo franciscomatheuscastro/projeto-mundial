@@ -36,6 +36,9 @@ model Cliente {
   documento              String?
   observacoes            String?
   ativo                  Boolean                        @default(true)
+
+  setores                Json                           @default("[]")
+
   criadoEm               DateTime                       @default(now())
   atualizadoEm           DateTime                       @updatedAt
   colaboradores          ColaboradorCliente[]

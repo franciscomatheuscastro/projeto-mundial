@@ -27,6 +27,25 @@ function somenteNumeros(
   return valor?.replace(/\D/g, "") || "";
 }
 
+function normalizarSetores(
+  valor: unknown
+): string[] {
+  if (!Array.isArray(valor)) return [];
+  const mapa = new Map<string, string>();
+  for (const item of valor) {
+    const nome = String(item ?? "").trim();
+    if (!nome) continue;
+    const chave = nome
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("pt-BR");
+    if (!mapa.has(chave)) mapa.set(chave, nome);
+  }
+  return Array.from(mapa.values()).sort((a, b) =>
+    a.localeCompare(b, "pt-BR")
+  );
+}
+
 export default class RepositorioCliente {
   static async salvar(
     cliente: Cliente
@@ -95,21 +114,35 @@ export default class RepositorioCliente {
 
       ativo:
         cliente.ativo ?? true,
+
+      setores:
+        normalizarSetores(
+          cliente.setores
+        ) as unknown as Prisma.InputJsonValue,
     };
 
-    if (cliente.id) {
-      return prisma.cliente.update({
-        where: {
-          id: cliente.id,
-        },
+    const clienteSalvo =
+      cliente.id
+        ? await prisma.cliente.update({
+            where: {
+              id: cliente.id,
+            },
 
-        data: dados,
-      });
-    }
+            data: dados,
+          })
+        : await prisma.cliente.create({
+            data: dados,
+          });
 
-    return prisma.cliente.create({
-      data: dados,
-    });
+
+    return {
+      ...clienteSalvo,
+
+      setores:
+        normalizarSetores(
+          clienteSalvo.setores
+        ),
+    };
   }
 
   static async obterMinhaConta(
@@ -149,6 +182,7 @@ export default class RepositorioCliente {
           documento: true,
           observacoes: true,
           ativo: true,
+          setores: true,
           criadoEm: true,
           atualizadoEm: true,
 
@@ -197,7 +231,10 @@ export default class RepositorioCliente {
     } = cliente;
 
     return {
-      cliente: dadosCliente,
+      cliente: {
+        ...dadosCliente,
+        setores: normalizarSetores(dadosCliente.setores),
+      },
       usuario,
     };
   }
@@ -332,6 +369,7 @@ export default class RepositorioCliente {
         observacoes:
           cliente.observacoes,
         ativo: cliente.ativo,
+        setores: normalizarSetores(cliente.setores),
         criadoEm: cliente.criadoEm,
         atualizadoEm:
           cliente.atualizadoEm,
@@ -407,7 +445,7 @@ export default class RepositorioCliente {
 
     return {
       ...dadosCliente,
-
+      setores: normalizarSetores(dadosCliente.setores),
       usuarioMaster:
         usuarios[0] ?? null,
     };

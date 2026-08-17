@@ -234,15 +234,18 @@ export default function RelatorioAvaliacaoPsicossocialTela({
             </Link>
 
 
-            <button
-              type="button"
-              onClick={() =>
-                window.print()
+            <Link
+              href={
+                montarUrlRelatorioImpressao(
+                  dados
+                )
               }
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-slate-700"
             >
               Imprimir relatório
-            </button>
+            </Link>
           </div>
         </div>
       </header>
@@ -443,6 +446,55 @@ export default function RelatorioAvaliacaoPsicossocialTela({
     </main>
   );
 }
+
+
+
+function montarUrlRelatorioImpressao(
+  dados: DadosRelatorioPsicossocial
+) {
+  const parametros =
+    new URLSearchParams();
+
+
+  if (
+    dados.filtros.dataInicio
+  ) {
+    parametros.set(
+      "dataInicio",
+      dados.filtros.dataInicio
+    );
+  }
+
+
+  if (
+    dados.filtros.dataFim
+  ) {
+    parametros.set(
+      "dataFim",
+      dados.filtros.dataFim
+    );
+  }
+
+
+  if (
+    dados.filtros.clienteId
+  ) {
+    parametros.set(
+      "clienteId",
+      dados.filtros.clienteId
+    );
+  }
+
+
+  const query =
+    parametros.toString();
+
+
+  return query
+    ? `/relatorios/avaliacao-psicossocial?${query}`
+    : "/relatorios/avaliacao-psicossocial";
+}
+
 
 
 function FatorCard({

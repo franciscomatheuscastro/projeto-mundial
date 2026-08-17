@@ -65,6 +65,28 @@ function emailOuNull(
     null;
 }
 
+function normalizarSetores(valor: unknown): string[] {
+  if (!Array.isArray(valor)) return [];
+  const mapa = new Map<string, string>();
+  for (const item of valor) {
+    const nome = String(item ?? "").trim();
+    if (!nome) continue;
+    const chave = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+    if (!mapa.has(chave)) mapa.set(chave, nome);
+  }
+  return Array.from(mapa.values()).sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+function validarSetorSelecionado(
+  setor: string | null,
+  setoresDisponiveis: string[]
+) {
+  if (!setor || setoresDisponiveis.length === 0) return;
+  if (!setoresDisponiveis.includes(setor)) {
+    throw new Error("O setor selecionado não é válido para esta organização.");
+  }
+}
+
 
 /* =========================================================
  * CONFIGURAÇÃO DE ANÁLISE
@@ -300,6 +322,9 @@ export default class RepositorioRespostaPesquisa {
 
                   empresa:
                     true,
+
+                  setores:
+                    true,
                 },
               },
 
@@ -360,8 +385,10 @@ export default class RepositorioRespostaPesquisa {
             pesquisa.perguntas
           ),
 
-        cliente:
-          pesquisa.cliente,
+        cliente: {
+          ...pesquisa.cliente,
+          setores: normalizarSetores(pesquisa.cliente.setores),
+        },
 
         modelo:
           pesquisa.modelo,
@@ -417,6 +444,9 @@ export default class RepositorioRespostaPesquisa {
 
               empresa:
                 true,
+
+              setores:
+                true,
             },
           },
 
@@ -467,8 +497,10 @@ export default class RepositorioRespostaPesquisa {
           pesquisa.perguntas
         ),
 
-      cliente:
-        pesquisa.cliente,
+      cliente: {
+        ...pesquisa.cliente,
+        setores: normalizarSetores(pesquisa.cliente.setores),
+      },
 
       modelo:
         pesquisa.modelo,
@@ -521,8 +553,15 @@ export default class RepositorioRespostaPesquisa {
         },
 
         include: {
-          pesquisa:
-            true,
+          pesquisa: {
+            include: {
+              cliente: {
+                select: {
+                  setores: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -625,6 +664,14 @@ export default class RepositorioRespostaPesquisa {
         resposta,
         configuracao
       );
+
+
+    if (!textoOuNull(convite.setor)) {
+      validarSetorSelecionado(
+        textoOuNull(resposta.setor),
+        normalizarSetores(pesquisa.cliente?.setores)
+      );
+    }
 
 
     /*
@@ -758,6 +805,14 @@ export default class RepositorioRespostaPesquisa {
           id:
             resposta.pesquisaId,
         },
+
+        include: {
+          cliente: {
+            select: {
+              setores: true,
+            },
+          },
+        },
       });
 
 
@@ -818,6 +873,12 @@ export default class RepositorioRespostaPesquisa {
         resposta,
         configuracao
       );
+
+
+    validarSetorSelecionado(
+      textoOuNull(resposta.setor),
+      normalizarSetores(pesquisa.cliente.setores)
+    );
 
 
     return prisma.respostaPesquisa.create({

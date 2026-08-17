@@ -12,6 +12,7 @@ export type Cliente = {
   documento?: string | null;
   observacoes?: string | null;
   ativo?: boolean;
+  setores?: string[];
   criadoEm?: Date;
   atualizadoEm?: Date;
 };
@@ -34,6 +35,7 @@ export type ClienteComResumo = {
   documento: string | null;
   observacoes: string | null;
   ativo: boolean;
+  setores: string[];
   criadoEm: Date;
   atualizadoEm: Date;
   totalPesquisas: number;
@@ -48,21 +50,16 @@ export type ClienteDetalhado = {
   documento: string | null;
   observacoes: string | null;
   ativo: boolean;
+  setores: string[];
   criadoEm: Date;
   atualizadoEm: Date;
-
   usuarioMaster: UsuarioMasterCliente | null;
-
   pesquisas: {
     id: string;
     titulo: string;
     status: StatusPesquisaCliente;
     criadoEm: Date;
-
-    modelo: {
-      id: string;
-      titulo: string;
-    };
+    modelo: { id: string; titulo: string };
   }[];
 };
 
@@ -76,10 +73,10 @@ export type MinhaContaCliente = {
     documento: string | null;
     observacoes: string | null;
     ativo: boolean;
+    setores: string[];
     criadoEm: Date;
     atualizadoEm: Date;
   };
-
   usuario: {
     id: string;
     nome: string;
