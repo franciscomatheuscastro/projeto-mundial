@@ -748,7 +748,7 @@ export default function ModelosPesquisaTela({
 
 
           <div className="overflow-x-auto rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-            <table className="w-full min-w-[1000px] border-collapse">
+            <table className="w-full min-w-[1120px] border-collapse">
               <thead className="bg-slate-50">
                 <tr>
                   <Th>
@@ -821,7 +821,7 @@ export default function ModelosPesquisaTela({
                         </td>
 
 
-                        <td className="px-4 py-4">
+                        <td className="w-[240px] px-4 py-4 align-middle">
                           <TipoModeloBadge
                             tipo={
                               modelo.tipo
@@ -3149,7 +3149,7 @@ function TipoModeloBadge({
     TIPO_MODULO.DIAGNOSTICO_ORGANIZACIONAL
   ) {
     return (
-      <span className="rounded-full bg-purple-100 px-3 py-1.5 text-xs font-bold text-purple-700">
+      <span className="inline-flex whitespace-nowrap rounded-full bg-purple-100 px-3 py-1.5 text-xs font-bold text-purple-700">
         Diagnóstico Organizacional
       </span>
     );
@@ -3161,7 +3161,7 @@ function TipoModeloBadge({
     TIPO_MODULO.AVALIACAO_PSICOSSOCIAL
   ) {
     return (
-      <span className="rounded-full bg-orange-100 px-3 py-1.5 text-xs font-bold text-orange-700">
+      <span className="inline-flex whitespace-nowrap rounded-full bg-orange-100 px-3 py-1.5 text-xs font-bold text-orange-700">
         Avaliação Psicossocial
       </span>
     );
@@ -3169,7 +3169,7 @@ function TipoModeloBadge({
 
 
   return (
-    <span className="rounded-full bg-blue-100 px-3 py-1.5 text-xs font-bold text-blue-700">
+    <span className="inline-flex whitespace-nowrap rounded-full bg-blue-100 px-3 py-1.5 text-xs font-bold text-blue-700">
       Pesquisa de Clima
     </span>
   );

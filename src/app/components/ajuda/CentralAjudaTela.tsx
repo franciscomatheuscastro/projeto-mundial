@@ -35,7 +35,7 @@ const TOPICOS: TopicoAjuda[] = [
       "Conheça os principais módulos e aprenda a navegar pelo sistema.",
     conteudo: [
       "Utilize o menu lateral para acessar os módulos disponíveis para o seu perfil.",
-      "O Dashboard apresenta uma visão consolidada das principais informações da plataforma.",
+      "O Dashboard apresenta uma visão consolidada da operação e separa as aplicações entre Pesquisa de Clima, Diagnóstico Organizacional e Avaliação Psicossocial.",
       "Cada perfil possui permissões específicas. Algumas páginas podem não aparecer para todos os usuários.",
       "Ao terminar de utilizar a plataforma, clique em Sair no rodapé do menu.",
     ],
@@ -45,11 +45,243 @@ const TOPICOS: TopicoAjuda[] = [
       "menu",
       "dashboard",
       "navegação",
+      "modalidades",
     ],
     perfis: [
       "MUNDIAL",
       "CLIENTE",
       "COMITE",
+    ],
+  },
+
+  {
+    id: "modalidades-pesquisa",
+    categoria: "Pesquisas e avaliações",
+    titulo: "Quais são as três modalidades de avaliação",
+    resumo:
+      "Entenda a finalidade da Pesquisa de Clima, do Diagnóstico Organizacional e da Avaliação Psicossocial.",
+    conteudo: [
+      "Pesquisa de Clima: avalia a percepção dos colaboradores por meio de favorabilidade, neutralidade e desfavorabilidade.",
+      "Diagnóstico Organizacional: consolida dimensões em uma escala de 0 a 100 e organiza a leitura executiva em forças, pontos de atenção e prioridades.",
+      "Avaliação Psicossocial: consolida fatores psicossociais relacionados ao trabalho em uma escala de exposição de 0 a 100 e utiliza as faixas de interpretação configuradas no instrumento.",
+      "As três modalidades utilizam modelos reutilizáveis, aplicações vinculadas a clientes, convites, respostas e relatórios consolidados.",
+      "Perguntas que não são do tipo Nota podem ser apresentadas como informações adicionais e não alteram o score quantitativo.",
+    ],
+    palavrasChave: [
+      "clima",
+      "diagnóstico",
+      "psicossocial",
+      "modalidade",
+      "avaliação",
+      "score",
+    ],
+    perfis: [
+      "MUNDIAL",
+      "CLIENTE",
+    ],
+  },
+
+  {
+    id: "construtor-modelos",
+    categoria: "Pesquisas e avaliações",
+    titulo: "Como funciona o Construtor de Modelos",
+    resumo:
+      "Configure dados gerais, análise, dimensões e perguntas dos instrumentos.",
+    conteudo: [
+      "O construtor é organizado em quatro etapas: Dados gerais, Configuração da análise, Dimensões e Perguntas.",
+      "Em Dados gerais, defina o título, a descrição, a modalidade e o status do modelo.",
+      "Em Configuração da análise, informe a escala mínima, a escala máxima e os critérios específicos da modalidade.",
+      "Em Dimensões, cadastre os temas analíticos. O peso pertence à dimensão e não à pergunta.",
+      "Na Avaliação Psicossocial, o fator de risco também é configurado na dimensão.",
+      "Em Perguntas, selecione o tipo, a dimensão e, quando a pergunta for Nota, o sentido da pontuação.",
+      "O campo Opções somente é utilizado em perguntas de Múltipla Escolha.",
+    ],
+    palavrasChave: [
+      "modelo",
+      "construtor",
+      "dimensão",
+      "peso",
+      "fator de risco",
+      "pergunta",
+      "escala",
+    ],
+    perfis: [
+      "MUNDIAL",
+    ],
+  },
+
+  {
+    id: "pesquisa-clima",
+    categoria: "Pesquisa de Clima",
+    titulo: "Como criar e analisar uma Pesquisa de Clima",
+    resumo:
+      "Configure o instrumento, aplique a pesquisa e acompanhe a favorabilidade.",
+    conteudo: [
+      "Crie ou selecione um modelo da modalidade Pesquisa de Clima.",
+      "Cadastre as dimensões que serão avaliadas e vincule as perguntas às respectivas dimensões.",
+      "Nas perguntas de Nota, defina corretamente o sentido da pontuação.",
+      "Na configuração da análise, informe quais notas são favoráveis, neutras e desfavoráveis.",
+      "Crie a aplicação vinculada ao cliente e gere os convites para participação.",
+      "O relatório consolidado apresenta o Índice Geral de Clima, favorabilidade por dimensão, melhores dimensões, pontos de atenção e histórico quando houver aplicações comparáveis.",
+      "Perguntas de Sim/Não, Múltipla Escolha e Texto aparecem em Informações adicionais e não alteram o índice de clima.",
+    ],
+    palavrasChave: [
+      "pesquisa",
+      "clima",
+      "favorabilidade",
+      "neutro",
+      "desfavorável",
+      "índice geral",
+      "relatório",
+    ],
+    perfis: [
+      "MUNDIAL",
+      "CLIENTE",
+    ],
+  },
+
+  {
+    id: "diagnostico-organizacional",
+    categoria: "Diagnóstico Organizacional",
+    titulo: "Como funciona o Diagnóstico Organizacional",
+    resumo:
+      "Entenda o score organizacional e a leitura por dimensões.",
+    conteudo: [
+      "Crie ou selecione um modelo da modalidade Diagnóstico Organizacional.",
+      "Cadastre as dimensões organizacionais e atribua o peso de cada dimensão quando necessário.",
+      "Configure as faixas de interpretação que classificam os scores calculados.",
+      "As perguntas de Nota são normalizadas para uma escala de 0 a 100 e alimentam o score das dimensões.",
+      "O relatório apresenta o Score Organizacional e o resultado de cada dimensão.",
+      "A leitura executiva organiza as dimensões em Forças, Pontos de atenção e Prioridades conforme a lógica atualmente adotada pelo sistema.",
+      "Perguntas não quantitativas são exibidas em Informações adicionais e não alteram o score.",
+    ],
+    palavrasChave: [
+      "diagnóstico",
+      "organizacional",
+      "maturidade",
+      "score",
+      "forças",
+      "pontos de atenção",
+      "prioridades",
+    ],
+    perfis: [
+      "MUNDIAL",
+      "CLIENTE",
+    ],
+  },
+
+  {
+    id: "avaliacao-psicossocial",
+    categoria: "Avaliação Psicossocial",
+    titulo: "Como funciona a Avaliação Psicossocial",
+    resumo:
+      "Entenda fatores, scores, faixas de interpretação e recortes setoriais.",
+    conteudo: [
+      "Crie ou selecione um modelo da modalidade Avaliação Psicossocial.",
+      "Cadastre as dimensões e informe, quando aplicável, o fator de risco correspondente em cada dimensão.",
+      "O peso é definido na dimensão. Perguntas individuais não possuem peso próprio.",
+      "As perguntas de Nota alimentam o motor quantitativo e são normalizadas para uma escala de exposição de 0 a 100.",
+      "Quanto maior o score psicossocial consolidado, maior a exposição representada pelo indicador.",
+      "As faixas de interpretação cadastradas no modelo determinam classificações como Baixo, Moderado, Alto ou Crítico, conforme a metodologia utilizada.",
+      "O relatório pode apresentar ranking dos fatores, Radar de exposição e Mapa de Calor por setor quando houver dados suficientes.",
+      "O Mapa de Calor utiliza respostas com setor informado. Respostas sem setor continuam no consolidado geral.",
+    ],
+    palavrasChave: [
+      "psicossocial",
+      "fator de risco",
+      "exposição",
+      "radar",
+      "heatmap",
+      "mapa de calor",
+      "setor",
+      "crítico",
+    ],
+    perfis: [
+      "MUNDIAL",
+      "CLIENTE",
+    ],
+  },
+
+  {
+    id: "tipos-pergunta-relatorios",
+    categoria: "Pesquisas e avaliações",
+    titulo: "Como os tipos de pergunta aparecem nos relatórios",
+    resumo:
+      "Saiba quais perguntas formam scores e quais aparecem como informações adicionais.",
+    conteudo: [
+      "Nota: é o tipo quantitativo utilizado pelos motores analíticos das três modalidades.",
+      "Sim/Não: aparece em Informações adicionais com quantidade e percentual de cada resposta.",
+      "Múltipla Escolha: aparece em Informações adicionais com a distribuição das alternativas.",
+      "Texto curto e Texto longo: aparecem como respostas qualitativas em Informações adicionais.",
+      "Perguntas não quantitativas não alteram favorabilidade, maturidade, score organizacional ou exposição psicossocial.",
+    ],
+    palavrasChave: [
+      "nota",
+      "sim não",
+      "múltipla escolha",
+      "texto",
+      "informações adicionais",
+      "relatório",
+    ],
+    perfis: [
+      "MUNDIAL",
+      "CLIENTE",
+    ],
+  },
+
+  {
+    id: "setores-pesquisa",
+    categoria: "Pesquisas e avaliações",
+    titulo: "Como utilizar setores nas pesquisas",
+    resumo:
+      "Padronize os setores para melhorar os recortes analíticos e o mapa de calor.",
+    conteudo: [
+      "Os setores podem ser cadastrados na estrutura organizacional do cliente.",
+      "Quando existem setores cadastrados, o participante seleciona o setor em uma lista em vez de digitá-lo livremente.",
+      "A padronização evita registros diferentes para o mesmo setor, como Operacional, operacional ou OP.",
+      "Na Avaliação Psicossocial, o setor informado é utilizado para compor o Mapa de Calor por setor.",
+      "Se um convite possuir setor previamente definido, esse valor pode ser apresentado bloqueado no formulário.",
+    ],
+    palavrasChave: [
+      "setor",
+      "dropdown",
+      "lista",
+      "estrutura organizacional",
+      "mapa de calor",
+    ],
+    perfis: [
+      "MUNDIAL",
+      "CLIENTE",
+    ],
+  },
+
+  {
+    id: "relatorios-consolidados",
+    categoria: "Relatórios",
+    titulo: "Como consultar e imprimir os relatórios consolidados",
+    resumo:
+      "Utilize o dashboard para análise e a versão A4 para apresentação ao cliente.",
+    conteudo: [
+      "Cada modalidade possui um relatório consolidado com filtros por período e organização.",
+      "O relatório exibido no sistema funciona como dashboard de análise operacional.",
+      "Ao clicar em Imprimir relatório, a plataforma abre uma rota separada, preparada para impressão ou salvamento em PDF.",
+      "A versão para impressão não utiliza o menu lateral nem o layout administrativo da plataforma.",
+      "Pesquisa de Clima apresenta favorabilidade, destaques, pontos de atenção, histórico e informações adicionais.",
+      "Diagnóstico Organizacional apresenta score, dimensões, forças, pontos de atenção, prioridades e informações adicionais.",
+      "Avaliação Psicossocial apresenta resumo executivo, ranking, Radar, Mapa de Calor, fatores e informações adicionais quando houver dados disponíveis.",
+    ],
+    palavrasChave: [
+      "relatório",
+      "imprimir",
+      "pdf",
+      "cliente",
+      "clima",
+      "diagnóstico",
+      "psicossocial",
+    ],
+    perfis: [
+      "MUNDIAL",
+      "CLIENTE",
     ],
   },
 
@@ -141,8 +373,7 @@ const TOPICOS: TopicoAjuda[] = [
   {
     id: "perguntas-canal",
     categoria: "Canal de denúncias",
-    titulo:
-      "Como configurar perguntas personalizadas",
+    titulo: "Como configurar perguntas personalizadas",
     resumo:
       "Crie perguntas adicionais para os canais de denúncia dos clientes.",
     conteudo: [
@@ -162,43 +393,15 @@ const TOPICOS: TopicoAjuda[] = [
       "canal",
       "múltipla escolha",
     ],
-    perfis: ["MUNDIAL"],
-  },
-
-  {
-    id: "pesquisa-clima",
-    categoria: "Pesquisa de clima",
-    titulo:
-      "Como criar uma pesquisa de clima",
-    resumo:
-      "Configure modelos, perguntas, convites e acompanhe os resultados.",
-    conteudo: [
-      "Primeiro, crie ou selecione um modelo de pesquisa.",
-      "Cadastre as perguntas e defina seus respectivos tipos.",
-      "Crie uma pesquisa vinculando o modelo a um cliente.",
-      "Defina o período de participação e o status da pesquisa.",
-      "Gere convites individuais para os participantes.",
-      "Após o encerramento, acesse o relatório consolidado.",
-      "As respostas anônimas não devem identificar individualmente os participantes.",
-    ],
-    palavrasChave: [
-      "pesquisa",
-      "clima",
-      "modelo",
-      "convite",
-      "relatório",
-    ],
     perfis: [
       "MUNDIAL",
-      "CLIENTE",
     ],
   },
 
   {
     id: "planos-acao",
     categoria: "Planos de ação",
-    titulo:
-      "Como utilizar os planos de ação",
+    titulo: "Como utilizar os planos de ação",
     resumo:
       "Crie ações corretivas a partir de pesquisas ou denúncias.",
     conteudo: [
@@ -225,8 +428,7 @@ const TOPICOS: TopicoAjuda[] = [
   {
     id: "agendamentos",
     categoria: "Agendamentos",
-    titulo:
-      "Como consultar e organizar agendamentos",
+    titulo: "Como consultar e organizar agendamentos",
     resumo:
       "Gerencie reuniões, devolutivas e apresentações.",
     conteudo: [
@@ -252,8 +454,7 @@ const TOPICOS: TopicoAjuda[] = [
   {
     id: "colaboradores",
     categoria: "Usuários e permissões",
-    titulo:
-      "Como gerenciar colaboradores do cliente",
+    titulo: "Como gerenciar colaboradores do cliente",
     resumo:
       "Controle acessos e permissões do comitê interno.",
     conteudo: [
@@ -280,8 +481,7 @@ const TOPICOS: TopicoAjuda[] = [
   {
     id: "seguranca",
     categoria: "Segurança",
-    titulo:
-      "Boas práticas de segurança",
+    titulo: "Boas práticas de segurança",
     resumo:
       "Proteja sua conta e os dados acessados na plataforma.",
     conteudo: [
@@ -309,8 +509,7 @@ const TOPICOS: TopicoAjuda[] = [
   {
     id: "problemas-acesso",
     categoria: "Solução de problemas",
-    titulo:
-      "Não consigo acessar uma página",
+    titulo: "Não consigo acessar uma página",
     resumo:
       "Veja as causas mais comuns de bloqueio de acesso.",
     conteudo: [
@@ -334,6 +533,7 @@ const TOPICOS: TopicoAjuda[] = [
     ],
   },
 ];
+
 
 export default function CentralAjudaTela({
   perfil,
