@@ -21,6 +21,8 @@ import {
   usePesquisasCliente,
 } from "@/src/app/data/hooks/UsePesquisasCliente";
 
+import EnviarConviteEmailButton from "@/src/app/components/pesquisas/EnviarConviteEmailButton";
+
 
 type Contexto =
   | "mundial"
@@ -935,7 +937,7 @@ export default function PesquisasTela({
         </header>
 
 
-        <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[420px_1fr] lg:px-8">
+        <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:px-8">
           <div className="lg:col-span-2">
             <AlertaErro
               mensagem={
@@ -1084,7 +1086,7 @@ export default function PesquisasTela({
               </aside>
 
 
-              <div className="space-y-6">
+              <div className="min-w-0 space-y-6">
                 {podeGerenciarLinks && (
                   <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
                     <div className="mb-4">
@@ -1161,119 +1163,139 @@ export default function PesquisasTela({
                         respostas.
                       </div>
                     ) : (
-                      <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                        <table className="w-full min-w-[850px] border-collapse">
-                          <thead className="bg-slate-50">
-                            <tr>
-                              <Th>
-                                Participante
-                              </Th>
+                      <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+                        {convites.map(
+                          convite => {
+                            const linkConvite =
+                              montarLink(
+                                convite.token
+                              );
 
-                              <Th>
-                                Estrutura
-                              </Th>
+                            return (
+                              <article
+                                key={
+                                  convite.id
+                                }
+                                className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm"
+                              >
+                                <div className="flex min-w-0 items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-black text-slate-900">
+                                      {convite.nome ||
+                                        "Participante"}
+                                    </p>
 
-                              <Th>
-                                Status
-                              </Th>
-
-                              <Th>
-                                Link
-                              </Th>
-                            </tr>
-                          </thead>
+                                    <p className="mt-1 truncate text-xs text-slate-500">
+                                      {convite.email ||
+                                        "Sem identificação"}
+                                    </p>
+                                  </div>
 
 
-                          <tbody>
-                            {convites.map(
-                              convite => {
-                                const linkConvite =
-                                  montarLink(
-                                    convite.token
-                                  );
-
-                                return (
-                                  <tr
-                                    key={
-                                      convite.id
-                                    }
-                                    className="border-t border-slate-100"
+                                  <span
+                                    className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${
+                                      convite.respondido
+                                        ? "bg-green-100 text-green-700"
+                                        : "bg-yellow-100 text-yellow-700"
+                                    }`}
                                   >
-                                    <td className="px-4 py-4">
-                                      <div className="text-sm font-bold text-slate-900">
-                                        {convite.nome ||
-                                          "Participante"}
-                                      </div>
-
-                                      <div className="text-xs text-slate-500">
-                                        {convite.email ||
-                                          "Sem identificação"}
-                                      </div>
-                                    </td>
+                                    {convite.respondido
+                                      ? "Respondido"
+                                      : "Pendente"}
+                                  </span>
+                                </div>
 
 
-                                    <td className="px-4 py-4 text-xs text-slate-500">
-                                      <div>
-                                        {convite.unidade
-                                          ? `Unidade: ${convite.unidade}`
-                                          : "Unidade: —"}
-                                      </div>
+                                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                  <MiniInfoConvite
+                                    titulo="Unidade"
+                                    valor={
+                                      convite.unidade ||
+                                      "—"
+                                    }
+                                  />
 
-                                      <div>
-                                        {convite.setor
-                                          ? `Setor: ${convite.setor}`
-                                          : "Setor: —"}
-                                      </div>
+                                  <MiniInfoConvite
+                                    titulo="Setor"
+                                    valor={
+                                      convite.setor ||
+                                      "—"
+                                    }
+                                  />
 
-                                      <div>
-                                        {convite.cargo
-                                          ? `Cargo: ${convite.cargo}`
-                                          : "Cargo: —"}
-                                      </div>
-                                    </td>
-
-
-                                    <td className="px-4 py-4">
-                                      <span
-                                        className={`rounded-full px-3 py-1 text-xs font-bold ${
-                                          convite.respondido
-                                            ? "bg-green-100 text-green-700"
-                                            : "bg-yellow-100 text-yellow-700"
-                                        }`}
-                                      >
-                                        {convite.respondido
-                                          ? "Respondido"
-                                          : "Pendente"}
-                                      </span>
-                                    </td>
+                                  <MiniInfoConvite
+                                    titulo="Cargo"
+                                    valor={
+                                      convite.cargo ||
+                                      "—"
+                                    }
+                                  />
+                                </div>
 
 
-                                    <td className="px-4 py-4">
-                                      <div className="flex items-center gap-3">
-                                        <div className="max-w-[300px] truncate text-xs text-slate-500">
-                                          {
-                                            linkConvite
-                                          }
-                                        </div>
+                                <div className="mt-4 min-w-0 rounded-xl bg-slate-50 p-3">
+                                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                                    Link individual
+                                  </p>
 
-                                        <a
-                                          href={
-                                            linkConvite
-                                          }
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-sm font-bold text-blue-600 hover:text-blue-800"
-                                        >
-                                          Abrir
-                                        </a>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                );
-                              }
-                            )}
-                          </tbody>
-                        </table>
+                                  <p
+                                    title={
+                                      linkConvite
+                                    }
+                                    className="mt-1 truncate text-xs text-slate-500"
+                                  >
+                                    {
+                                      linkConvite
+                                    }
+                                  </p>
+                                </div>
+
+
+                                <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-slate-100 pt-4">
+                                  <a
+                                    href={
+                                      linkConvite
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                                  >
+                                    Abrir link
+                                  </a>
+
+
+                                  <EnviarConviteEmailButton
+                                    link={
+                                      linkConvite
+                                    }
+                                    tituloPesquisa={
+                                      pesquisaSelecionada.titulo
+                                    }
+                                    tituloModulo="Pesquisa de Clima"
+                                    descricaoPesquisa={
+                                      pesquisaSelecionada.descricao
+                                    }
+                                    organizacao={
+                                      pesquisaSelecionada.cliente.empresa ||
+                                      pesquisaSelecionada.cliente.nome
+                                    }
+                                    nomeInicial={
+                                      convite.nome ||
+                                      null
+                                    }
+                                    emailInicial={
+                                      convite.email ||
+                                      null
+                                    }
+                                    desabilitado={
+                                      convite.respondido
+                                    }
+                                  />
+                                </div>
+                              </article>
+                            );
+                          }
+                        )}
                       </div>
                     )}
                   </div>
@@ -2160,6 +2182,38 @@ function Card({
           valor
         }
       </strong>
+    </div>
+  );
+}
+
+
+
+function MiniInfoConvite({
+  titulo,
+  valor,
+}: {
+  titulo: string;
+
+  valor: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+        {
+          titulo
+        }
+      </p>
+
+      <p
+        title={
+          valor
+        }
+        className="mt-1 truncate text-xs font-semibold text-slate-700"
+      >
+        {
+          valor
+        }
+      </p>
     </div>
   );
 }

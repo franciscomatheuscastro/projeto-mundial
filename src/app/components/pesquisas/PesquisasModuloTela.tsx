@@ -24,6 +24,7 @@ import {
 } from "@/src/app/data/hooks/useModuloPesquisa";
 
 import RelatorioAplicacaoModuloTela from "./RelatorioAplicacaoModuloTela";
+import EnviarConviteEmailButton from "./EnviarConviteEmailButton";
 
 
 type Props = {
@@ -856,7 +857,7 @@ export default function PesquisasModuloTela({
         </Header>
 
 
-        <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[380px_1fr]">
+        <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[340px_minmax(0,1fr)]">
           <Erro
             mensagem={
               erro
@@ -984,7 +985,7 @@ export default function PesquisasModuloTela({
               </aside>
 
 
-              <div className="space-y-6">
+              <div className="min-w-0 space-y-6">
                 {mundial && (
                   <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
                     <h2 className="text-lg font-black text-slate-900">
@@ -1044,7 +1045,7 @@ export default function PesquisasModuloTela({
                     {pesquisaSelecionada.convites
                       ?.length >
                       0 && (
-                      <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
+                      <div className="mt-5 grid min-w-0 gap-4 xl:grid-cols-2">
                         {pesquisaSelecionada.convites.map(
                           (
                             convite: any
@@ -1056,14 +1057,78 @@ export default function PesquisasModuloTela({
 
 
                             return (
-                              <div
+                              <article
                                 key={
                                   convite.id
                                 }
-                                className="flex items-center gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0"
+                                className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm"
                               >
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm text-slate-600">
+                                <div className="flex min-w-0 items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-black text-slate-900">
+                                      {convite.nome ||
+                                        "Participante"}
+                                    </p>
+
+                                    <p className="mt-1 truncate text-xs text-slate-500">
+                                      {convite.email ||
+                                        "Sem identificação"}
+                                    </p>
+                                  </div>
+
+
+                                  <span
+                                    className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${
+                                      convite.respondido
+                                        ? "bg-green-100 text-green-700"
+                                        : "bg-yellow-100 text-yellow-700"
+                                    }`}
+                                  >
+                                    {convite.respondido
+                                      ? "Respondido"
+                                      : "Pendente"}
+                                  </span>
+                                </div>
+
+
+                                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                  <MiniInfoConviteModulo
+                                    titulo="Unidade"
+                                    valor={
+                                      convite.unidade ||
+                                      "—"
+                                    }
+                                  />
+
+                                  <MiniInfoConviteModulo
+                                    titulo="Setor"
+                                    valor={
+                                      convite.setor ||
+                                      "—"
+                                    }
+                                  />
+
+                                  <MiniInfoConviteModulo
+                                    titulo="Cargo"
+                                    valor={
+                                      convite.cargo ||
+                                      "—"
+                                    }
+                                  />
+                                </div>
+
+
+                                <div className="mt-4 min-w-0 rounded-xl bg-slate-50 p-3">
+                                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                                    Link individual
+                                  </p>
+
+                                  <p
+                                    title={
+                                      link
+                                    }
+                                    className="mt-1 truncate text-xs text-slate-500"
+                                  >
                                     {
                                       link
                                     }
@@ -1071,30 +1136,51 @@ export default function PesquisasModuloTela({
                                 </div>
 
 
-                                <span
-                                  className={`rounded-full px-3 py-1 text-xs font-bold ${
-                                    convite.respondido
-                                      ? "bg-green-100 text-green-700"
-                                      : "bg-yellow-100 text-yellow-700"
-                                  }`}
-                                >
-                                  {convite.respondido
-                                    ? "Respondido"
-                                    : "Pendente"}
-                                </span>
+                                <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-slate-100 pt-4">
+                                  <a
+                                    href={
+                                      link
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                                  >
+                                    Abrir link
+                                  </a>
 
 
-                                <a
-                                  href={
-                                    link
-                                  }
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm font-bold text-blue-600"
-                                >
-                                  Abrir
-                                </a>
-                              </div>
+                                  <EnviarConviteEmailButton
+                                    link={
+                                      link
+                                    }
+                                    tituloPesquisa={
+                                      pesquisaSelecionada.titulo
+                                    }
+                                    tituloModulo={
+                                      tituloModulo
+                                    }
+                                    descricaoPesquisa={
+                                      pesquisaSelecionada.descricao
+                                    }
+                                    organizacao={
+                                      pesquisaSelecionada.cliente?.empresa ||
+                                      pesquisaSelecionada.cliente?.nome ||
+                                      null
+                                    }
+                                    nomeInicial={
+                                      convite.nome ||
+                                      null
+                                    }
+                                    emailInicial={
+                                      convite.email ||
+                                      null
+                                    }
+                                    desabilitado={
+                                      convite.respondido
+                                    }
+                                  />
+                                </div>
+                              </article>
                             );
                           }
                         )}
@@ -1278,6 +1364,38 @@ function Card({
 
 
       <p className="mt-2 text-3xl font-black text-slate-900">
+        {
+          valor
+        }
+      </p>
+    </div>
+  );
+}
+
+
+
+function MiniInfoConviteModulo({
+  titulo,
+  valor,
+}: {
+  titulo: string;
+
+  valor: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+        {
+          titulo
+        }
+      </p>
+
+      <p
+        title={
+          valor
+        }
+        className="mt-1 truncate text-xs font-semibold text-slate-700"
+      >
         {
           valor
         }

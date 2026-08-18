@@ -500,3 +500,353 @@ export async function enviarEmailAgendamento({
     `,
   });
 }
+
+type EnviarEmailConvitePesquisaInput = {
+  email: string;
+
+  nome?: string | null;
+
+  tituloPesquisa: string;
+
+  tituloModulo: string;
+
+  descricaoPesquisa?: string | null;
+
+  organizacao?: string | null;
+
+  token: string;
+};
+
+
+function obterUrlPesquisa(
+  token: string
+) {
+  return new URL(
+    `/pesquisa/${encodeURIComponent(
+      token
+    )}`,
+    APP_URL
+  ).toString();
+}
+
+
+export async function enviarEmailConvitePesquisa({
+  email,
+  nome,
+  tituloPesquisa,
+  tituloModulo,
+  descricaoPesquisa,
+  organizacao,
+  token,
+}: EnviarEmailConvitePesquisaInput): Promise<void> {
+  validarConfiguracaoEmail();
+
+
+  const destinatario =
+    email
+      .trim()
+      .toLowerCase();
+
+
+  if (
+    !destinatario
+  ) {
+    throw new Error(
+      "E-mail do participante não informado."
+    );
+  }
+
+
+  const nomeExibicao =
+    nome?.trim() ||
+    "Participante";
+
+
+  const urlPesquisa =
+    obterUrlPesquisa(
+      token
+    );
+
+
+  const nomeSeguro =
+    escaparHtml(
+      nomeExibicao
+    );
+
+
+  const tituloSeguro =
+    escaparHtml(
+      tituloPesquisa
+    );
+
+
+  const moduloSeguro =
+    escaparHtml(
+      tituloModulo
+    );
+
+
+  const descricaoSegura =
+    descricaoPesquisa
+      ? escaparHtml(
+          descricaoPesquisa
+        )
+      : "";
+
+
+  const organizacaoSegura =
+    organizacao
+      ? escaparHtml(
+          organizacao
+        )
+      : "";
+
+
+  const urlSegura =
+    escaparHtml(
+      urlPesquisa
+    );
+
+
+  await transporter.sendMail({
+    from: {
+      name:
+        SMTP_FROM_NAME,
+
+      address:
+        SMTP_FROM!,
+    },
+
+    to: {
+      name:
+        nomeExibicao,
+
+      address:
+        destinatario,
+    },
+
+    subject:
+      `Convite para responder: ${tituloPesquisa}`,
+
+    text: [
+      `Olá, ${nomeExibicao}.`,
+      "",
+      `Você foi convidado(a) a responder uma aplicação de ${tituloModulo} pela Mundial Connect.`,
+      organizacao
+        ? `Organização: ${organizacao}`
+        : "",
+      `Pesquisa/questionário: ${tituloPesquisa}`,
+      descricaoPesquisa
+        ? `Orientação: ${descricaoPesquisa}`
+        : "",
+      "",
+      "Utilize o link individual abaixo para responder:",
+      urlPesquisa,
+      "",
+      "Este link é individual e deve ser utilizado somente pelo destinatário deste convite.",
+      "",
+      "Mundial Connect",
+    ]
+      .filter(
+        Boolean
+      )
+      .join(
+        "\n"
+      ),
+
+    html: `
+      <!doctype html>
+      <html lang="pt-BR">
+        <head>
+          <meta charset="utf-8" />
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1"
+          />
+        </head>
+
+        <body
+          style="
+            margin:0;
+            padding:0;
+            background:#f1f5f9;
+            font-family:Arial,Helvetica,sans-serif;
+            color:#0f172a;
+          "
+        >
+          <table
+            role="presentation"
+            width="100%"
+            cellspacing="0"
+            cellpadding="0"
+            style="
+              background:#f1f5f9;
+              padding:32px 16px;
+            "
+          >
+            <tr>
+              <td align="center">
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellspacing="0"
+                  cellpadding="0"
+                  style="
+                    max-width:620px;
+                    background:#ffffff;
+                    border:1px solid #e2e8f0;
+                    border-radius:20px;
+                    overflow:hidden;
+                  "
+                >
+                  <tr>
+                    <td
+                      style="
+                        padding:24px 28px;
+                        background:#0f3fce;
+                        color:#ffffff;
+                      "
+                    >
+                      <p
+                        style="
+                          margin:0;
+                          font-size:12px;
+                          font-weight:700;
+                          letter-spacing:2px;
+                          text-transform:uppercase;
+                        "
+                      >
+                        Mundial Connect
+                      </p>
+
+                      <h1
+                        style="
+                          margin:8px 0 0;
+                          font-size:24px;
+                          line-height:1.3;
+                        "
+                      >
+                        Convite para participar
+                      </h1>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td style="padding:28px;">
+                      <p
+                        style="
+                          margin:0 0 16px;
+                          font-size:16px;
+                          line-height:1.6;
+                        "
+                      >
+                        Olá, <strong>${nomeSeguro}</strong>.
+                      </p>
+
+                      <p
+                        style="
+                          margin:0 0 20px;
+                          color:#475569;
+                          font-size:15px;
+                          line-height:1.7;
+                        "
+                      >
+                        Você foi convidado(a) a responder uma aplicação de
+                        <strong>${moduloSeguro}</strong> pela Mundial Connect.
+                      </p>
+
+                      <table
+                        role="presentation"
+                        width="100%"
+                        cellspacing="0"
+                        cellpadding="0"
+                        style="
+                          margin:0 0 22px;
+                          background:#f8fafc;
+                          border:1px solid #e2e8f0;
+                          border-radius:14px;
+                        "
+                      >
+                        <tr>
+                          <td
+                            style="
+                              padding:18px;
+                              font-size:14px;
+                              line-height:1.7;
+                            "
+                          >
+                            ${
+                              organizacaoSegura
+                                ? `<strong>Organização:</strong> ${organizacaoSegura}<br />`
+                                : ""
+                            }
+
+                            <strong>Questionário:</strong>
+                            ${tituloSeguro}
+
+                            ${
+                              descricaoSegura
+                                ? `<br /><br /><strong>Orientação:</strong><br />${descricaoSegura}`
+                                : ""
+                            }
+                          </td>
+                        </tr>
+                      </table>
+
+                      <p
+                        style="
+                          margin:0 0 24px;
+                        "
+                      >
+                        <a
+                          href="${urlSegura}"
+                          style="
+                            display:inline-block;
+                            padding:14px 24px;
+                            border-radius:12px;
+                            background:#2563eb;
+                            color:#ffffff;
+                            font-size:14px;
+                            font-weight:700;
+                            text-decoration:none;
+                          "
+                        >
+                          Responder questionário
+                        </a>
+                      </p>
+
+                      <p
+                        style="
+                          margin:0 0 10px;
+                          color:#64748b;
+                          font-size:13px;
+                          line-height:1.6;
+                        "
+                      >
+                        Este link é individual. Não encaminhe o convite para
+                        outras pessoas.
+                      </p>
+
+                      <p
+                        style="
+                          margin:0;
+                          color:#94a3b8;
+                          font-size:11px;
+                          line-height:1.5;
+                          word-break:break-all;
+                        "
+                      >
+                        ${urlSegura}
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
+    `,
+  });
+}
+
