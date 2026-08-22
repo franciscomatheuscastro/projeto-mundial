@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 
+import MetodologiaCriteriosRelatorio, {
+  type MetodologiaAplicacaoRelatorio,
+} from "./MetodologiaCriteriosRelatorio";
+
 import InformacoesAdicionaisRelatorio from "./InformacoesAdicionaisRelatorio";
 
 import type {
@@ -117,6 +121,8 @@ export type DadosRelatorioPsicossocial = {
     taxaParticipacao: number | null;
 
     mediaGeral: number | null;
+
+    metodologia?: MetodologiaAplicacaoRelatorio;
   }[];
 
 
@@ -155,6 +161,8 @@ export type DadosRelatorioPsicossocial = {
     taxaParticipacao: number | null;
 
     mediaGeral: number | null;
+
+    metodologia?: MetodologiaAplicacaoRelatorio;
   }[];
 
 
@@ -426,6 +434,17 @@ export default function RelatorioAvaliacaoPsicossocialTela({
             }
           />
         )}
+
+
+        <MetodologiaCriteriosRelatorio
+          tipo="AVALIACAO_PSICOSSOCIAL"
+          metodologias={
+            dados.pesquisas.map(
+              pesquisa =>
+                pesquisa.metodologia
+            )
+          }
+        />
 
 
         <InformacoesAdicionaisRelatorio

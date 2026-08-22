@@ -149,6 +149,27 @@ type HeatmapPsicossocial = {
 };
 
 
+type MetodologiaAplicacaoRelatorio = {
+  modeloId: string;
+  modeloTitulo: string;
+  metodo: ConfiguracaoAnaliseModelo["metodo"];
+  escalaMinima: number;
+  escalaMaxima: number;
+  favoravel: number[];
+  neutro: number[];
+  desfavoravel: number[];
+  faixas: FaixaInterpretacaoModelo[];
+  dimensoes: {
+    id: string;
+    nome: string;
+    peso: number;
+    fatorRisco: string | null;
+  }[];
+  perguntasNota: number;
+  perguntasInvertidas: number;
+};
+
+
 /* =========================================================
  * NORMALIZAÇÃO
  * ======================================================= */
@@ -882,6 +903,112 @@ function obterFaixasCompativeis(
     : [];
 }
 
+
+
+/* =========================================================
+ * TRANSPARÊNCIA METODOLÓGICA
+ * ======================================================= */
+
+function montarMetodologiaAplicacao(
+  pesquisa: any
+): MetodologiaAplicacaoRelatorio {
+  const dimensoes =
+    normalizarDimensoes(
+      pesquisa.dimensoes
+    );
+
+  const perguntas =
+    normalizarPerguntas(
+      pesquisa.perguntas,
+      dimensoes
+    );
+
+  const configuracao =
+    normalizarConfiguracaoAnalise(
+      pesquisa.configuracaoAnalise,
+      pesquisa.tipo
+    );
+
+  const perguntasNota =
+    perguntas.filter(
+      pergunta =>
+        pergunta.tipo ===
+        TipoPergunta.NOTA
+    );
+
+  /*
+   * CLIMA / DIAGNÓSTICO:
+   * NEGATIVO é invertido para orientar o resultado positivamente.
+   *
+   * PSICOSSOCIAL:
+   * POSITIVO é invertido para orientar o resultado para risco.
+   */
+  const perguntasInvertidas =
+    perguntasNota.filter(
+      pergunta =>
+        pesquisa.tipo ===
+        TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
+          ? pergunta.sentidoPontuacao ===
+            "POSITIVO"
+          : pergunta.sentidoPontuacao ===
+            "NEGATIVO"
+    ).length;
+
+  return {
+    modeloId:
+      pesquisa.modeloId ||
+      pesquisa.modelo?.id ||
+      "modelo",
+
+    modeloTitulo:
+      pesquisa.modelo?.titulo ||
+      "Instrumento aplicado",
+
+    metodo:
+      configuracao.metodo,
+
+    escalaMinima:
+      configuracao.escalaMinima,
+
+    escalaMaxima:
+      configuracao.escalaMaxima,
+
+    favoravel:
+      configuracao.favoravel,
+
+    neutro:
+      configuracao.neutro,
+
+    desfavoravel:
+      configuracao.desfavoravel,
+
+    faixas:
+      configuracao.faixas,
+
+    dimensoes:
+      dimensoes.map(
+        dimensao => ({
+          id:
+            dimensao.id,
+
+          nome:
+            dimensao.nome,
+
+          peso:
+            dimensao.peso,
+
+          fatorRisco:
+            dimensao.fatorRisco ||
+            null,
+        })
+      ),
+
+    perguntasNota:
+      perguntasNota.length,
+
+    perguntasInvertidas,
+  };
+}
 
 
 /* =========================================================
@@ -4293,6 +4420,16 @@ export default class RepositorioPesquisaCliente {
 
             quantidadeNotas:
               notas.quantidade,
+
+            /*
+             * Snapshot metodológico usado para explicar
+             * de forma auditável como esta aplicação
+             * foi calculada no relatório.
+             */
+            metodologia:
+              montarMetodologiaAplicacao(
+                pesquisa
+              ),
           };
         }
       );

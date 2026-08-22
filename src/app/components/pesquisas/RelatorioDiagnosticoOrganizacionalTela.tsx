@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 
+import MetodologiaCriteriosRelatorio, {
+  type MetodologiaAplicacaoRelatorio,
+} from "./MetodologiaCriteriosRelatorio";
+
 import InformacoesAdicionaisRelatorio from "./InformacoesAdicionaisRelatorio";
 
 import type {
@@ -76,6 +80,8 @@ export type DadosRelatorioDiagnostico = {
     taxaParticipacao: number | null;
 
     mediaGeral: number | null;
+
+    metodologia?: MetodologiaAplicacaoRelatorio;
   }[];
 
   pesquisas: {
@@ -107,6 +113,8 @@ export type DadosRelatorioDiagnostico = {
     taxaParticipacao: number | null;
 
     mediaGeral: number | null;
+
+    metodologia?: MetodologiaAplicacaoRelatorio;
   }[];
 
   informacoesAdicionais: InformacaoAdicionalRelatorio[];
@@ -295,6 +303,17 @@ export default function RelatorioDiagnosticoOrganizacionalTela({
             </div>
           </>
         )}
+
+
+        <MetodologiaCriteriosRelatorio
+          tipo="DIAGNOSTICO_ORGANIZACIONAL"
+          metodologias={
+            dados.pesquisas.map(
+              pesquisa =>
+                pesquisa.metodologia
+            )
+          }
+        />
 
 
         <InformacoesAdicionaisRelatorio

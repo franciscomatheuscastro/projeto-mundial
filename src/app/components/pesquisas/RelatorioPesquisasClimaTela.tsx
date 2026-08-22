@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 
+import MetodologiaCriteriosRelatorio, {
+  type MetodologiaAplicacaoRelatorio,
+} from "./MetodologiaCriteriosRelatorio";
+
 import InformacoesAdicionaisRelatorio from "./InformacoesAdicionaisRelatorio";
 
 import type {
@@ -103,6 +107,8 @@ export type DadosRelatorioClima = {
     taxaParticipacao: number | null;
 
     mediaGeral: number | null;
+
+    metodologia?: MetodologiaAplicacaoRelatorio;
   }[];
 
 
@@ -141,6 +147,8 @@ export type DadosRelatorioClima = {
     taxaParticipacao: number | null;
 
     mediaGeral: number | null;
+
+    metodologia?: MetodologiaAplicacaoRelatorio;
   }[];
 
 
@@ -406,6 +414,17 @@ export default function RelatorioPesquisasClimaTela({
 
           </>
         )}
+
+
+        <MetodologiaCriteriosRelatorio
+          tipo="CLIMA"
+          metodologias={
+            dados.pesquisas.map(
+              pesquisa =>
+                pesquisa.metodologia
+            )
+          }
+        />
 
 
         <InformacoesAdicionaisRelatorio
