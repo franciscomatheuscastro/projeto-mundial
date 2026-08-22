@@ -278,6 +278,15 @@ function MenuNavegacao({
         >
           Central de ajuda
         </MenuLink>
+
+        <MenuLink
+          href="/manual-nr1"
+          mobile={
+            mobile
+          }
+        >
+          Manual NR1
+        </MenuLink>
       </GrupoMenu>
     </nav>
   );
