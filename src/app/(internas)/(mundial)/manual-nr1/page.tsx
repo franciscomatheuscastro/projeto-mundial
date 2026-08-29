@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 
 const FONTES_OFICIAIS = [
   {
@@ -33,6 +31,14 @@ const FONTES_OFICIAIS = [
       "Página oficial do MTE com orientações gerais sobre composição, obrigatoriedade e revisão do PGR.",
     href:
       "https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/pgr/principal",
+  },
+  {
+    titulo:
+      "Lei nº 14.457/2022 — prevenção e combate ao assédio e outras formas de violência",
+    descricao:
+      "Base legal complementar que estabelece, para empresas com CIPA, regras de conduta, procedimentos de recebimento e acompanhamento de denúncias, anonimato do denunciante e ações periódicas de capacitação.",
+    href:
+      "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2022/lei/l14457.htm",
   },
 ];
 
@@ -98,6 +104,46 @@ const EXEMPLOS_PSICOSSOCIAIS = [
   "Problemas de comunicação e relacionamento",
   "Organização inadequada do trabalho",
   "Pressão excessiva, ritmo intenso e exigências incompatíveis",
+];
+
+
+const PRINCIPIOS_CANAL_DENUNCIA = [
+  {
+    titulo:
+      "Confidencialidade",
+    texto:
+      "As informações devem ser acessadas somente por pessoas autorizadas e utilizadas para a finalidade de recebimento, análise, apuração e tratamento da manifestação.",
+  },
+  {
+    titulo:
+      "Anonimato quando aplicável",
+    texto:
+      "Para empresas abrangidas pelo art. 23 da Lei nº 14.457/2022, os procedimentos internos relacionados a assédio sexual e outras formas de violência devem garantir o anonimato da pessoa denunciante.",
+  },
+  {
+    titulo:
+      "Não retaliação",
+    texto:
+      "A governança interna deve proteger a boa-fé do denunciante e evitar represálias, perseguições ou prejuízos decorrentes do uso legítimo do canal.",
+  },
+  {
+    titulo:
+      "Imparcialidade",
+    texto:
+      "A apuração deve ser conduzida com independência, tratamento adequado das partes envolvidas e registro das providências adotadas.",
+  },
+  {
+    titulo:
+      "Rastreabilidade",
+    texto:
+      "O processo deve permitir acompanhar recebimento, classificação, encaminhamento, tratativas, conclusão e evidências, preservando os acessos necessários.",
+  },
+  {
+    titulo:
+      "Proteção de dados",
+    texto:
+      "Dados pessoais e informações sensíveis devem ser tratados de forma compatível com a finalidade, necessidade, segurança e controles de acesso aplicáveis.",
+  },
 ];
 
 
@@ -431,11 +477,167 @@ export default function ManualNR1Page() {
 
 
         {/* =====================================================
+         * ÉTICA, ASSÉDIO E CANAL DE DENÚNCIAS
+         * =================================================== */}
+        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <CabecalhoSecao
+            numero="07"
+            titulo="Ética, prevenção ao assédio e canal de denúncias"
+            descricao="O canal de denúncias é um mecanismo de governança que pode apoiar a identificação e o tratamento de situações de assédio, violência, discriminação e outros fatores relacionados ao ambiente de trabalho."
+          />
+
+          <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">
+              Enquadramento correto
+            </p>
+
+            <h3 className="mt-2 text-lg font-black text-blue-950">
+              Não existe um “Código de Ética da NR-1”
+            </h3>
+
+            <p className="mt-3 text-sm leading-6 text-blue-900">
+              A NR-1 trata do Gerenciamento de Riscos Ocupacionais e inclui os
+              fatores de riscos psicossociais relacionados ao trabalho. As regras
+              específicas sobre conduta, prevenção ao assédio e procedimentos de
+              recebimento e acompanhamento de denúncias decorrem de normas
+              complementares, especialmente do art. 23 da Lei nº 14.457/2022 para
+              empresas que possuem CIPA.
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-5 lg:grid-cols-2">
+            <div className="rounded-3xl border border-slate-200 p-5">
+              <h3 className="text-lg font-black text-slate-950">
+                O que a Lei nº 14.457/2022 exige das empresas com CIPA
+              </h3>
+
+              <ul className="mt-4 space-y-3">
+                <ItemLegal>
+                  Incluir regras de conduta sobre assédio sexual e outras formas
+                  de violência nas normas internas da empresa e divulgá-las aos
+                  trabalhadores.
+                </ItemLegal>
+
+                <ItemLegal>
+                  Definir procedimentos para recebimento e acompanhamento de
+                  denúncias, apuração dos fatos e eventual aplicação de sanções
+                  administrativas.
+                </ItemLegal>
+
+                <ItemLegal>
+                  Garantir o anonimato da pessoa denunciante nos procedimentos
+                  abrangidos pela lei, sem prejuízo das medidas jurídicas
+                  cabíveis.
+                </ItemLegal>
+
+                <ItemLegal>
+                  Incluir prevenção e combate ao assédio e a outras formas de
+                  violência nas atividades e práticas da CIPA.
+                </ItemLegal>
+
+                <ItemLegal>
+                  Realizar, no mínimo a cada 12 meses, ações de capacitação,
+                  orientação e sensibilização sobre violência, assédio, igualdade
+                  e diversidade no trabalho.
+                </ItemLegal>
+              </ul>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 p-5">
+              <h3 className="text-lg font-black text-slate-950">
+                Relação com os riscos psicossociais
+              </h3>
+
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                Denúncias de assédio, violência, discriminação, conflitos
+                recorrentes ou práticas abusivas podem representar sinais
+                relevantes sobre condições organizacionais e fatores de risco
+                psicossocial. O canal não substitui a avaliação de riscos, mas
+                pode gerar evidências importantes para o GRO, o PGR e os planos
+                de prevenção.
+              </p>
+
+              <div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                <strong>Importante:</strong>{" "}
+                o tratamento de uma denúncia individual deve preservar a
+                confidencialidade e os direitos das partes. Informações do canal
+                somente devem alimentar análises de risco de forma compatível
+                com a finalidade, a proteção de dados e o nível de agregação
+                necessário.
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <h3 className="text-lg font-black text-slate-950">
+              Princípios recomendados para o canal
+            </h3>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {PRINCIPIOS_CANAL_DENUNCIA.map(
+                principio => (
+                  <InfoOperacional
+                    key={
+                      principio.titulo
+                    }
+                    titulo={
+                      principio.titulo
+                    }
+                    texto={
+                      principio.texto
+                    }
+                  />
+                )
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-3xl bg-slate-950 p-5 text-white">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-300">
+              Fluxo recomendado no sistema
+            </p>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-5">
+              <EtapaCanal
+                numero="1"
+                titulo="Receber"
+                texto="Registro da manifestação e geração de protocolo."
+              />
+
+              <EtapaCanal
+                numero="2"
+                titulo="Classificar"
+                texto="Categoria, gravidade e necessidade de priorização."
+              />
+
+              <EtapaCanal
+                numero="3"
+                titulo="Encaminhar"
+                texto="Direcionamento somente às pessoas responsáveis."
+              />
+
+              <EtapaCanal
+                numero="4"
+                titulo="Tratar"
+                texto="Registro de análises, providências e evidências."
+              />
+
+              <EtapaCanal
+                numero="5"
+                titulo="Concluir"
+                texto="Encerramento, resultado e rastreabilidade."
+              />
+            </div>
+          </div>
+        </section>
+
+
+        {/* =====================================================
          * REVISÃO
          * =================================================== */}
         <section>
           <CabecalhoSecao
-            numero="07"
+            numero="08"
             titulo="Quando revisar a avaliação de riscos"
             descricao="A avaliação de riscos é um processo contínuo."
           />
@@ -484,7 +686,7 @@ export default function ManualNR1Page() {
          * =================================================== */}
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <CabecalhoSecao
-            numero="08"
+            numero="09"
             titulo="Quem precisa elaborar o PGR"
             descricao="Existem regras gerais e hipóteses específicas de dispensa."
           />
@@ -523,16 +725,16 @@ export default function ManualNR1Page() {
          * =================================================== */}
         <section className="rounded-3xl bg-slate-950 p-6 text-white">
           <CabecalhoSecaoEscuro
-            numero="09"
+            numero="10"
             titulo="Como o sistema Mundial pode apoiar a jornada"
             descricao="O software organiza evidências e processos, mas não substitui a responsabilidade técnica."
           />
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <CardSistema
               numero="1"
               titulo="Avaliação"
-              texto="Aplicação de questionários, convites, respostas e recortes organizacionais."
+              texto="Aplicação de questionários, respostas e recortes organizacionais."
             />
 
             <CardSistema
@@ -543,12 +745,18 @@ export default function ManualNR1Page() {
 
             <CardSistema
               numero="3"
+              titulo="Canal de denúncias"
+              texto="Recebimento, classificação, protocolo, tratativas e rastreabilidade das manifestações."
+            />
+
+            <CardSistema
+              numero="4"
               titulo="Plano de ação"
               texto="Registro de medidas, responsáveis, prazos, acompanhamento e evidências."
             />
 
             <CardSistema
-              numero="4"
+              numero="5"
               titulo="Monitoramento"
               texto="Nova coleta, comparação histórica, acompanhamento das ações e melhoria contínua."
             />
@@ -568,7 +776,7 @@ export default function ManualNR1Page() {
          * =================================================== */}
         <section>
           <CabecalhoSecao
-            numero="10"
+            numero="11"
             titulo="Perguntas frequentes"
             descricao="Respostas rápidas para uso da equipe da Mundial."
           />
@@ -595,6 +803,16 @@ export default function ManualNR1Page() {
             />
 
             <Pergunta
+              pergunta="A NR-1 obriga toda empresa a ter um canal de denúncias?"
+              resposta="A NR-1, por si só, não cria uma obrigação geral de canal de denúncias para todas as empresas. Para empresas com CIPA, o art. 23 da Lei nº 14.457/2022 exige procedimentos para recebimento e acompanhamento de denúncias relacionadas a assédio sexual e outras formas de violência, além de regras de conduta e ações de prevenção."
+            />
+
+            <Pergunta
+              pergunta="As denúncias podem ser usadas na avaliação de riscos psicossociais?"
+              resposta="Podem funcionar como uma fonte complementar de evidências sobre problemas organizacionais, assédio, violência, conflitos e outros fatores relacionados ao trabalho. O uso deve preservar confidencialidade, proteção de dados e os direitos das pessoas envolvidas."
+            />
+
+            <Pergunta
               pergunta="Trabalho remoto e híbrido também entram na análise?"
               resposta="Sim. As orientações do MTE indicam que a avaliação deve considerar as diferentes formas de organização e execução do trabalho, inclusive remoto, híbrido e teletrabalho, quando aplicáveis."
             />
@@ -607,7 +825,7 @@ export default function ManualNR1Page() {
          * =================================================== */}
         <section>
           <CabecalhoSecao
-            numero="11"
+            numero="12"
             titulo="Fontes oficiais"
             descricao="Use sempre estes materiais como referência primária."
           />
@@ -884,6 +1102,60 @@ function CardSistema({
         }
       </p>
     </article>
+  );
+}
+
+
+function ItemLegal({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <li className="flex gap-3 text-sm leading-6 text-slate-700">
+      <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-black text-blue-700">
+        ✓
+      </span>
+
+      <span>
+        {
+          children
+        }
+      </span>
+    </li>
+  );
+}
+
+
+function EtapaCanal({
+  numero,
+  titulo,
+  texto,
+}: {
+  numero: string;
+  titulo: string;
+  texto: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500 text-xs font-black text-white">
+        {
+          numero
+        }
+      </span>
+
+      <h4 className="mt-3 font-black text-white">
+        {
+          titulo
+        }
+      </h4>
+
+      <p className="mt-1 text-xs leading-5 text-slate-400">
+        {
+          texto
+        }
+      </p>
+    </div>
   );
 }
 

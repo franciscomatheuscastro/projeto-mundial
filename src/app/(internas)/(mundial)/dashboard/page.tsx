@@ -74,9 +74,18 @@ export default async function DashboardPage({
   const wherePlanoAcao =
     temFiltroCliente
       ? {
-          pesquisa: {
-            clienteId,
-          },
+          OR: [
+            {
+              pesquisa: {
+                clienteId,
+              },
+            },
+            {
+              denuncia: {
+                clienteId,
+              },
+            },
+          ],
         }
       : undefined;
 
@@ -85,9 +94,18 @@ export default async function DashboardPage({
     temFiltroCliente
       ? {
           planoAcao: {
-            pesquisa: {
-              clienteId,
-            },
+            OR: [
+              {
+                pesquisa: {
+                  clienteId,
+                },
+              },
+              {
+                denuncia: {
+                  clienteId,
+                },
+              },
+            ],
           },
         }
       : undefined;
@@ -117,9 +135,9 @@ export default async function DashboardPage({
     climaAbertas,
     climaRespostas,
 
-    diagnosticoTotal,
-    diagnosticoAbertas,
-    diagnosticoRespostas,
+    desempenhoTotal,
+    desempenhoAbertas,
+    desempenhoRespostas,
 
     psicossocialTotal,
     psicossocialAbertas,
@@ -136,9 +154,9 @@ export default async function DashboardPage({
     climaAbertasCliente,
     climaRespostasCliente,
 
-    diagnosticoCliente,
-    diagnosticoAbertasCliente,
-    diagnosticoRespostasCliente,
+    desempenhoCliente,
+    desempenhoAbertasCliente,
+    desempenhoRespostasCliente,
 
     psicossocialCliente,
     psicossocialAbertasCliente,
@@ -222,14 +240,14 @@ export default async function DashboardPage({
       prisma.pesquisaCliente.count({
         where: {
           tipo:
-            TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL,
+            TipoModuloPesquisa.AVALIACAO_DESEMPENHO,
         },
       }),
 
       prisma.pesquisaCliente.count({
         where: {
           tipo:
-            TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL,
+            TipoModuloPesquisa.AVALIACAO_DESEMPENHO,
 
           status:
             "ABERTA",
@@ -240,7 +258,7 @@ export default async function DashboardPage({
         where: {
           pesquisa: {
             tipo:
-              TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL,
+              TipoModuloPesquisa.AVALIACAO_DESEMPENHO,
           },
         },
       }),
@@ -358,7 +376,7 @@ export default async function DashboardPage({
 
 
       /* ===============================================
-       * CLIENTE — DIAGNÓSTICO ORGANIZACIONAL
+       * CLIENTE — AVALIAÇÃO DE DESEMPENHO
        * ============================================= */
 
       prisma.pesquisaCliente.count({
@@ -366,7 +384,7 @@ export default async function DashboardPage({
           ...wherePesquisaCliente,
 
           tipo:
-            TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL,
+            TipoModuloPesquisa.AVALIACAO_DESEMPENHO,
         },
       }),
 
@@ -375,7 +393,7 @@ export default async function DashboardPage({
           ...wherePesquisaCliente,
 
           tipo:
-            TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL,
+            TipoModuloPesquisa.AVALIACAO_DESEMPENHO,
 
           status:
             "ABERTA",
@@ -392,7 +410,7 @@ export default async function DashboardPage({
               : {}),
 
             tipo:
-              TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL,
+              TipoModuloPesquisa.AVALIACAO_DESEMPENHO,
           },
         },
       }),
@@ -529,7 +547,7 @@ export default async function DashboardPage({
 
 
               <p className="mt-1 max-w-3xl text-sm text-slate-500 sm:text-base">
-                Visão executiva de Pesquisa de Clima, Diagnóstico Organizacional,
+                Visão executiva de Pesquisa de Clima, Avaliação de Desempenho,
                 Avaliação Psicossocial, planos de ação e Canal de Denúncias.
               </p>
             </div>
@@ -649,18 +667,18 @@ export default async function DashboardPage({
 
 
             <CardModulo
-              titulo="Diagnóstico Organizacional"
-              descricao="Maturidade, forças, pontos de atenção e prioridades."
+              titulo="Avaliação de Desempenho"
+              descricao="Competências, pontos fortes, pontos de atenção e prioridades de desenvolvimento."
               total={
-                diagnosticoTotal
+                desempenhoTotal
               }
               abertas={
-                diagnosticoAbertas
+                desempenhoAbertas
               }
               respostas={
-                diagnosticoRespostas
+                desempenhoRespostas
               }
-              variante="diagnostico"
+              variante="desempenho"
             />
 
 
@@ -837,18 +855,18 @@ export default async function DashboardPage({
 
 
             <CardModulo
-              titulo="Diagnóstico Organizacional"
+              titulo="Avaliação de Desempenho"
               descricao="Aplicações e respostas da modalidade."
               total={
-                diagnosticoCliente
+                desempenhoCliente
               }
               abertas={
-                diagnosticoAbertasCliente
+                desempenhoAbertasCliente
               }
               respostas={
-                diagnosticoRespostasCliente
+                desempenhoRespostasCliente
               }
-              variante="diagnostico"
+              variante="desempenho"
             />
 
 
@@ -1013,12 +1031,12 @@ function CardModulo({
 
   variante:
     | "clima"
-    | "diagnostico"
+    | "desempenho"
     | "psicossocial";
 }) {
   const classes =
     variante ===
-    "diagnostico"
+    "desempenho"
       ? {
           badge:
             "bg-indigo-100 text-indigo-700",

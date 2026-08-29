@@ -20,20 +20,25 @@ type PageProps = {
 };
 
 
-export default async function MeuDiagnosticoDetalhePage({
+export default async function MinhaAvaliacaoDesempenhoRelatorioPage({
   params,
 }: PageProps) {
   const session =
     await auth();
 
-  if (!session?.user) {
+
+  if (
+    !session?.user
+  ) {
     redirect(
       "/login"
     );
   }
 
+
   const usuario =
     session.user as any;
+
 
   if (
     usuario.perfil !==
@@ -44,6 +49,7 @@ export default async function MeuDiagnosticoDetalhePage({
     );
   }
 
+
   if (
     !usuario.clienteId
   ) {
@@ -52,19 +58,21 @@ export default async function MeuDiagnosticoDetalhePage({
     );
   }
 
+
   const {
     id,
   } =
     await params;
 
+
   return (
     <PesquisasModuloTela
-      modo="detalhe"
+      modo="relatorio"
       tipo={
-        TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+        TipoModuloPesquisa.AVALIACAO_DESEMPENHO
       }
-      tituloModulo="Diagnóstico Organizacional"
-      baseHref="/meus-diagnosticos"
+      tituloModulo="Avaliação de Desempenho"
+      baseHref="/minhas-avaliacoes-desempenho"
       pesquisaId={
         id
       }

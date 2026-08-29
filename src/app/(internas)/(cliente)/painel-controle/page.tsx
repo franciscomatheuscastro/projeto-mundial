@@ -5,6 +5,7 @@ import { auth } from "@/src/auth";
 import {
   PerfilUsuario,
   Prisma,
+  TipoModuloPesquisa,
 } from "@prisma/client";
 
 import { prisma } from "@/src/lib/prisma";
@@ -185,10 +186,24 @@ export default async function ClienteDashboardPage() {
     pesquisas,
     pesquisasAbertas,
     respostas,
+
+    climaTotal,
+    climaAbertas,
+    climaRespostas,
+
+    desempenhoTotal,
+    desempenhoAbertas,
+    desempenhoRespostas,
+
+    psicossocialTotal,
+    psicossocialAbertas,
+    psicossocialRespostas,
+
     planosAcao,
     planosEmAndamento,
     agendamentos,
     proximosAgendamentos,
+
     denuncias,
     denunciasAnalise,
     denunciasTratativa,
@@ -221,6 +236,124 @@ export default async function ClienteDashboardPage() {
           },
         })
       : Promise.resolve(0),
+
+
+    /* ===============================================
+     * PESQUISA DE CLIMA
+     * ============================================= */
+
+    administradorCliente
+      ? prisma.pesquisaCliente.count({
+          where: {
+            clienteId,
+            tipo:
+              TipoModuloPesquisa.CLIMA,
+          },
+        })
+      : Promise.resolve(0),
+
+    administradorCliente
+      ? prisma.pesquisaCliente.count({
+          where: {
+            clienteId,
+            tipo:
+              TipoModuloPesquisa.CLIMA,
+            status:
+              "ABERTA",
+          },
+        })
+      : Promise.resolve(0),
+
+    administradorCliente
+      ? prisma.respostaPesquisa.count({
+          where: {
+            pesquisa: {
+              clienteId,
+              tipo:
+                TipoModuloPesquisa.CLIMA,
+            },
+          },
+        })
+      : Promise.resolve(0),
+
+
+    /* ===============================================
+     * AVALIAÇÃO DE DESEMPENHO
+     * ============================================= */
+
+    administradorCliente
+      ? prisma.pesquisaCliente.count({
+          where: {
+            clienteId,
+            tipo:
+              TipoModuloPesquisa.AVALIACAO_DESEMPENHO,
+          },
+        })
+      : Promise.resolve(0),
+
+    administradorCliente
+      ? prisma.pesquisaCliente.count({
+          where: {
+            clienteId,
+            tipo:
+              TipoModuloPesquisa.AVALIACAO_DESEMPENHO,
+            status:
+              "ABERTA",
+          },
+        })
+      : Promise.resolve(0),
+
+    administradorCliente
+      ? prisma.respostaPesquisa.count({
+          where: {
+            pesquisa: {
+              clienteId,
+              tipo:
+                TipoModuloPesquisa.AVALIACAO_DESEMPENHO,
+            },
+          },
+        })
+      : Promise.resolve(0),
+
+
+    /* ===============================================
+     * AVALIAÇÃO PSICOSSOCIAL
+     * ============================================= */
+
+    administradorCliente
+      ? prisma.pesquisaCliente.count({
+          where: {
+            clienteId,
+            tipo:
+              TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL,
+          },
+        })
+      : Promise.resolve(0),
+
+    administradorCliente
+      ? prisma.pesquisaCliente.count({
+          where: {
+            clienteId,
+            tipo:
+              TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL,
+            status:
+              "ABERTA",
+          },
+        })
+      : Promise.resolve(0),
+
+    administradorCliente
+      ? prisma.respostaPesquisa.count({
+          where: {
+            pesquisa: {
+              clienteId,
+              tipo:
+                TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL,
+            },
+          },
+        })
+      : Promise.resolve(0),
+
 
     administradorCliente
       ? prisma.planoAcao.count({
@@ -392,7 +525,7 @@ export default async function ClienteDashboardPage() {
 
           <p className="mt-1 max-w-3xl text-sm text-slate-500 sm:text-base">
             {administradorCliente
-              ? "Visão executiva das pesquisas, planos de ação, agendamentos e protocolos de denúncias da empresa."
+              ? "Visão executiva da Pesquisa de Clima, Avaliação de Desempenho, Avaliação Psicossocial, planos de ação, agendamentos e protocolos de denúncias da empresa."
               : "Painel do comitê responsável pelo acompanhamento das denúncias disponibilizadas para o seu usuário."}
           </p>
         </div>
@@ -400,42 +533,80 @@ export default async function ClienteDashboardPage() {
 
       <section className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         {administradorCliente && (
-          <Bloco titulo="Pesquisa de clima">
-            <Card
-              titulo="Pesquisas"
-              valor={pesquisas}
-            />
+          <>
+            <Bloco titulo="Visão geral">
+              <Card
+                titulo="Aplicações"
+                valor={pesquisas}
+              />
 
-            <Card
-              titulo="Pesquisas abertas"
-              valor={pesquisasAbertas}
-            />
+              <Card
+                titulo="Aplicações abertas"
+                valor={pesquisasAbertas}
+              />
 
-            <Card
-              titulo="Respostas recebidas"
-              valor={respostas}
-            />
+              <Card
+                titulo="Respostas recebidas"
+                valor={respostas}
+              />
 
-            <Card
-              titulo="Planos de ação"
-              valor={planosAcao}
-            />
+              <Card
+                titulo="Planos de ação"
+                valor={planosAcao}
+              />
 
-            <Card
-              titulo="Planos em andamento"
-              valor={planosEmAndamento}
-            />
+              <Card
+                titulo="Planos em andamento"
+                valor={planosEmAndamento}
+              />
 
-            <Card
-              titulo="Agendamentos"
-              valor={agendamentos}
-            />
+              <Card
+                titulo="Agendamentos"
+                valor={agendamentos}
+              />
 
-            <Card
-              titulo="Próximos agendamentos"
-              valor={proximosAgendamentos}
-            />
-          </Bloco>
+              <Card
+                titulo="Próximos agendamentos"
+                valor={proximosAgendamentos}
+              />
+            </Bloco>
+
+
+            <section>
+              <h2 className="mb-3 text-base font-black text-slate-900 sm:text-lg">
+                Pesquisas e avaliações
+              </h2>
+
+              <div className="grid gap-5 lg:grid-cols-3">
+                <CardModulo
+                  titulo="Pesquisa de Clima"
+                  descricao="Favorabilidade e percepção dos colaboradores."
+                  total={climaTotal}
+                  abertas={climaAbertas}
+                  respostas={climaRespostas}
+                  variante="clima"
+                />
+
+                <CardModulo
+                  titulo="Avaliação de Desempenho"
+                  descricao="Competências, pontos fortes, pontos de atenção e prioridades de desenvolvimento."
+                  total={desempenhoTotal}
+                  abertas={desempenhoAbertas}
+                  respostas={desempenhoRespostas}
+                  variante="desempenho"
+                />
+
+                <CardModulo
+                  titulo="Avaliação Psicossocial"
+                  descricao="Exposição aos fatores psicossociais relacionados ao trabalho."
+                  total={psicossocialTotal}
+                  abertas={psicossocialAbertas}
+                  respostas={psicossocialRespostas}
+                  variante="psicossocial"
+                />
+              </div>
+            </section>
+          </>
         )}
 
         <Bloco titulo="Canal de denúncias">
@@ -526,6 +697,134 @@ function Bloco({
     </section>
   );
 }
+
+function CardModulo({
+  titulo,
+  descricao,
+  total,
+  abertas,
+  respostas,
+  variante,
+}: {
+  titulo: string;
+  descricao: string;
+  total: number;
+  abertas: number;
+  respostas: number;
+  variante:
+    | "clima"
+    | "desempenho"
+    | "psicossocial";
+}) {
+  const classes =
+    variante ===
+    "desempenho"
+      ? {
+          badge:
+            "bg-indigo-100 text-indigo-700",
+          numero:
+            "text-indigo-700",
+        }
+      : variante ===
+          "psicossocial"
+        ? {
+            badge:
+              "bg-amber-100 text-amber-800",
+            numero:
+              "text-amber-700",
+          }
+        : {
+            badge:
+              "bg-blue-100 text-blue-700",
+            numero:
+              "text-blue-700",
+          };
+
+
+  return (
+    <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <span
+        className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${classes.badge}`}
+      >
+        Modalidade
+      </span>
+
+      <h3 className="mt-3 text-lg font-black text-slate-900">
+        {
+          titulo
+        }
+      </h3>
+
+      <p className="mt-1 min-h-10 text-sm leading-5 text-slate-500">
+        {
+          descricao
+        }
+      </p>
+
+      <div className="mt-5 grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">
+        <MiniMetrica
+          titulo="Aplicações"
+          valor={
+            total
+          }
+          classe={
+            classes.numero
+          }
+        />
+
+        <MiniMetrica
+          titulo="Abertas"
+          valor={
+            abertas
+          }
+          classe={
+            classes.numero
+          }
+        />
+
+        <MiniMetrica
+          titulo="Respostas"
+          valor={
+            respostas
+          }
+          classe={
+            classes.numero
+          }
+        />
+      </div>
+    </article>
+  );
+}
+
+
+function MiniMetrica({
+  titulo,
+  valor,
+  classe,
+}: {
+  titulo: string;
+  valor: number;
+  classe: string;
+}) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold text-slate-500">
+        {
+          titulo
+        }
+      </p>
+
+      <strong
+        className={`mt-1 block text-xl font-black ${classe}`}
+      >
+        {
+          valor
+        }
+      </strong>
+    </div>
+  );
+}
+
 
 function Card({
   titulo,

@@ -35,7 +35,7 @@ const TOPICOS: TopicoAjuda[] = [
       "Conheça os principais módulos e aprenda a navegar pelo sistema.",
     conteudo: [
       "Utilize o menu lateral para acessar os módulos disponíveis para o seu perfil.",
-      "O Dashboard apresenta uma visão consolidada da operação e separa as aplicações entre Pesquisa de Clima, Diagnóstico Organizacional e Avaliação Psicossocial.",
+      "O Dashboard apresenta uma visão consolidada da operação e separa as aplicações entre Pesquisa de Clima, Avaliação de Desempenho e Avaliação Psicossocial.",
       "Cada perfil possui permissões específicas. Algumas páginas podem não aparecer para todos os usuários.",
       "Ao terminar de utilizar a plataforma, clique em Sair no rodapé do menu.",
     ],
@@ -59,17 +59,17 @@ const TOPICOS: TopicoAjuda[] = [
     categoria: "Pesquisas e avaliações",
     titulo: "Quais são as três modalidades de avaliação",
     resumo:
-      "Entenda a finalidade da Pesquisa de Clima, do Diagnóstico Organizacional e da Avaliação Psicossocial.",
+      "Entenda a finalidade da Pesquisa de Clima, da Avaliação de Desempenho e da Avaliação Psicossocial.",
     conteudo: [
       "Pesquisa de Clima: avalia a percepção dos colaboradores por meio de favorabilidade, neutralidade e desfavorabilidade.",
-      "Diagnóstico Organizacional: consolida dimensões em uma escala de 0 a 100 e organiza a leitura executiva em forças, pontos de atenção e prioridades.",
+      "Avaliação de Desempenho: consolida dimensões e competências em uma escala de 0 a 100, destacando pontos fortes, pontos de atenção e prioridades de desenvolvimento.",
       "Avaliação Psicossocial: consolida fatores psicossociais relacionados ao trabalho em uma escala de exposição de 0 a 100 e utiliza as faixas de interpretação configuradas no instrumento.",
       "As três modalidades utilizam modelos reutilizáveis, aplicações vinculadas a clientes, convites, respostas e relatórios consolidados.",
       "Perguntas que não são do tipo Nota podem ser apresentadas como informações adicionais e não alteram o score quantitativo.",
     ],
     palavrasChave: [
       "clima",
-      "diagnóstico",
+      "desempenho",
       "psicossocial",
       "modalidade",
       "avaliação",
@@ -141,28 +141,29 @@ const TOPICOS: TopicoAjuda[] = [
   },
 
   {
-    id: "diagnostico-organizacional",
-    categoria: "Diagnóstico Organizacional",
-    titulo: "Como funciona o Diagnóstico Organizacional",
+    id: "avaliacao-desempenho",
+    categoria: "Avaliação de Desempenho",
+    titulo: "Como funciona a Avaliação de Desempenho",
     resumo:
-      "Entenda o score organizacional e a leitura por dimensões.",
+      "Entenda o score de desempenho, a leitura por dimensões e as prioridades de desenvolvimento.",
     conteudo: [
-      "Crie ou selecione um modelo da modalidade Diagnóstico Organizacional.",
-      "Cadastre as dimensões organizacionais e atribua o peso de cada dimensão quando necessário.",
+      "Crie ou selecione um modelo da modalidade Avaliação de Desempenho.",
+      "Cadastre as dimensões ou competências que serão avaliadas e atribua o peso de cada dimensão quando necessário.",
       "Configure as faixas de interpretação que classificam os scores calculados.",
       "As perguntas de Nota são normalizadas para uma escala de 0 a 100 e alimentam o score das dimensões.",
-      "O relatório apresenta o Score Organizacional e o resultado de cada dimensão.",
-      "A leitura executiva organiza as dimensões em Forças, Pontos de atenção e Prioridades conforme a lógica atualmente adotada pelo sistema.",
-      "Perguntas não quantitativas são exibidas em Informações adicionais e não alteram o score.",
+      "O relatório apresenta o Score de Desempenho e o resultado de cada dimensão avaliada.",
+      "A leitura executiva organiza as dimensões em Pontos fortes, Pontos de atenção e Prioridades de desenvolvimento conforme a lógica adotada pelo sistema.",
+      "Perguntas não quantitativas são exibidas em Informações adicionais e não alteram o score de desempenho.",
     ],
     palavrasChave: [
-      "diagnóstico",
-      "organizacional",
-      "maturidade",
+      "desempenho",
+      "avaliação",
+      "competências",
       "score",
-      "forças",
+      "pontos fortes",
       "pontos de atenção",
       "prioridades",
+      "desenvolvimento",
     ],
     perfis: [
       "MUNDIAL",
@@ -213,7 +214,7 @@ const TOPICOS: TopicoAjuda[] = [
       "Sim/Não: aparece em Informações adicionais com quantidade e percentual de cada resposta.",
       "Múltipla Escolha: aparece em Informações adicionais com a distribuição das alternativas.",
       "Texto curto e Texto longo: aparecem como respostas qualitativas em Informações adicionais.",
-      "Perguntas não quantitativas não alteram favorabilidade, maturidade, score organizacional ou exposição psicossocial.",
+      "Perguntas não quantitativas não alteram favorabilidade, score de desempenho ou exposição psicossocial.",
     ],
     palavrasChave: [
       "nota",
@@ -237,10 +238,10 @@ const TOPICOS: TopicoAjuda[] = [
       "Padronize os setores para melhorar os recortes analíticos e o mapa de calor.",
     conteudo: [
       "Os setores podem ser cadastrados na estrutura organizacional do cliente.",
-      "Quando existem setores cadastrados, o participante seleciona o setor em uma lista em vez de digitá-lo livremente.",
+      "Na Pesquisa de Clima, a Mundial define o setor da aplicação no momento da criação da pesquisa. O respondente não seleciona nem informa o setor.",
       "A padronização evita registros diferentes para o mesmo setor, como Operacional, operacional ou OP.",
       "Na Avaliação Psicossocial, o setor informado é utilizado para compor o Mapa de Calor por setor.",
-      "Se um convite possuir setor previamente definido, esse valor pode ser apresentado bloqueado no formulário.",
+      "Na Avaliação Psicossocial e em outros formulários identificados, o setor pode ser utilizado conforme a configuração e a estrutura cadastrada do cliente.",
     ],
     palavrasChave: [
       "setor",
@@ -267,7 +268,7 @@ const TOPICOS: TopicoAjuda[] = [
       "Ao clicar em Imprimir relatório, a plataforma abre uma rota separada, preparada para impressão ou salvamento em PDF.",
       "A versão para impressão não utiliza o menu lateral nem o layout administrativo da plataforma.",
       "Pesquisa de Clima apresenta favorabilidade, destaques, pontos de atenção, histórico e informações adicionais.",
-      "Diagnóstico Organizacional apresenta score, dimensões, forças, pontos de atenção, prioridades e informações adicionais.",
+      "Avaliação de Desempenho apresenta score de desempenho, dimensões, pontos fortes, pontos de atenção, prioridades de desenvolvimento e informações adicionais.",
       "Avaliação Psicossocial apresenta resumo executivo, ranking, Radar, Mapa de Calor, fatores e informações adicionais quando houver dados disponíveis.",
     ],
     palavrasChave: [
@@ -276,7 +277,7 @@ const TOPICOS: TopicoAjuda[] = [
       "pdf",
       "cliente",
       "clima",
-      "diagnóstico",
+      "desempenho",
       "psicossocial",
     ],
     perfis: [
@@ -403,7 +404,7 @@ const TOPICOS: TopicoAjuda[] = [
     categoria: "Planos de ação",
     titulo: "Como utilizar os planos de ação",
     resumo:
-      "Crie ações corretivas a partir de pesquisas ou denúncias.",
+      "Crie ações de melhoria a partir de pesquisas, avaliações ou denúncias.",
     conteudo: [
       "Acesse Planos de ação no menu lateral.",
       "Crie um plano e informe sua origem.",
