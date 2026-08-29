@@ -328,8 +328,8 @@ function normalizarConfiguracaoAnalise(
       TipoModuloPesquisa.CLIMA
         ? "FAVORABILIDADE"
         : tipo ===
-            TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
-          ? "MATURIDADE"
+            TipoModuloPesquisa.AVALIACAO_DESEMPENHO
+          ? "DESEMPENHO"
           : "RISCO_PSICOSSOCIAL",
 
     escalaMinima:

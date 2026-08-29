@@ -24,11 +24,6 @@ export type PerguntaRespostaPesquisa = {
 
   opcoes: string[];
 
-
-  /*
-   * Estrutura analítica utilizada
-   * pelo motor de relatórios.
-   */
   dimensaoId?: string | null;
 
   sentidoPontuacao?: SentidoPontuacao;
@@ -48,8 +43,13 @@ export type PesquisaPublica = {
 
   status: StatusPesquisaCliente;
 
-  perguntas: PerguntaRespostaPesquisa[];
+  /*
+   * Setor fixado pela Mundial na aplicação.
+   * O campo é informativo; o respondente não o escolhe.
+   */
+  setor: string | null;
 
+  perguntas: PerguntaRespostaPesquisa[];
 
   cliente: {
     id: string;
@@ -58,15 +58,8 @@ export type PesquisaPublica = {
 
     empresa?: string | null;
 
-    /*
-     * Setores cadastrados no cliente.
-     *
-     * Utilizados para preencher o dropdown
-     * de setor no formulário público.
-     */
     setores: string[];
   };
-
 
   modelo: {
     id: string;
@@ -75,25 +68,6 @@ export type PesquisaPublica = {
 
     descricao?: string | null;
   };
-
-
-  convite?: {
-    id: string;
-
-    token: string;
-
-    respondido: boolean;
-
-    nome?: string | null;
-
-    email?: string | null;
-
-    unidade?: string | null;
-
-    setor?: string | null;
-
-    cargo?: string | null;
-  } | null;
 };
 
 
@@ -111,8 +85,11 @@ export type NovaRespostaPesquisa = {
 
   token: string;
 
-  conviteToken?: string | null;
-
+  /*
+   * Mantidos para Diagnóstico Organizacional e Psicossocial.
+   * No CLIMA o backend ignora identificação e usa o setor
+   * fixado na própria PesquisaCliente.
+   */
   nome?: string | null;
 
   email?: string | null;

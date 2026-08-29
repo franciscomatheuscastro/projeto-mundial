@@ -87,7 +87,7 @@ export default function PlanosAcaoTela({
 
             <p className="mt-1 max-w-3xl text-sm text-slate-500">
               {usuarioMundial
-                ? "Gestão dos planos originados por pesquisas de clima, diagnósticos organizacionais, avaliações psicossociais e denúncias."
+                ? "Gestão dos planos originados por pesquisas de clima, avaliações de desempenho, avaliações psicossociais e denúncias."
                 : "Visualize os relatórios finais dos planos de ação da sua empresa."}
             </p>
           </div>

@@ -12,10 +12,12 @@ import {
   usePlanosAcao,
 } from "@/src/app/data/hooks/usePlanosAcao";
 
+
 type Props = {
   id: string;
   contexto?: "mundial" | "cliente";
 };
+
 
 export default function PlanoAcaoDetalheTela({
   id,
@@ -32,11 +34,13 @@ export default function PlanoAcaoDetalheTela({
       contexto
     );
 
+
   const baseHref =
     contexto ===
     "cliente"
       ? "/meus-planos-acao"
       : "/planos-acao";
+
 
   useEffect(() => {
     void carregarPlanoPorId(
@@ -49,6 +53,7 @@ export default function PlanoAcaoDetalheTela({
     id,
     carregarPlanoPorId,
   ]);
+
 
   if (
     contexto ===
@@ -80,6 +85,7 @@ export default function PlanoAcaoDetalheTela({
     );
   }
 
+
   if (
     carregando
   ) {
@@ -91,6 +97,7 @@ export default function PlanoAcaoDetalheTela({
       </main>
     );
   }
+
 
   if (
     erro
@@ -106,6 +113,7 @@ export default function PlanoAcaoDetalheTela({
     );
   }
 
+
   if (
     !planoSelecionado
   ) {
@@ -117,6 +125,7 @@ export default function PlanoAcaoDetalheTela({
       </main>
     );
   }
+
 
   return (
     <PlanoAcaoFormularioTela

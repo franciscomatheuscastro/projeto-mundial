@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  AnaliseSetorClima,
   DadosRelatorioClima,
   DimensaoClima,
 } from "./RelatorioPesquisasClimaTela";
@@ -41,6 +42,25 @@ export default function RelatorioClimaImpressaoTela({
       ) =>
         b.favoravel -
         a.favoravel
+    );
+
+
+  const setores =
+    analise?.setores ||
+    [];
+
+
+  const dimensoesHeatmap =
+    Array.from(
+      new Set(
+        setores.flatMap(
+          setor =>
+            setor.dimensoes.map(
+              dimensao =>
+                dimensao.nome
+            )
+        )
+      )
     );
 
 
@@ -278,11 +298,52 @@ export default function RelatorioClimaImpressaoTela({
         </section>
 
 
+        {setores.length >
+          0 && (
+          <section className="mt-8">
+            <TituloSecao
+              indice="3"
+              titulo="Análise por setor"
+              descricao="Comparativo do índice de clima e da favorabilidade das dimensões entre os setores vinculados às aplicações."
+            />
+
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {setores.map(
+                setor => (
+                  <SetorClimaImpressao
+                    key={
+                      setor.setor
+                    }
+                    setor={
+                      setor
+                    }
+                  />
+                )
+              )}
+            </div>
+
+
+            {dimensoesHeatmap.length >
+              0 && (
+              <HeatmapClimaImpressao
+                setores={
+                  setores
+                }
+                dimensoes={
+                  dimensoesHeatmap
+                }
+              />
+            )}
+          </section>
+        )}
+
+
         {dimensoesOrdenadas.length >
           0 && (
           <section className="mt-8 evitar-quebra">
             <TituloSecao
-              indice="3"
+              indice="4"
               titulo="Destaques e pontos de atenção"
               descricao="Leitura comparativa das dimensões com maior e menor favorabilidade."
             />
@@ -321,7 +382,7 @@ export default function RelatorioClimaImpressaoTela({
         {!!analise?.historico?.length && (
           <section className="mt-8">
             <TituloSecao
-              indice="4"
+              indice="5"
               titulo="Evolução do clima"
               descricao="Histórico do índice geral entre as pesquisas consideradas."
             />
@@ -374,7 +435,7 @@ export default function RelatorioClimaImpressaoTela({
           0 && (
           <section className="mt-8 quebra-pagina">
             <TituloSecao
-              indice="5"
+              indice="6"
               titulo="Informações adicionais"
               descricao="Perguntas complementares que não compõem o índice quantitativo de clima."
             />
@@ -475,7 +536,7 @@ export default function RelatorioClimaImpressaoTela({
 
         <section className="mt-8">
           <TituloSecao
-            indice="6"
+            indice="7"
             titulo="Pesquisas consideradas"
             descricao="Aplicações utilizadas na consolidação deste documento."
           />
@@ -487,6 +548,7 @@ export default function RelatorioClimaImpressaoTela({
                 <tr>
                   <Th>Pesquisa</Th>
                   <Th>Organização</Th>
+                  <Th>Setor</Th>
                   <Th>Status</Th>
                   <Th direita>Respostas</Th>
                   <Th direita>Participação</Th>
@@ -519,6 +581,11 @@ export default function RelatorioClimaImpressaoTela({
                       <Td>
                         {pesquisa.cliente.empresa ||
                           pesquisa.cliente.nome}
+                      </Td>
+
+                      <Td>
+                        {pesquisa.setor ||
+                          "Toda a empresa"}
                       </Td>
 
                       <Td>
@@ -561,7 +628,9 @@ export default function RelatorioClimaImpressaoTela({
             a partir das respostas quantitativas e da configuração de
             favorabilidade definida no instrumento. Perguntas abertas,
             Sim/Não e múltipla escolha são apresentadas separadamente como
-            informações complementares.
+            informações complementares. A análise por setor utiliza o setor
+            definido pela Mundial em cada aplicação da Pesquisa de Clima; o
+            respondente não informa nem seleciona esse dado.
           </p>
         </section>
 
@@ -829,6 +898,223 @@ function Ranking({
             </div>
           )
         )}
+      </div>
+    </div>
+  );
+}
+
+
+function SetorClimaImpressao({
+  setor,
+}: {
+  setor: AnaliseSetorClima;
+}) {
+  const dimensoesOrdenadas =
+    [
+      ...setor.dimensoes,
+    ].sort(
+      (
+        a,
+        b
+      ) =>
+        b.favoravel -
+        a.favoravel
+    );
+
+
+  const melhor =
+    dimensoesOrdenadas[0];
+
+  const pior =
+    dimensoesOrdenadas[
+      dimensoesOrdenadas.length -
+      1
+    ];
+
+
+  return (
+    <div className="evitar-quebra rounded-2xl border border-slate-200 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-black">
+            {
+              setor.setor
+            }
+          </h3>
+
+          <p className="mt-1 text-xs text-slate-500">
+            {
+              setor.totalRespostas
+            }{" "}
+            resposta(s) ·{" "}
+            {
+              setor.totalPesquisas
+            }{" "}
+            aplicação(ões)
+          </p>
+        </div>
+
+        <strong className="text-lg text-blue-700">
+          {setor.indiceGeralClima ===
+          null
+            ? "—"
+            : percentual(
+                setor.indiceGeralClima
+              )}
+        </strong>
+      </div>
+
+
+      {setor.indiceGeralClima !==
+        null && (
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full bg-blue-600"
+            style={{
+              width: `${limitarPercentual(
+                setor.indiceGeralClima
+              )}%`,
+            }}
+          />
+        </div>
+      )}
+
+
+      <div className="mt-3 space-y-1 text-xs">
+        {melhor && (
+          <p className="text-green-700">
+            Destaque:{" "}
+            <strong>
+              {
+                melhor.nome
+              }{" "}
+              (
+              {percentual(
+                melhor.favoravel
+              )}
+              )
+            </strong>
+          </p>
+        )}
+
+        {pior &&
+          pior.id !==
+            melhor?.id && (
+            <p className="text-amber-700">
+              Atenção:{" "}
+              <strong>
+                {
+                  pior.nome
+                }{" "}
+                (
+                {percentual(
+                  pior.favoravel
+                )}
+                )
+              </strong>
+            </p>
+          )}
+      </div>
+    </div>
+  );
+}
+
+
+function HeatmapClimaImpressao({
+  setores,
+  dimensoes,
+}: {
+  setores: AnaliseSetorClima[];
+  dimensoes: string[];
+}) {
+  return (
+    <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
+      <div className="bg-slate-50 px-4 py-3">
+        <h3 className="text-sm font-black">
+          Mapa comparativo — Setor × dimensão
+        </h3>
+
+        <p className="mt-1 text-xs text-slate-500">
+          Percentual de respostas favoráveis em cada dimensão.
+        </p>
+      </div>
+
+
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-[10px]">
+          <thead>
+            <tr>
+              <Th>Setor</Th>
+
+              {dimensoes.map(
+                dimensao => (
+                  <Th
+                    key={
+                      dimensao
+                    }
+                    direita
+                  >
+                    {
+                      dimensao
+                    }
+                  </Th>
+                )
+              )}
+            </tr>
+          </thead>
+
+          <tbody>
+            {setores.map(
+              setor => (
+                <tr
+                  key={
+                    setor.setor
+                  }
+                >
+                  <Td>
+                    <strong>
+                      {
+                        setor.setor
+                      }
+                    </strong>
+
+                    <div className="text-slate-500">
+                      n=
+                      {
+                        setor.totalRespostas
+                      }
+                    </div>
+                  </Td>
+
+                  {dimensoes.map(
+                    nomeDimensao => {
+                      const dimensao =
+                        setor.dimensoes.find(
+                          item =>
+                            item.nome ===
+                            nomeDimensao
+                        );
+
+
+                      return (
+                        <Td
+                          key={`${setor.setor}-${nomeDimensao}`}
+                          direita
+                        >
+                          {dimensao
+                            ? percentual(
+                                dimensao.favoravel
+                              )
+                            : "—"}
+                        </Td>
+                      );
+                    }
+                  )}
+                </tr>
+              )
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

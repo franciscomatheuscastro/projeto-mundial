@@ -21,7 +21,7 @@ import {
   usePesquisasCliente,
 } from "@/src/app/data/hooks/UsePesquisasCliente";
 
-import EnviarConviteEmailButton from "@/src/app/components/pesquisas/EnviarConviteEmailButton";
+import QrCodePublico from "@/src/app/components/pesquisas/QrCodePublico";
 
 
 type Contexto =
@@ -140,7 +140,6 @@ export default function PesquisasTela({
 
     alterarStatus,
 
-    gerarConvites,
   } =
     usePesquisasCliente(
       carregarListaInicial,
@@ -177,11 +176,27 @@ export default function PesquisasTela({
 
 
   const [
-    quantidadeConvites,
-    setQuantidadeConvites,
+    setorPesquisa,
+    setSetorPesquisa,
   ] =
-    useState(30);
+    useState("");
 
+
+  const clienteSelecionado =
+    useMemo(
+      () =>
+        dadosFormulario.clientes.find(
+          cliente =>
+            cliente.id === clienteId
+        ),
+      [
+        dadosFormulario.clientes,
+        clienteId,
+      ]
+    );
+
+  const setoresClienteSelecionado =
+    clienteSelecionado?.setores ?? [];
 
   const usuarioMundial =
     contexto ===
@@ -216,6 +231,37 @@ export default function PesquisasTela({
     modo,
     usuarioMundial,
     carregarDadosFormulario,
+  ]);
+
+
+
+
+  useEffect(() => {
+    if (
+      !setorPesquisa
+    ) {
+      return;
+    }
+
+
+    const aindaExiste =
+      setoresClienteSelecionado.some(
+        setor =>
+          setor ===
+          setorPesquisa
+      );
+
+
+    if (
+      !aindaExiste
+    ) {
+      setSetorPesquisa(
+        ""
+      );
+    }
+  }, [
+    setorPesquisa,
+    setoresClienteSelecionado,
   ]);
 
 
@@ -289,6 +335,10 @@ export default function PesquisasTela({
 
         modeloId,
 
+        setor:
+          setorPesquisa ||
+          null,
+
         status:
           STATUS_PESQUISA.ABERTA as StatusPesquisaCliente,
       });
@@ -354,52 +404,6 @@ export default function PesquisasTela({
 
     router.refresh();
   }
-
-
-  async function gerarNovosConvites() {
-    if (
-      !pesquisaSelecionada
-    ) {
-      return;
-    }
-
-
-    const quantidade =
-      Math.min(
-        500,
-        Math.max(
-          1,
-          Number(
-            quantidadeConvites
-          ) ||
-            1
-        )
-      );
-
-
-    setQuantidadeConvites(
-      quantidade
-    );
-
-
-    await gerarConvites(
-      pesquisaSelecionada.id,
-      quantidade
-    );
-
-
-    /*
-     * Recarregamos o detalhe para garantir
-     * sincronização completa dos convites.
-     */
-    await carregarPesquisaPorId(
-      pesquisaSelecionada.id
-    );
-
-
-    router.refresh();
-  }
-
 
   /*
    * LISTA
@@ -838,6 +842,63 @@ export default function PesquisasTela({
               )}
 
 
+              <div className="mb-5">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Setor da pesquisa
+                </label>
+
+                <select
+                  value={
+                    setorPesquisa
+                  }
+                  onChange={event =>
+                    setSetorPesquisa(
+                      event.target.value
+                    )
+                  }
+                  disabled={
+                    !clienteId
+                  }
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                >
+                  <option value="">
+                    Toda a empresa
+                  </option>
+
+                  {setoresClienteSelecionado.map(
+                    setor => (
+                      <option
+                        key={
+                          setor
+                        }
+                        value={
+                          setor
+                        }
+                      >
+                        {
+                          setor
+                        }
+                      </option>
+                    )
+                  )}
+                </select>
+
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  A Mundial define o setor desta aplicação. O respondente não
+                  seleciona setor e não informa nome, e-mail ou cargo.
+                </p>
+
+                {clienteId &&
+                  setoresClienteSelecionado.length ===
+                    0 && (
+                    <p className="mt-2 text-xs font-bold text-amber-700">
+                      Este cliente ainda não possui setores cadastrados. A
+                      pesquisa será aplicada para toda a empresa.
+                    </p>
+                  )}
+              </div>
+
+
               <CampoArea
                 label="Descrição"
                 value={
@@ -885,22 +946,6 @@ export default function PesquisasTela({
     modo ===
     "detalhe"
   ) {
-    const convites =
-      pesquisaSelecionada?.convites ||
-      [];
-
-
-    const totalConvites =
-      pesquisaSelecionada?.totalConvites ??
-      convites.length;
-
-
-    const totalConvitesRespondidos =
-      pesquisaSelecionada?.totalConvitesRespondidos ??
-      convites.filter(
-        convite =>
-          convite.respondido
-      ).length;
 
 
     return (
@@ -1000,8 +1045,8 @@ export default function PesquisasTela({
 
                 <div className="mb-6 text-sm text-slate-500">
                   {usuarioMundial
-                    ? "Gerencie o status, os links e acompanhe os resultados."
-                    : "Gerencie os links de participação e acompanhe os indicadores consolidados."}
+                    ? "Gerencie o status, o acesso público e acompanhe os resultados."
+                    : "Acompanhe o acesso público e os indicadores consolidados."}
                 </div>
 
 
@@ -1041,23 +1086,13 @@ export default function PesquisasTela({
                     }
                   />
 
-                  {podeGerenciarLinks && (
-                    <>
-                      <Info
-                        titulo="Convites"
-                        valor={String(
-                          totalConvites
-                        )}
-                      />
-
-                      <Info
-                        titulo="Respondidos"
-                        valor={String(
-                          totalConvitesRespondidos
-                        )}
-                      />
-                    </>
-                  )}
+                  <Info
+                    titulo="Setor"
+                    valor={
+                      pesquisaSelecionada.setor ||
+                      "Toda a empresa"
+                    }
+                  />
                 </div>
 
 
@@ -1089,214 +1124,38 @@ export default function PesquisasTela({
               <div className="min-w-0 space-y-6">
                 {podeGerenciarLinks && (
                   <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
-                    <div className="mb-4">
-                      <h2 className="text-lg font-black text-slate-900">
-                        Links individuais
+                    <div className="mb-5">
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
+                        Participação
+                      </p>
+
+                      <h2 className="mt-1 text-lg font-black text-slate-900">
+                        Acesso público ao questionário
                       </h2>
 
-                      <p className="mt-1 text-sm text-slate-500">
-                        Cada link individual pode ser respondido apenas uma vez.
+                      <p className="mt-1 text-sm leading-6 text-slate-500">
+                        Todas as respostas são realizadas pelo link público.
+                        Compartilhe o endereço ou projete o QR Code no telão para
+                        que os participantes acessem pelo celular.
                       </p>
                     </div>
 
+                    <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                        Link público
+                      </p>
 
-                    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end">
-                      <div className="flex-1">
-                        <label className="mb-2 block text-sm font-semibold text-slate-700">
-                          Quantidade de links
-                        </label>
-
-                        <input
-                          type="number"
-                          min={
-                            1
-                          }
-                          max={
-                            500
-                          }
-                          value={
-                            quantidadeConvites
-                          }
-                          onChange={event =>
-                            setQuantidadeConvites(
-                              Math.min(
-                                500,
-                                Math.max(
-                                  1,
-                                  Number(
-                                    event.target.value
-                                  ) ||
-                                    1
-                                )
-                              )
-                            )
-                          }
-                          className={
-                            inputClassName
-                          }
-                        />
-                      </div>
-
-
-                      <button
-                        type="button"
-                        disabled={
-                          processando
-                        }
-                        onClick={() =>
-                          void gerarNovosConvites()
-                        }
-                        className="min-h-12 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {processando
-                          ? "Gerando..."
-                          : "Gerar links"}
-                      </button>
+                      <p className="mt-2 break-all text-sm font-semibold text-slate-700">
+                        {linkPublico || "Link público não disponível."}
+                      </p>
                     </div>
 
-
-                    {convites.length ===
-                    0 ? (
-                      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
-                        Nenhum convite individual foi gerado para esta pesquisa.
-                        O link público continua disponível e permite múltiplas
-                        respostas.
-                      </div>
-                    ) : (
-                      <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-                        {convites.map(
-                          convite => {
-                            const linkConvite =
-                              montarLink(
-                                convite.token
-                              );
-
-                            return (
-                              <article
-                                key={
-                                  convite.id
-                                }
-                                className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm"
-                              >
-                                <div className="flex min-w-0 items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <p className="truncate text-sm font-black text-slate-900">
-                                      {convite.nome ||
-                                        "Participante"}
-                                    </p>
-
-                                    <p className="mt-1 truncate text-xs text-slate-500">
-                                      {convite.email ||
-                                        "Sem identificação"}
-                                    </p>
-                                  </div>
-
-
-                                  <span
-                                    className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${
-                                      convite.respondido
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-yellow-100 text-yellow-700"
-                                    }`}
-                                  >
-                                    {convite.respondido
-                                      ? "Respondido"
-                                      : "Pendente"}
-                                  </span>
-                                </div>
-
-
-                                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                                  <MiniInfoConvite
-                                    titulo="Unidade"
-                                    valor={
-                                      convite.unidade ||
-                                      "—"
-                                    }
-                                  />
-
-                                  <MiniInfoConvite
-                                    titulo="Setor"
-                                    valor={
-                                      convite.setor ||
-                                      "—"
-                                    }
-                                  />
-
-                                  <MiniInfoConvite
-                                    titulo="Cargo"
-                                    valor={
-                                      convite.cargo ||
-                                      "—"
-                                    }
-                                  />
-                                </div>
-
-
-                                <div className="mt-4 min-w-0 rounded-xl bg-slate-50 p-3">
-                                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                                    Link individual
-                                  </p>
-
-                                  <p
-                                    title={
-                                      linkConvite
-                                    }
-                                    className="mt-1 truncate text-xs text-slate-500"
-                                  >
-                                    {
-                                      linkConvite
-                                    }
-                                  </p>
-                                </div>
-
-
-                                <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-slate-100 pt-4">
-                                  <a
-                                    href={
-                                      linkConvite
-                                    }
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                                  >
-                                    Abrir link
-                                  </a>
-
-
-                                  <EnviarConviteEmailButton
-                                    link={
-                                      linkConvite
-                                    }
-                                    tituloPesquisa={
-                                      pesquisaSelecionada.titulo
-                                    }
-                                    tituloModulo="Pesquisa de Clima"
-                                    descricaoPesquisa={
-                                      pesquisaSelecionada.descricao
-                                    }
-                                    organizacao={
-                                      pesquisaSelecionada.cliente.empresa ||
-                                      pesquisaSelecionada.cliente.nome
-                                    }
-                                    nomeInicial={
-                                      convite.nome ||
-                                      null
-                                    }
-                                    emailInicial={
-                                      convite.email ||
-                                      null
-                                    }
-                                    desabilitado={
-                                      convite.respondido
-                                    }
-                                  />
-                                </div>
-                              </article>
-                            );
-                          }
-                        )}
-                      </div>
+                    {linkPublico && (
+                      <QrCodePublico
+                        link={linkPublico}
+                        titulo="QR Code da Pesquisa de Clima"
+                        descricao="Projete este QR Code no telão para que os participantes acessem o questionário."
+                      />
                     )}
                   </div>
                 )}
@@ -2186,37 +2045,6 @@ function Card({
   );
 }
 
-
-
-function MiniInfoConvite({
-  titulo,
-  valor,
-}: {
-  titulo: string;
-
-  valor: string;
-}) {
-  return (
-    <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-        {
-          titulo
-        }
-      </p>
-
-      <p
-        title={
-          valor
-        }
-        className="mt-1 truncate text-xs font-semibold text-slate-700"
-      >
-        {
-          valor
-        }
-      </p>
-    </div>
-  );
-}
 
 
 function Info({

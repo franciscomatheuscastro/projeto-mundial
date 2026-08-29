@@ -177,10 +177,10 @@ export default function PlanoAcaoRelatorioTela({
 
         if (
           planoSelecionado.tipoOrigem ===
-          "DIAGNOSTICO_ORGANIZACIONAL"
+          "AVALIACAO_DESEMPENHO"
         ) {
           tipoOrigem =
-            "Diagnóstico organizacional";
+            "Avaliação de desempenho";
         }
 
         if (
@@ -231,8 +231,8 @@ export default function PlanoAcaoRelatorioTela({
           case "PESQUISA_CLIMA":
             return "pesquisa de clima";
 
-          case "DIAGNOSTICO_ORGANIZACIONAL":
-            return "diagnóstico organizacional";
+          case "AVALIACAO_DESEMPENHO":
+            return "avaliação de desempenho";
 
           case "AVALIACAO_PSICOSSOCIAL":
             return "avaliação psicossocial";
@@ -652,14 +652,14 @@ export default function PlanoAcaoRelatorioTela({
                     </Item>
                   </>
                 ) : planoSelecionado.tipoOrigem ===
-                  "DIAGNOSTICO_ORGANIZACIONAL" ? (
+                  "AVALIACAO_DESEMPENHO" ? (
                   <>
                     <Item>
-                      Atuar sobre os pontos críticos identificados no diagnóstico.
+                      Atuar sobre os pontos de desenvolvimento identificados na avaliação.
                     </Item>
 
                     <Item>
-                      Alinhar processos, liderança e comunicação organizacional.
+                      Desenvolver competências e comportamentos prioritários para o desempenho.
                     </Item>
 
                     <Item>
@@ -667,7 +667,7 @@ export default function PlanoAcaoRelatorioTela({
                     </Item>
 
                     <Item>
-                      Medir a evolução das melhorias implementadas.
+                      Medir a evolução do desempenho após as ações de desenvolvimento.
                     </Item>
                   </>
                 ) : (

@@ -28,7 +28,6 @@ import obterDadosFormularioPesquisaCliente from "./pesquisaCliente/obterDadosFor
 import obterMinhasPesquisasCliente from "./pesquisaCliente/obterMinhas";
 import obterMinhaPesquisaClientePorId from "./pesquisaCliente/obterMinhaPorId";
 import obterMeuRelatorioPesquisaCliente from "./pesquisaCliente/obterMeuRelatorio";
-import gerarConvitesPesquisaCliente from "./pesquisaCliente/gerarConvites";
 import obterDadosRelatorioPesquisasCliente from "./pesquisaCliente/obterDadosRelatorio";
 
 import obterPesquisaPublicaPorToken from "./respostaPesquisa/obterPorToken";
@@ -142,8 +141,6 @@ export default class Backend {
     obterMeuRelatorio:
       obterMeuRelatorioPesquisaCliente,
 
-    gerarConvites:
-      gerarConvitesPesquisaCliente,
 
     obterDadosRelatorio:
       obterDadosRelatorioPesquisasCliente,

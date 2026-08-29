@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "TipoOrigemPlanoAcao" ADD VALUE 'AVALIACAO_DESEMPENHO';

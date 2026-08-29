@@ -1,13 +1,13 @@
 "use client";
 
 import type {
-  DadosRelatorioDiagnostico,
-  DimensaoDiagnostico,
-} from "./RelatorioDiagnosticoOrganizacionalTela";
+  DadosRelatorioDesempenho,
+  DimensaoDesempenho,
+} from "./RelatorioAvaliacaoDesempenhoTela";
 
 
 type Props = {
-  dados: DadosRelatorioDiagnostico;
+  dados: DadosRelatorioDesempenho;
 };
 
 
@@ -15,7 +15,7 @@ const CAMINHO_LOGO =
   "/logo-pessoas.png";
 
 
-export default function RelatorioDiagnosticoOrganizacionalImpressaoTela({
+export default function RelatorioAvaliacaoDesempenhoImpressaoTela({
   dados,
 }: Props) {
   const analise =
@@ -132,17 +132,17 @@ export default function RelatorioDiagnosticoOrganizacionalImpressaoTela({
 
 
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.24em] text-indigo-600">
-            Diagnóstico Organizacional
+            Avaliação de Desempenho
           </p>
 
 
           <h1 className="mt-2 text-3xl font-black leading-tight">
-            Relatório Executivo Organizacional
+            Relatório de Avaliação de Desempenho
           </h1>
 
 
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Consolidação das dimensões organizacionais, forças, pontos de
+            Consolidação das dimensões de desempenho, forças, pontos de
             atenção e prioridades identificadas nas aplicações consideradas.
           </p>
 
@@ -166,7 +166,7 @@ export default function RelatorioDiagnosticoOrganizacionalImpressaoTela({
             />
 
             <InfoCapa
-              label="Diagnósticos considerados"
+              label="Avaliações considerados"
               valor={
                 String(
                   dados.resumo.totalPesquisas
@@ -190,13 +190,13 @@ export default function RelatorioDiagnosticoOrganizacionalImpressaoTela({
           <TituloSecao
             indice="1"
             titulo="Resumo executivo"
-            descricao="Visão consolidada dos principais indicadores organizacionais."
+            descricao="Visão consolidada dos principais indicadores de desempenho."
           />
 
 
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Indicador
-              label="Diagnósticos"
+              label="Avaliações"
               valor={
                 dados.resumo.totalPesquisas
               }
@@ -222,13 +222,13 @@ export default function RelatorioDiagnosticoOrganizacionalImpressaoTela({
             />
 
             <Indicador
-              label="Score organizacional"
+              label="Score de desempenho"
               valor={
-                analise?.scoreOrganizacional ==
+                analise?.scoreDesempenho ==
                 null
                   ? "—"
                   : `${formatarScore(
-                      analise.scoreOrganizacional
+                      analise.scoreDesempenho
                     )}/100`
               }
               destaque
@@ -264,7 +264,7 @@ export default function RelatorioDiagnosticoOrganizacionalImpressaoTela({
             <div className="mt-4 space-y-3">
               {analise.dimensoes.map(
                 dimensao => (
-                  <DimensaoCardImpressao
+                  <DimensaoDesempenhoCardImpressao
                     key={`${dimensao.id}-${dimensao.nome}`}
                     dimensao={
                       dimensao
@@ -282,7 +282,7 @@ export default function RelatorioDiagnosticoOrganizacionalImpressaoTela({
             <TituloSecao
               indice="3"
               titulo="Leitura executiva"
-              descricao="Síntese das dimensões organizadas pela lógica analítica do diagnóstico."
+              descricao="Síntese das dimensões organizadas pela lógica analítica do avaliação."
             />
 
 
@@ -322,7 +322,7 @@ export default function RelatorioDiagnosticoOrganizacionalImpressaoTela({
             <TituloSecao
               indice="4"
               titulo="Ranking das dimensões"
-              descricao="Ordenação do maior para o menor score organizacional."
+              descricao="Ordenação do maior para o menor score de desempenho."
             />
 
 
@@ -395,7 +395,7 @@ export default function RelatorioDiagnosticoOrganizacionalImpressaoTela({
             <TituloSecao
               indice="5"
               titulo="Informações adicionais"
-              descricao="Perguntas complementares que não compõem o score quantitativo do diagnóstico."
+              descricao="Perguntas complementares que não compõem o score quantitativo do avaliação."
             />
 
 
@@ -495,7 +495,7 @@ export default function RelatorioDiagnosticoOrganizacionalImpressaoTela({
         <section className="mt-8">
           <TituloSecao
             indice="6"
-            titulo="Diagnósticos considerados"
+            titulo="Avaliações considerados"
             descricao="Aplicações utilizadas na consolidação deste documento."
           />
 
@@ -504,7 +504,7 @@ export default function RelatorioDiagnosticoOrganizacionalImpressaoTela({
             <table className="w-full border-collapse text-xs">
               <thead className="bg-slate-100">
                 <tr>
-                  <Th>Diagnóstico</Th>
+                  <Th>Avaliação</Th>
                   <Th>Organização</Th>
                   <Th>Status</Th>
                   <Th direita>Participações</Th>
@@ -693,10 +693,10 @@ function Indicador({
 }
 
 
-function DimensaoCardImpressao({
+function DimensaoDesempenhoCardImpressao({
   dimensao,
 }: {
-  dimensao: DimensaoDiagnostico;
+  dimensao: DimensaoDesempenho;
 }) {
   const score =
     Math.min(
@@ -884,7 +884,7 @@ function Td({
 
 
 function obterOrganizacao(
-  dados: DadosRelatorioDiagnostico
+  dados: DadosRelatorioDesempenho
 ) {
   if (
     dados.filtros.clienteId
@@ -922,17 +922,17 @@ function obterOrganizacao(
 
 function textoResumoExecutivo(
   analise: NonNullable<
-    DadosRelatorioDiagnostico["analise"]
+    DadosRelatorioDesempenho["analise"]
   >
 ) {
   const score =
-    analise.scoreOrganizacional;
+    analise.scoreDesempenho;
 
 
   const inicio =
     score == null
-      ? "O consolidado ainda não possui score organizacional calculado."
-      : `O score organizacional consolidado é ${formatarScore(
+      ? "O consolidado ainda não possui score de desempenho calculado."
+      : `O score de desempenho consolidado é ${formatarScore(
           score
         )}/100.`;
 

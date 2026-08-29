@@ -115,16 +115,30 @@ export default async function RelatorioClimaImpressaoPage({
 
       analise: {
         indiceGeralClima:
-          resultado.analise.indiceGeralClima,
+          resultado.analise
+            .indiceGeralClima,
 
         dimensoes:
-          resultado.analise.dimensoes,
+          resultado.analise
+            .dimensoes,
+
+        /*
+         * IMPORTANTE:
+         * repassa a análise por setor
+         * calculada pelo backend.
+         */
+        setores:
+          resultado.analise
+            .setores ??
+          [],
 
         comentariosAbertos:
-          resultado.analise.comentariosAbertos,
+          resultado.analise
+            .comentariosAbertos,
 
         historico:
-          resultado.analise.historico,
+          resultado.analise
+            .historico,
       },
     };
 

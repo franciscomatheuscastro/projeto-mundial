@@ -5,6 +5,7 @@ import {
 import {
   Prisma,
   StatusPesquisaCliente,
+  TipoModuloPesquisa,
   TipoPergunta,
 } from "@prisma/client";
 
@@ -299,133 +300,6 @@ export default class RepositorioRespostaPesquisa {
     }
 
 
-    /*
-     * Primeiro procuramos como convite individual.
-     */
-    const convite =
-      await prisma.convitePesquisa.findUnique({
-        where: {
-          token:
-            tokenNormalizado,
-        },
-
-        include: {
-          pesquisa: {
-            include: {
-              cliente: {
-                select: {
-                  id:
-                    true,
-
-                  nome:
-                    true,
-
-                  empresa:
-                    true,
-
-                  setores:
-                    true,
-                },
-              },
-
-              modelo: {
-                select: {
-                  id:
-                    true,
-
-                  titulo:
-                    true,
-
-                  descricao:
-                    true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-
-    if (
-      convite
-    ) {
-      const pesquisa =
-        convite.pesquisa;
-
-
-      return {
-        id:
-          pesquisa.id,
-
-        /*
-         * Permite que a tela pública saiba
-         * qual módulo está sendo respondido.
-         */
-        tipo:
-          pesquisa.tipo,
-
-        titulo:
-          pesquisa.titulo,
-
-        descricao:
-          pesquisa.descricao,
-
-        token:
-          pesquisa.token,
-
-        status:
-          pesquisa.status,
-
-        /*
-         * Utilizamos sempre o snapshot
-         * preservado na aplicação.
-         */
-        perguntas:
-          normalizarPerguntas(
-            pesquisa.perguntas
-          ),
-
-        cliente: {
-          ...pesquisa.cliente,
-          setores: normalizarSetores(pesquisa.cliente.setores),
-        },
-
-        modelo:
-          pesquisa.modelo,
-
-        convite: {
-          id:
-            convite.id,
-
-          token:
-            convite.token,
-
-          respondido:
-            convite.respondido,
-
-          nome:
-            convite.nome,
-
-          email:
-            convite.email,
-
-          unidade:
-            convite.unidade,
-
-          setor:
-            convite.setor,
-
-          cargo:
-            convite.cargo,
-        },
-      };
-    }
-
-
-    /*
-     * Caso não seja convite individual,
-     * procuramos pelo token público.
-     */
     const pesquisa =
       await prisma.pesquisaCliente.findUnique({
         where: {
@@ -492,6 +366,9 @@ export default class RepositorioRespostaPesquisa {
       status:
         pesquisa.status,
 
+      setor:
+        pesquisa.setor,
+
       perguntas:
         normalizarPerguntas(
           pesquisa.perguntas
@@ -499,17 +376,17 @@ export default class RepositorioRespostaPesquisa {
 
       cliente: {
         ...pesquisa.cliente,
-        setores: normalizarSetores(pesquisa.cliente.setores),
+
+        setores:
+          normalizarSetores(
+            pesquisa.cliente.setores
+          ),
       },
 
       modelo:
         pesquisa.modelo,
-
-      convite:
-        null,
     };
   }
-
 
   /* =======================================================
    * SALVAR RESPOSTA
@@ -536,261 +413,10 @@ export default class RepositorioRespostaPesquisa {
     }
 
 
-    const conviteToken =
-      resposta.conviteToken?.trim() ||
-      resposta.token.trim();
-
-
-    /*
-     * Primeiro verificamos se o token
-     * pertence a um convite individual.
-     */
-    const convite =
-      await prisma.convitePesquisa.findUnique({
-        where: {
-          token:
-            conviteToken,
-        },
-
-        include: {
-          pesquisa: {
-            include: {
-              cliente: {
-                select: {
-                  setores: true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-
-    if (
-      convite
-    ) {
-      return this.salvarPorConvite(
-        resposta,
-        convite
-      );
-    }
-
-
-    /*
-     * Caso contrário, tratamos
-     * como resposta pelo link público.
-     */
     return this.salvarPorTokenPublico(
       resposta
     );
   }
-
-
-  /* =======================================================
-   * SALVAR POR CONVITE INDIVIDUAL
-   * ===================================================== */
-
-  private static async salvarPorConvite(
-    resposta: NovaRespostaPesquisa,
-    convite: any
-  ) {
-    const pesquisa =
-      convite.pesquisa;
-
-
-    if (
-      !pesquisa
-    ) {
-      throw new Error(
-        "Pesquisa não encontrada."
-      );
-    }
-
-
-    if (
-      pesquisa.id !==
-      resposta.pesquisaId
-    ) {
-      throw new Error(
-        "Token inválido para esta pesquisa."
-      );
-    }
-
-
-    if (
-      pesquisa.status !==
-      StatusPesquisaCliente.ABERTA
-    ) {
-      throw new Error(
-        "Esta pesquisa não está mais recebendo respostas."
-      );
-    }
-
-
-    if (
-      convite.respondido
-    ) {
-      throw new Error(
-        "Esta pesquisa já foi respondida por este link."
-      );
-    }
-
-
-    const perguntas =
-      normalizarPerguntas(
-        pesquisa.perguntas
-      );
-
-
-    if (
-      perguntas.length ===
-      0
-    ) {
-      throw new Error(
-        "Esta pesquisa não possui perguntas."
-      );
-    }
-
-
-    const configuracao =
-      normalizarConfiguracaoAnalise(
-        pesquisa.configuracaoAnalise
-      );
-
-
-    const respostasTratadas =
-      this.validarRespostas(
-        perguntas,
-        resposta,
-        configuracao
-      );
-
-
-    if (!textoOuNull(convite.setor)) {
-      validarSetorSelecionado(
-        textoOuNull(resposta.setor),
-        normalizarSetores(pesquisa.cliente?.setores)
-      );
-    }
-
-
-    /*
-     * A transação ajuda a evitar dois
-     * envios simultâneos pelo mesmo convite.
-     */
-    return prisma.$transaction(
-      async tx => {
-        const conviteAtual =
-          await tx.convitePesquisa.findUnique({
-            where: {
-              id:
-                convite.id,
-            },
-          });
-
-
-        if (
-          !conviteAtual
-        ) {
-          throw new Error(
-            "Convite não encontrado."
-          );
-        }
-
-
-        if (
-          conviteAtual.respondido
-        ) {
-          throw new Error(
-            "Esta pesquisa já foi respondida por este link."
-          );
-        }
-
-
-        /*
-         * Dados previamente cadastrados
-         * no convite têm prioridade.
-         *
-         * Quando estiverem vazios,
-         * utilizamos os informados
-         * pelo participante.
-         */
-        const respostaCriada =
-          await tx.respostaPesquisa.create({
-            data: {
-              pesquisaId:
-                pesquisa.id,
-
-              conviteId:
-                convite.id,
-
-              nome:
-                textoOuNull(
-                  conviteAtual.nome
-                ) ||
-                textoOuNull(
-                  resposta.nome
-                ),
-
-              email:
-                emailOuNull(
-                  conviteAtual.email
-                ) ||
-                emailOuNull(
-                  resposta.email
-                ),
-
-              unidade:
-                textoOuNull(
-                  conviteAtual.unidade
-                ) ||
-                textoOuNull(
-                  resposta.unidade
-                ),
-
-              setor:
-                textoOuNull(
-                  conviteAtual.setor
-                ) ||
-                textoOuNull(
-                  resposta.setor
-                ),
-
-              cargo:
-                textoOuNull(
-                  conviteAtual.cargo
-                ) ||
-                textoOuNull(
-                  resposta.cargo
-                ),
-
-              respostas:
-                respostasTratadas as unknown as Prisma.InputJsonValue,
-            },
-          });
-
-
-        await tx.convitePesquisa.update({
-          where: {
-            id:
-              convite.id,
-          },
-
-          data: {
-            respondido:
-              true,
-
-            respondidoEm:
-              new Date(),
-          },
-        });
-
-
-        return respostaCriada;
-      }
-    );
-  }
-
 
   /* =======================================================
    * SALVAR PELO LINK PÚBLICO
@@ -875,11 +501,27 @@ export default class RepositorioRespostaPesquisa {
       );
 
 
-    validarSetorSelecionado(
-      textoOuNull(resposta.setor),
-      normalizarSetores(pesquisa.cliente.setores)
-    );
+    const ehPesquisaClima =
+      pesquisa.tipo ===
+      TipoModuloPesquisa.CLIMA;
 
+
+    const setorInformado =
+      textoOuNull(
+        resposta.setor
+      );
+
+
+    if (
+      !ehPesquisaClima
+    ) {
+      validarSetorSelecionado(
+        setorInformado,
+        normalizarSetores(
+          pesquisa.cliente.setores
+        )
+      );
+    }
 
     return prisma.respostaPesquisa.create({
       data: {
@@ -887,29 +529,29 @@ export default class RepositorioRespostaPesquisa {
           resposta.pesquisaId,
 
         nome:
-          textoOuNull(
-            resposta.nome
-          ),
+          ehPesquisaClima
+            ? null
+            : textoOuNull(resposta.nome),
 
         email:
-          emailOuNull(
-            resposta.email
-          ),
+          ehPesquisaClima
+            ? null
+            : emailOuNull(resposta.email),
 
         unidade:
-          textoOuNull(
-            resposta.unidade
-          ),
+          ehPesquisaClima
+            ? null
+            : textoOuNull(resposta.unidade),
 
         setor:
-          textoOuNull(
-            resposta.setor
-          ),
+          ehPesquisaClima
+            ? pesquisa.setor
+            : setorInformado,
 
         cargo:
-          textoOuNull(
-            resposta.cargo
-          ),
+          ehPesquisaClima
+            ? null
+            : textoOuNull(resposta.cargo),
 
         respostas:
           respostasTratadas as unknown as Prisma.InputJsonValue,

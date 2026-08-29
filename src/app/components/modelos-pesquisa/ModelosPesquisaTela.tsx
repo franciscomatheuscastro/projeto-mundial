@@ -36,8 +36,8 @@ import type {
 
 const TIPO_MODULO = {
   CLIMA: "CLIMA",
-  DIAGNOSTICO_ORGANIZACIONAL:
-    "DIAGNOSTICO_ORGANIZACIONAL",
+  AVALIACAO_DESEMPENHO:
+    "AVALIACAO_DESEMPENHO",
   AVALIACAO_PSICOSSOCIAL:
     "AVALIACAO_PSICOSSOCIAL",
 } as const;
@@ -146,11 +146,11 @@ function criarConfiguracaoAnalisePadraoCliente(
 
   if (
     tipo ===
-    TIPO_MODULO.DIAGNOSTICO_ORGANIZACIONAL
+    TIPO_MODULO.AVALIACAO_DESEMPENHO
   ) {
     return {
       metodo:
-        "MATURIDADE",
+        "DESEMPENHO",
 
       escalaMinima:
         1,
@@ -195,9 +195,9 @@ function nomeModulo(
 ) {
   if (
     tipo ===
-    TIPO_MODULO.DIAGNOSTICO_ORGANIZACIONAL
+    TIPO_MODULO.AVALIACAO_DESEMPENHO
   ) {
-    return "Diagnóstico Organizacional";
+    return "Avaliação de Desempenho";
   }
 
 
@@ -226,9 +226,9 @@ function nomeMetodo(
 
   if (
     metodo ===
-    "MATURIDADE"
+    "DESEMPENHO"
   ) {
-    return "Maturidade";
+    return "Desempenho";
   }
 
 
@@ -958,7 +958,7 @@ export default function ModelosPesquisaTela({
                 setTitulo
               }
               required
-              placeholder="Ex: Pesquisa de Clima 2026"
+              placeholder="Ex: Avaliação de Desempenho 2026"
             />
 
 
@@ -2034,7 +2034,7 @@ function FaixasEditor({
           <p className="mt-1 text-xs leading-5 text-slate-500">
             {psicossocial
               ? "Cadastre apenas as faixas previstas pela metodologia psicossocial utilizada."
-              : "Defina como o score organizacional será classificado."}
+              : "Defina como o score de desempenho será classificado."}
           </p>
         </div>
 
@@ -3122,8 +3122,8 @@ function SelectTipoModelo({
           Pesquisa de Clima
         </option>
 
-        <option value="DIAGNOSTICO_ORGANIZACIONAL">
-          Diagnóstico Organizacional
+        <option value="AVALIACAO_DESEMPENHO">
+          Avaliação de Desempenho
         </option>
 
         <option value="AVALIACAO_PSICOSSOCIAL">
@@ -3146,11 +3146,11 @@ function TipoModeloBadge({
 }) {
   if (
     tipo ===
-    TIPO_MODULO.DIAGNOSTICO_ORGANIZACIONAL
+    TIPO_MODULO.AVALIACAO_DESEMPENHO
   ) {
     return (
       <span className="inline-flex whitespace-nowrap rounded-full bg-purple-100 px-3 py-1.5 text-xs font-bold text-purple-700">
-        Diagnóstico Organizacional
+        Avaliação de Desempenho
       </span>
     );
   }

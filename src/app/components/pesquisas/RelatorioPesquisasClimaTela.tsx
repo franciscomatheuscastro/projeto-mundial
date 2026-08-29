@@ -28,10 +28,25 @@ export type DimensaoClima = {
 };
 
 
+export type AnaliseSetorClima = {
+  setor: string;
+
+  totalPesquisas: number;
+
+  totalRespostas: number;
+
+  indiceGeralClima: number | null;
+
+  dimensoes: DimensaoClima[];
+};
+
+
 export type AnaliseClima = {
   indiceGeralClima: number | null;
 
   dimensoes: DimensaoClima[];
+
+  setores?: AnaliseSetorClima[];
 
   comentariosAbertos?: string[];
 
@@ -119,6 +134,8 @@ export type DadosRelatorioClima = {
 
     status: string;
 
+    setor: string | null;
+
     criadoEm: Date | string;
 
 
@@ -199,6 +216,25 @@ export default function RelatorioPesquisasClimaTela({
         0,
         3
       );
+
+
+  const setores =
+    analise?.setores ||
+    [];
+
+
+  const dimensoesHeatmap =
+    Array.from(
+      new Set(
+        setores.flatMap(
+          setor =>
+            setor.dimensoes.map(
+              dimensao =>
+                dimensao.nome
+            )
+        )
+      )
+    );
 
 
   return (
@@ -369,6 +405,56 @@ export default function RelatorioPesquisasClimaTela({
                   tipo="atencao"
                 />
               </div>
+            )}
+
+
+            {setores.length >
+              0 && (
+              <>
+                <section className="mb-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
+                    Análise por setor
+                  </p>
+
+                  <h2 className="mt-1 text-lg font-black text-slate-900">
+                    Comparativo de clima entre setores
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Resultado consolidado das aplicações vinculadas a cada setor
+                    pela Mundial.
+                  </p>
+
+
+                  <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {setores.map(
+                      setor => (
+                        <SetorClimaCard
+                          key={
+                            setor.setor
+                          }
+                          setor={
+                            setor
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                </section>
+
+
+                {dimensoesHeatmap.length >
+                  0 && (
+                  <HeatmapSetorDimensao
+                    setores={
+                      setores
+                    }
+                    dimensoes={
+                      dimensoesHeatmap
+                    }
+                  />
+                )}
+              </>
             )}
 
 
@@ -659,6 +745,279 @@ function Ranking({
 }
 
 
+function SetorClimaCard({
+  setor,
+}: {
+  setor: AnaliseSetorClima;
+}) {
+  const indice =
+    setor.indiceGeralClima;
+
+
+  const melhorDimensao =
+    [
+      ...setor.dimensoes,
+    ].sort(
+      (
+        a,
+        b
+      ) =>
+        b.favoravel -
+        a.favoravel
+    )[0];
+
+
+  const piorDimensao =
+    [
+      ...setor.dimensoes,
+    ].sort(
+      (
+        a,
+        b
+      ) =>
+        a.favoravel -
+        b.favoravel
+    )[0];
+
+
+  return (
+    <div className="rounded-2xl border border-slate-200 p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-black text-slate-900">
+            {
+              setor.setor
+            }
+          </h3>
+
+          <p className="mt-1 text-xs text-slate-500">
+            {
+              setor.totalRespostas
+            }{" "}
+            resposta(s) ·{" "}
+            {
+              setor.totalPesquisas
+            }{" "}
+            aplicação(ões)
+          </p>
+        </div>
+
+
+        <strong className="text-xl text-blue-700">
+          {indice ===
+          null
+            ? "—"
+            : percentual(
+                indice
+              )}
+        </strong>
+      </div>
+
+
+      {indice !==
+        null && (
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full bg-blue-600"
+            style={{
+              width: `${limitarPercentual(
+                indice
+              )}%`,
+            }}
+          />
+        </div>
+      )}
+
+
+      <div className="mt-4 space-y-2 text-xs">
+        {melhorDimensao && (
+          <p className="text-green-700">
+            <strong>
+              Destaque:
+            </strong>{" "}
+            {
+              melhorDimensao.nome
+            }{" "}
+            (
+            {percentual(
+              melhorDimensao.favoravel
+            )}
+            )
+          </p>
+        )}
+
+        {piorDimensao &&
+          piorDimensao.id !==
+            melhorDimensao?.id && (
+            <p className="text-amber-700">
+              <strong>
+                Atenção:
+              </strong>{" "}
+              {
+                piorDimensao.nome
+              }{" "}
+              (
+              {percentual(
+                piorDimensao.favoravel
+              )}
+              )
+            </p>
+          )}
+      </div>
+    </div>
+  );
+}
+
+
+function HeatmapSetorDimensao({
+  setores,
+  dimensoes,
+}: {
+  setores: AnaliseSetorClima[];
+  dimensoes: string[];
+}) {
+  return (
+    <section className="mb-6 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+      <div className="p-6">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
+          Mapa comparativo
+        </p>
+
+        <h2 className="mt-1 text-lg font-black text-slate-900">
+          Setor × dimensão
+        </h2>
+
+        <p className="mt-1 text-sm text-slate-500">
+          Favorabilidade de cada dimensão por setor. Quanto maior o percentual,
+          melhor a percepção naquele recorte.
+        </p>
+      </div>
+
+
+      <div className="overflow-x-auto border-t border-slate-100">
+        <table className="w-full min-w-[780px] text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 text-left font-bold text-slate-600">
+                Setor
+              </th>
+
+              {dimensoes.map(
+                dimensao => (
+                  <th
+                    key={
+                      dimensao
+                    }
+                    className="px-3 py-3 text-center text-xs font-bold text-slate-600"
+                  >
+                    {
+                      dimensao
+                    }
+                  </th>
+                )
+              )}
+            </tr>
+          </thead>
+
+
+          <tbody>
+            {setores.map(
+              setor => (
+                <tr
+                  key={
+                    setor.setor
+                  }
+                  className="border-t border-slate-100"
+                >
+                  <td className="sticky left-0 bg-white px-4 py-3 font-bold text-slate-900">
+                    {
+                      setor.setor
+                    }
+
+                    <span className="ml-2 text-xs font-normal text-slate-400">
+                      n=
+                      {
+                        setor.totalRespostas
+                      }
+                    </span>
+                  </td>
+
+                  {dimensoes.map(
+                    nomeDimensao => {
+                      const dimensao =
+                        setor.dimensoes.find(
+                          item =>
+                            item.nome ===
+                            nomeDimensao
+                        );
+
+
+                      return (
+                        <td
+                          key={`${setor.setor}-${nomeDimensao}`}
+                          className="px-3 py-3 text-center"
+                        >
+                          {dimensao ? (
+                            <span
+                              className={`inline-flex min-w-16 items-center justify-center rounded-xl px-3 py-2 text-xs font-black ${classeFavorabilidade(
+                                dimensao.favoravel
+                              )}`}
+                            >
+                              {percentual(
+                                dimensao.favoravel
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300">
+                              —
+                            </span>
+                          )}
+                        </td>
+                      );
+                    }
+                  )}
+                </tr>
+              )
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+
+function classeFavorabilidade(
+  valor: number
+) {
+  if (
+    valor >=
+    75
+  ) {
+    return "bg-green-100 text-green-800";
+  }
+
+
+  if (
+    valor >=
+    60
+  ) {
+    return "bg-lime-100 text-lime-800";
+  }
+
+
+  if (
+    valor >=
+    40
+  ) {
+    return "bg-amber-100 text-amber-800";
+  }
+
+
+  return "bg-red-100 text-red-800";
+}
+
+
 function Filtros({
   dados,
 }: {
@@ -784,6 +1143,10 @@ function TabelaPesquisas({
               </Th>
 
               <Th>
+                Setor
+              </Th>
+
+              <Th>
                 Status
               </Th>
 
@@ -808,7 +1171,7 @@ function TabelaPesquisas({
               <tr>
                 <td
                   colSpan={
-                    6
+                    7
                   }
                   className="p-10 text-center text-sm text-slate-500"
                 >
@@ -845,6 +1208,12 @@ function TabelaPesquisas({
                         .empresa ||
                         pesquisa.cliente
                           .nome}
+                    </td>
+
+
+                    <td className="px-4 py-4 text-sm text-slate-700">
+                      {pesquisa.setor ||
+                        "Toda a empresa"}
                     </td>
 
 

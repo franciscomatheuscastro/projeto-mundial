@@ -161,7 +161,6 @@ function MenuNavegacao({
 
         {administradorCliente && (
           <>
-
             <MenuLink
               href="/meus-colaboradores"
               mobile={
@@ -169,7 +168,7 @@ function MenuNavegacao({
               }
             >
               Colaboradores
-            </MenuLink>            
+            </MenuLink>
 
             <MenuLink
               href="/meus-planos-acao"
@@ -188,8 +187,6 @@ function MenuNavegacao({
             >
               Agendamentos
             </MenuLink>
-
-            
           </>
         )}
       </GrupoMenu>
@@ -235,18 +232,18 @@ function MenuNavegacao({
 
 
           <GrupoMenu
-            titulo="Diagnóstico Organizacional"
+            titulo="Avaliação Desempenho"
             mobile={
               mobile
             }
           >
             <MenuLink
-              href="/meus-diagnosticos"
+              href="/minhas-avaliacoes-desempenho"
               mobile={
                 mobile
               }
             >
-              Diagnósticos
+              Avaliações
             </MenuLink>
           </GrupoMenu>
 
@@ -339,8 +336,7 @@ function GrupoMenu({
   mobile = false,
 }: {
   titulo: string;
-  children:
-    React.ReactNode;
+  children: React.ReactNode;
   mobile?: boolean;
 }) {
   return (
@@ -379,8 +375,7 @@ function MenuLink({
   mobile = false,
 }: {
   href: string;
-  children:
-    React.ReactNode;
+  children: React.ReactNode;
   mobile?: boolean;
 }) {
   return (

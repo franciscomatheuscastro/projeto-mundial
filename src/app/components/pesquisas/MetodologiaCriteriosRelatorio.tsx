@@ -3,7 +3,7 @@
 export type MetodologiaAplicacaoRelatorio = {
   modeloId: string;
   modeloTitulo: string;
-  metodo: "FAVORABILIDADE" | "MATURIDADE" | "RISCO_PSICOSSOCIAL";
+  metodo: "FAVORABILIDADE" | "DESEMPENHO" | "RISCO_PSICOSSOCIAL";
   escalaMinima: number;
   escalaMaxima: number;
   favoravel: number[];
@@ -29,7 +29,7 @@ export type MetodologiaAplicacaoRelatorio = {
 
 type TipoRelatorio =
   | "CLIMA"
-  | "DIAGNOSTICO_ORGANIZACIONAL"
+  | "AVALIACAO_DESEMPENHO"
   | "AVALIACAO_PSICOSSOCIAL";
 
 type Props = {
@@ -285,8 +285,8 @@ function textoLogicaPrincipal(tipo: TipoRelatorio) {
   if (tipo === "CLIMA") {
     return "Cada resposta de Nota é orientada para que notas maiores representem melhor percepção. Depois, ela é classificada como favorável, neutra ou desfavorável conforme o instrumento.";
   }
-  if (tipo === "DIAGNOSTICO_ORGANIZACIONAL") {
-    return "Cada Nota é orientada para que valores maiores representem maior maturidade e é convertida proporcionalmente para 0–100. O score da dimensão é a média das respostas válidas.";
+  if (tipo === "AVALIACAO_DESEMPENHO") {
+    return "Cada Nota é orientada para que valores maiores representem melhor desempenho e é convertida proporcionalmente para 0–100. O score da dimensão é a média das respostas válidas.";
   }
   return "Cada Nota é orientada para risco: valores maiores representam maior exposição. Perguntas positivas são invertidas antes da conversão proporcional para 0–100.";
 }
@@ -302,15 +302,15 @@ function textoConsolidacao(tipo: TipoRelatorio) {
   if (tipo === "CLIMA") {
     return "Favorabilidade da dimensão = respostas favoráveis ÷ respostas válidas × 100. Índice geral = soma(favorabilidade × peso) ÷ soma dos pesos.";
   }
-  if (tipo === "DIAGNOSTICO_ORGANIZACIONAL") {
-    return "Score organizacional = soma(score da dimensão × peso) ÷ soma dos pesos. Forças, pontos de atenção e prioridades são definidos pela posição relativa das dimensões no ranking consolidado.";
+  if (tipo === "AVALIACAO_DESEMPENHO") {
+    return "Score de desempenho = soma(score da dimensão × peso) ÷ soma dos pesos. Pontos fortes, pontos de atenção e prioridades de desenvolvimento são definidos pela posição relativa das dimensões no ranking consolidado.";
   }
   return "O score de cada fator consolida as dimensões relacionadas usando seus pesos. Score do fator = soma(score da dimensão × peso) ÷ soma dos pesos. Quanto maior o score, maior a exposição.";
 }
 
 function nomeMetodo(valor: MetodologiaAplicacaoRelatorio["metodo"]) {
   if (valor === "FAVORABILIDADE") return "Favorabilidade";
-  if (valor === "MATURIDADE") return "Maturidade";
+  if (valor === "DESEMPENHO") return "Desempenho";
   return "Risco psicossocial";
 }
 

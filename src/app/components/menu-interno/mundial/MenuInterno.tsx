@@ -4,6 +4,7 @@ import {
   signOut,
 } from "@/src/auth";
 
+
 export function MenuInterno() {
   async function sair() {
     "use server";
@@ -13,6 +14,7 @@ export function MenuInterno() {
         "/login",
     });
   }
+
 
   return (
     <>
@@ -45,6 +47,7 @@ export function MenuInterno() {
         </details>
       </header>
 
+
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-72 overflow-hidden bg-gradient-to-b from-blue-800 via-blue-700 to-cyan-600 text-white shadow-xl lg:block">
         <div className="flex h-full flex-col">
           <div className="shrink-0 px-7 pb-5 pt-7">
@@ -60,6 +63,7 @@ export function MenuInterno() {
             </h1>
           </div>
 
+
           <div className="relative min-h-0 flex-1">
             <div className="h-full overflow-y-auto px-5 pb-24 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <MenuNavegacao />
@@ -67,6 +71,7 @@ export function MenuInterno() {
 
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-cyan-600 via-cyan-600/90 to-transparent" />
           </div>
+
 
           <div className="shrink-0 border-t border-white/10 bg-cyan-600/95 px-5 py-4 backdrop-blur-sm">
             <form
@@ -87,6 +92,7 @@ export function MenuInterno() {
     </>
   );
 }
+
 
 function MenuNavegacao({
   mobile = false,
@@ -133,7 +139,7 @@ function MenuNavegacao({
         >
           Construtor de Modelos
         </MenuLink>
-        
+
         <MenuLink
           href="/planos-acao"
           mobile={
@@ -150,10 +156,9 @@ function MenuNavegacao({
           }
         >
           Agendamentos
-        </MenuLink>       
-
-        
+        </MenuLink>
       </GrupoMenu>
+
 
       <GrupoMenu
         titulo="Canal de Denúncias"
@@ -189,6 +194,7 @@ function MenuNavegacao({
         </MenuLink>
       </GrupoMenu>
 
+
       <GrupoMenu
         titulo="Pesquisa de Clima"
         mobile={
@@ -214,30 +220,32 @@ function MenuNavegacao({
         </MenuLink>
       </GrupoMenu>
 
+
       <GrupoMenu
-        titulo="Diagnóstico Organizacional"
+        titulo="Avaliação Desempenho"
         mobile={
           mobile
         }
       >
         <MenuLink
-          href="/diagnostico-organizacional"
+          href="/avaliacao-desempenho"
           mobile={
             mobile
           }
         >
-          Diagnósticos
+          Avaliações
         </MenuLink>
 
         <MenuLink
-          href="/diagnostico-organizacional/relatorio"
+          href="/avaliacao-desempenho/relatorio"
           mobile={
             mobile
           }
         >
-          Relatório Organizacional
+          Relatório de Desempenho
         </MenuLink>
       </GrupoMenu>
+
 
       <GrupoMenu
         titulo="Avaliação Psicossocial"
@@ -263,6 +271,7 @@ function MenuNavegacao({
           Relatório Psicossocial
         </MenuLink>
       </GrupoMenu>
+
 
       <GrupoMenu
         titulo="Suporte"
@@ -292,6 +301,7 @@ function MenuNavegacao({
   );
 }
 
+
 function MenuMobile({
   sair,
 }: {
@@ -320,19 +330,15 @@ function MenuMobile({
   );
 }
 
+
 function GrupoMenu({
   titulo,
   children,
   mobile = false,
 }: {
-  titulo:
-    string;
-
-  children:
-    React.ReactNode;
-
-  mobile?:
-    boolean;
+  titulo: string;
+  children: React.ReactNode;
+  mobile?: boolean;
 }) {
   return (
     <section>
@@ -363,19 +369,15 @@ function GrupoMenu({
   );
 }
 
+
 function MenuLink({
   href,
   children,
   mobile = false,
 }: {
-  href:
-    string;
-
-  children:
-    React.ReactNode;
-
-  mobile?:
-    boolean;
+  href: string;
+  children: React.ReactNode;
+  mobile?: boolean;
 }) {
   return (
     <Link

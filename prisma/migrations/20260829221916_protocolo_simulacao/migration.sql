@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "TipoModuloPesquisa" ADD VALUE 'AVALIACAO_DESEMPENHO';

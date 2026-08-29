@@ -35,7 +35,9 @@ export default async function RelatorioPesquisasPage({
     await auth();
 
 
-  if (!session?.user) {
+  if (
+    !session?.user
+  ) {
     redirect(
       "/login"
     );
@@ -75,10 +77,10 @@ export default async function RelatorioPesquisasPage({
 
   /*
    * O backend compartilhado pode retornar
-   * três formatos diferentes de análise.
+   * diferentes estruturas de análise.
    *
-   * Aqui fazemos o narrowing para garantir
-   * que estamos trabalhando com análise de Clima.
+   * Aqui garantimos que este resultado
+   * pertence à Pesquisa de Clima.
    */
   if (
     !resultado.analise ||
@@ -108,6 +110,15 @@ export default async function RelatorioPesquisasPage({
         dimensoes:
           resultado.analise
             .dimensoes,
+
+        /*
+         * Comparativo entre os setores
+         * definidos pela Mundial nas aplicações.
+         */
+        setores:
+          resultado.analise
+            .setores ??
+          [],
 
         comentariosAbertos:
           resultado.analise

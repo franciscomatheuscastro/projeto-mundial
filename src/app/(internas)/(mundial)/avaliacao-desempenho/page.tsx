@@ -4,15 +4,16 @@ import {
 
 import PesquisasModuloTela from "@/src/app/components/pesquisas/PesquisasModuloTela";
 
+
 export default function Page() {
   return (
     <PesquisasModuloTela
       modo="lista"
       tipo={
-        TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+        TipoModuloPesquisa.AVALIACAO_DESEMPENHO
       }
-      tituloModulo="Diagnóstico Organizacional"
-      baseHref="/diagnostico-organizacional"
+      tituloModulo="Avaliação de Desempenho"
+      baseHref="/avaliacao-desempenho"
     />
   );
 }

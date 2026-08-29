@@ -113,7 +113,7 @@ function nomeTipoOrigem(
       return "Pesquisa de clima";
 
     case "DIAGNOSTICO_ORGANIZACIONAL":
-      return "Diagnóstico organizacional";
+      return "Avaliação de desempenho";
 
     case "AVALIACAO_PSICOSSOCIAL":
       return "Avaliação psicossocial";

@@ -19,6 +19,7 @@ export default async function salvarModeloPesquisa(
       modelo
     );
 
+
   revalidatePath(
     "/modelos-pesquisa"
   );
@@ -30,6 +31,7 @@ export default async function salvarModeloPesquisa(
   revalidatePath(
     "/dashboard"
   );
+
 
   return resultado;
 }

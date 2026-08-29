@@ -70,8 +70,8 @@ function formatarOrigemPlano(
     case TipoOrigemPlanoAcao.PESQUISA_CLIMA:
       return "Pesquisa de clima";
 
-    case TipoOrigemPlanoAcao.DIAGNOSTICO_ORGANIZACIONAL:
-      return "Diagnóstico organizacional";
+    case TipoOrigemPlanoAcao.AVALIACAO_DESEMPENHO:
+      return "Avaliação de desempenho";
 
     case TipoOrigemPlanoAcao.AVALIACAO_PSICOSSOCIAL:
       return "Avaliação psicossocial";

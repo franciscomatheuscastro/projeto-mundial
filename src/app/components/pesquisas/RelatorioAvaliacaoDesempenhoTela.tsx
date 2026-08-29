@@ -13,7 +13,7 @@ import type {
 } from "./InformacoesAdicionaisRelatorio";
 
 
-export type DimensaoDiagnostico = {
+export type DimensaoDesempenho = {
   id: string;
   nome: string;
   score: number;
@@ -22,10 +22,10 @@ export type DimensaoDiagnostico = {
 };
 
 
-export type AnaliseDiagnostico = {
-  scoreOrganizacional: number | null;
+export type AnaliseDesempenho = {
+  scoreDesempenho: number | null;
 
-  dimensoes: DimensaoDiagnostico[];
+  dimensoes: DimensaoDesempenho[];
 
   forcas: string[];
 
@@ -35,7 +35,7 @@ export type AnaliseDiagnostico = {
 };
 
 
-export type DadosRelatorioDiagnostico = {
+export type DadosRelatorioDesempenho = {
   tipo?: string;
 
   filtros: {
@@ -119,14 +119,14 @@ export type DadosRelatorioDiagnostico = {
 
   informacoesAdicionais: InformacaoAdicionalRelatorio[];
 
-  analise?: AnaliseDiagnostico;
+  analise?: AnaliseDesempenho;
 };
 
 
-export default function RelatorioDiagnosticoOrganizacionalTela({
+export default function RelatorioAvaliacaoDesempenhoTela({
   dados,
 }: {
-  dados: DadosRelatorioDiagnostico;
+  dados: DadosRelatorioDesempenho;
 }) {
   const analise =
     dados.analise;
@@ -138,22 +138,22 @@ export default function RelatorioDiagnosticoOrganizacionalTela({
         <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-indigo-600">
-              Diagnóstico Organizacional
+              Avaliação de Desempenho
             </p>
 
             <h1 className="mt-1 text-2xl font-black text-slate-900">
-              Relatório Executivo Organizacional
+              Relatório de Avaliação de Desempenho
             </h1>
 
             <p className="mt-1 text-sm text-slate-500">
-              Forças, gargalos e prioridades estratégicas da organização.
+              Competências, pontos fortes, oportunidades de melhoria e prioridades de desenvolvimento.
             </p>
           </div>
 
 
           <div className="flex gap-3 print:hidden">
             <Link
-              href="/diagnostico-organizacional"
+              href="/avaliacao-desempenho"
               className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
             >
               Voltar
@@ -162,7 +162,7 @@ export default function RelatorioDiagnosticoOrganizacionalTela({
             <Link
               href={montarUrlRelatorioImpressao(
                 dados,
-                "/relatorios/diagnostico-organizacional"
+                "/relatorios/avaliacao-desempenho"
               )}
               target="_blank"
               rel="noopener noreferrer"
@@ -185,7 +185,7 @@ export default function RelatorioDiagnosticoOrganizacionalTela({
 
         <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card
-            titulo="Diagnósticos"
+            titulo="Avaliações"
             valor={
               dados.resumo
                 .totalPesquisas
@@ -215,13 +215,13 @@ export default function RelatorioDiagnosticoOrganizacionalTela({
           />
 
           <Card
-            titulo="Score Organizacional"
+            titulo="Score de Desempenho"
             valor={
-              analise?.scoreOrganizacional ==
+              analise?.scoreDesempenho ==
               null
                 ? "—"
                 : `${formatarScore(
-                    analise.scoreOrganizacional
+                    analise.scoreDesempenho
                   )}/100`
             }
             destaque
@@ -235,7 +235,7 @@ export default function RelatorioDiagnosticoOrganizacionalTela({
           <>
             <section className="mb-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">
-                Maturidade Organizacional
+                Desempenho Avaliado
               </p>
 
               <h2 className="mt-1 text-lg font-black text-slate-900">
@@ -243,7 +243,7 @@ export default function RelatorioDiagnosticoOrganizacionalTela({
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                Consolidação dos indicadores organizacionais em uma escala de 0
+                Consolidação das dimensões de desempenho em uma escala de 0
                 a 100.
               </p>
 
@@ -257,7 +257,7 @@ export default function RelatorioDiagnosticoOrganizacionalTela({
                 <div className="mt-6 space-y-4">
                   {analise.dimensoes.map(
                     dimensao => (
-                      <DimensaoDiagnosticoCard
+                      <DimensaoDesempenhoCard
                         key={
                           dimensao.id
                         }
@@ -306,7 +306,7 @@ export default function RelatorioDiagnosticoOrganizacionalTela({
 
 
         <MetodologiaCriteriosRelatorio
-          tipo="DIAGNOSTICO_ORGANIZACIONAL"
+          tipo="AVALIACAO_DESEMPENHO"
           metodologias={
             dados.pesquisas.map(
               pesquisa =>
@@ -336,10 +336,10 @@ export default function RelatorioDiagnosticoOrganizacionalTela({
 }
 
 
-function DimensaoDiagnosticoCard({
+function DimensaoDesempenhoCard({
   dimensao,
 }: {
-  dimensao: DimensaoDiagnostico;
+  dimensao: DimensaoDesempenho;
 }) {
   const score =
     Math.min(
@@ -487,7 +487,7 @@ function ListaExecutiva({
 function Filtros({
   dados,
 }: {
-  dados: DadosRelatorioDiagnostico;
+  dados: DadosRelatorioDesempenho;
 }) {
   return (
     <form
@@ -556,7 +556,7 @@ function Filtros({
 
       <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Link
-          href="/diagnostico-organizacional/relatorio"
+          href="/avaliacao-desempenho/relatorio"
           className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
         >
           Limpar
@@ -577,13 +577,13 @@ function Filtros({
 function TabelaAplicacoes({
   pesquisas,
 }: {
-  pesquisas: DadosRelatorioDiagnostico["pesquisas"];
+  pesquisas: DadosRelatorioDesempenho["pesquisas"];
 }) {
   return (
     <section className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
       <div className="border-b border-slate-100 p-6">
         <h2 className="text-lg font-black text-slate-900">
-          Diagnósticos considerados
+          Avaliações consideradas
         </h2>
 
         <p className="mt-1 text-sm text-slate-500">
@@ -597,7 +597,7 @@ function TabelaAplicacoes({
           <thead className="bg-slate-50">
             <tr>
               <Th>
-                Diagnóstico
+                Avaliação
               </Th>
 
               <Th>
@@ -633,7 +633,7 @@ function TabelaAplicacoes({
                   }
                   className="p-10 text-center text-sm text-slate-500"
                 >
-                  Nenhum diagnóstico encontrado.
+                  Nenhum avaliação encontrado.
                 </td>
               </tr>
             ) : (
@@ -699,10 +699,10 @@ function TabelaAplicacoes({
 
                     <td className="px-4 py-4 text-right print:hidden">
                       <Link
-                        href={`/diagnostico-organizacional/${pesquisa.id}/relatorio`}
+                        href={`/avaliacao-desempenho/${pesquisa.id}/relatorio`}
                         className="text-sm font-bold text-indigo-600 hover:text-indigo-800"
                       >
-                        Ver diagnóstico
+                        Ver avaliação
                       </Link>
                     </td>
                   </tr>
@@ -721,11 +721,11 @@ function AvisoAnalise() {
   return (
     <div className="mb-6 rounded-3xl border border-indigo-200 bg-indigo-50 p-6">
       <h2 className="font-black text-indigo-950">
-        Score organizacional ainda não calculado
+        Score de desempenho ainda não calculado
       </h2>
 
       <p className="mt-2 text-sm leading-6 text-indigo-800">
-        O backend ainda precisa consolidar as dimensões do diagnóstico e aplicar
+        O backend ainda precisa consolidar as dimensões do avaliação e aplicar
         as regras de interpretação definidas no modelo.
       </p>
     </div>
@@ -920,7 +920,7 @@ function formatarClassificacao(
 }
 
 function montarUrlRelatorioImpressao(
-  dados: DadosRelatorioDiagnostico,
+  dados: DadosRelatorioDesempenho,
   pathname: string
 ) {
   const params =

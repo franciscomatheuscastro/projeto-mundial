@@ -52,6 +52,26 @@ type AcumuladorClima = {
 };
 
 
+
+type DimensaoClimaSetor = {
+  id: string;
+  nome: string;
+  totalRespostas: number;
+  favoravel: number;
+  neutro: number;
+  desfavoravel: number;
+};
+
+
+type AnaliseClimaSetor = {
+  setor: string;
+  totalPesquisas: number;
+  totalRespostas: number;
+  indiceGeralClima: number | null;
+  dimensoes: DimensaoClimaSetor[];
+};
+
+
 type AcumuladorScore = {
   id: string;
   nome: string;
@@ -214,6 +234,127 @@ function chaveTexto(
     );
 }
 
+
+function normalizarSetoresCliente(
+  valor: unknown
+): string[] {
+  if (!Array.isArray(valor)) {
+    return [];
+  }
+
+  const mapa =
+    new Map<string, string>();
+
+  for (const item of valor) {
+    const nome =
+      String(item ?? "").trim();
+
+    if (!nome) {
+      continue;
+    }
+
+    const chave =
+      nome
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLocaleLowerCase("pt-BR");
+
+    if (!mapa.has(chave)) {
+      mapa.set(chave, nome);
+    }
+  }
+
+  return Array.from(
+    mapa.values()
+  ).sort(
+    (a, b) =>
+      a.localeCompare(b, "pt-BR")
+  );
+}
+
+
+function resolverSetorAplicacao(
+  valor: unknown,
+  setoresCliente: unknown
+): string | null {
+  const setorInformado =
+    String(
+      valor ??
+      ""
+    ).trim();
+
+
+  /*
+   * Sem setor significa aplicação
+   * para toda a empresa.
+   */
+  if (
+    !setorInformado
+  ) {
+    return null;
+  }
+
+
+  const setores =
+    normalizarSetoresCliente(
+      setoresCliente
+    );
+
+
+  const normalizarChave = (
+    texto: string
+  ) =>
+    texto
+      .normalize(
+        "NFD"
+      )
+      .replace(
+        /[\u0300-\u036f]/g,
+        ""
+      )
+      .trim()
+      .toLocaleLowerCase(
+        "pt-BR"
+      );
+
+
+  const chaveInformada =
+    normalizarChave(
+      setorInformado
+    );
+
+
+  const setorEncontrado =
+    setores.find(
+      setor =>
+        normalizarChave(
+          setor
+        ) ===
+        chaveInformada
+    );
+
+
+  if (
+    !setorEncontrado
+  ) {
+    throw new Error(
+      "O setor selecionado não pertence ao cliente."
+    );
+  }
+
+
+  /*
+   * Retorna exatamente o nome cadastrado
+   * no cliente, preservando acentuação
+   * e capitalização.
+   */
+  return setorEncontrado;
+}
+
+
+/* =========================================================
+ * NORMALIZAÇÃO DAS DIMENSÕES
+ * ======================================================= */
 
 function normalizarDimensoes(
   dimensoes: unknown
@@ -413,8 +554,8 @@ function normalizarConfiguracaoAnalise(
       TipoModuloPesquisa.CLIMA
         ? "FAVORABILIDADE"
         : tipo ===
-            TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
-          ? "MATURIDADE"
+            TipoModuloPesquisa.AVALIACAO_DESEMPENHO
+          ? "DESEMPENHO"
           : "RISCO_PSICOSSOCIAL",
 
     escalaMinima:
@@ -937,7 +1078,7 @@ function montarMetodologiaAplicacao(
     );
 
   /*
-   * CLIMA / DIAGNÓSTICO:
+   * CLIMA / DESEMPENHO:
    * NEGATIVO é invertido para orientar o resultado positivamente.
    *
    * PSICOSSOCIAL:
@@ -2137,11 +2278,154 @@ function montarAnaliseClima(
 }
 
 
+
 /* =========================================================
- * MOTOR DE DIAGNÓSTICO ORGANIZACIONAL
+ * CLIMA — ANÁLISE POR SETOR
  * ======================================================= */
 
-function analisarPesquisaDiagnostico(
+/*
+ * O setor pertence à própria PesquisaCliente.
+ *
+ * Portanto:
+ * - a Mundial define o setor ao criar a aplicação;
+ * - o respondente não seleciona setor;
+ * - todas as respostas daquela aplicação pertencem
+ *   ao setor vinculado à pesquisa.
+ *
+ * Aplicações sem setor representam "Toda a empresa" e
+ * permanecem apenas no consolidado geral, pois não formam
+ * um recorte setorial específico.
+ */
+function montarAnaliseClimaPorSetor(
+  pesquisasBanco: any[]
+): AnaliseClimaSetor[] {
+  const grupos =
+    new Map<
+      string,
+      {
+        setor: string;
+        pesquisas: any[];
+      }
+    >();
+
+
+  for (
+    const pesquisa
+    of pesquisasBanco
+  ) {
+    const setor =
+      String(
+        pesquisa.setor ??
+        ""
+      ).trim();
+
+
+    if (
+      !setor
+    ) {
+      continue;
+    }
+
+
+    const chave =
+      chaveTexto(
+        setor
+      );
+
+
+    const atual =
+      grupos.get(
+        chave
+      ) || {
+        setor,
+        pesquisas:
+          [],
+      };
+
+
+    atual.pesquisas.push(
+      pesquisa
+    );
+
+
+    grupos.set(
+      chave,
+      atual
+    );
+  }
+
+
+  return Array.from(
+    grupos.values()
+  )
+    .map(
+      grupo => {
+        const analise =
+          montarAnaliseClima(
+            grupo.pesquisas
+          );
+
+
+        const totalRespostas =
+          grupo.pesquisas.reduce(
+            (
+              total,
+              pesquisa
+            ) =>
+              total +
+              pesquisa.respostas.length,
+            0
+          );
+
+
+        return {
+          setor:
+            grupo.setor,
+
+          totalPesquisas:
+            grupo.pesquisas.length,
+
+          totalRespostas,
+
+          indiceGeralClima:
+            analise.indiceGeralClima,
+
+          dimensoes:
+            analise.dimensoes,
+        };
+      }
+    )
+    .filter(
+      setor =>
+        setor.totalRespostas >
+        0
+    )
+    .sort(
+      (
+        a,
+        b
+      ) =>
+        (
+          b.indiceGeralClima ??
+          -1
+        ) -
+        (
+          a.indiceGeralClima ??
+          -1
+        ) ||
+        a.setor.localeCompare(
+          b.setor,
+          "pt-BR"
+        )
+    );
+}
+
+
+/* =========================================================
+ * MOTOR DE AVALIAÇÃO DE DESEMPENHO
+ * ======================================================= */
+
+function analisarPesquisaDesempenho(
   pesquisa: any
 ) {
   const dimensoes =
@@ -2160,7 +2444,7 @@ function analisarPesquisaDiagnostico(
   const configuracao =
     normalizarConfiguracaoAnalise(
       pesquisa.configuracaoAnalise,
-      TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+      TipoModuloPesquisa.AVALIACAO_DESEMPENHO
     );
 
 
@@ -2385,7 +2669,7 @@ function analisarPesquisaDiagnostico(
 
 
   return {
-    scoreOrganizacional:
+    scoreDesempenho:
       pesoGeral >
       0
         ? somaGeral /
@@ -2402,7 +2686,7 @@ function analisarPesquisaDiagnostico(
 }
 
 
-function montarAnaliseDiagnostico(
+function montarAnaliseDesempenho(
   pesquisasBanco: any[]
 ) {
   const mapaDimensoes =
@@ -2432,7 +2716,7 @@ function montarAnaliseDiagnostico(
     of pesquisasBanco
   ) {
     const resultado =
-      analisarPesquisaDiagnostico(
+      analisarPesquisaDesempenho(
         pesquisa
       );
 
@@ -2626,7 +2910,7 @@ function montarAnaliseDiagnostico(
 
 
   return {
-    scoreOrganizacional:
+    scoreDesempenho:
       pesoGeral >
       0
         ? somaGeral /
@@ -3609,6 +3893,16 @@ export default class RepositorioPesquisaCliente {
     }
 
 
+    const setorAplicacao =
+      tipoEsperado ===
+      TipoModuloPesquisa.CLIMA
+        ? resolverSetorAplicacao(
+            pesquisa.setor,
+            cliente.setores
+          )
+        : null;
+
+
     const dimensoesModelo =
       normalizarDimensoes(
         modelo.dimensoes
@@ -3657,9 +3951,6 @@ export default class RepositorioPesquisaCliente {
               select: {
                 respostas:
                   true,
-
-                convites:
-                  true,
               },
             },
           },
@@ -3687,9 +3978,7 @@ export default class RepositorioPesquisaCliente {
 
       const possuiMovimento =
         atual._count.respostas >
-          0 ||
-        atual._count.convites >
-          0;
+        0;
 
 
       if (
@@ -3698,7 +3987,7 @@ export default class RepositorioPesquisaCliente {
           pesquisa.modeloId
       ) {
         throw new Error(
-          "O modelo não pode ser alterado porque esta aplicação já possui convites ou respostas."
+          "O modelo não pode ser alterado porque esta aplicação já possui respostas."
         );
       }
 
@@ -3709,7 +3998,7 @@ export default class RepositorioPesquisaCliente {
           pesquisa.clienteId
       ) {
         throw new Error(
-          "O cliente não pode ser alterado porque esta aplicação já possui convites ou respostas."
+          "O cliente não pode ser alterado porque esta aplicação já possui respostas."
         );
       }
 
@@ -3772,6 +4061,9 @@ export default class RepositorioPesquisaCliente {
               pesquisa.status ??
               atual.status,
 
+            setor:
+              setorAplicacao,
+
             perguntas:
               perguntas as unknown as Prisma.InputJsonValue,
 
@@ -3821,6 +4113,9 @@ export default class RepositorioPesquisaCliente {
           token:
             pesquisa.token ||
             randomUUID(),
+
+          setor:
+            setorAplicacao,
 
           perguntas:
             perguntasModelo as unknown as Prisma.InputJsonValue,
@@ -3908,6 +4203,9 @@ export default class RepositorioPesquisaCliente {
 
         status:
           pesquisa.status,
+
+        setor:
+          pesquisa.setor,
 
         criadoEm:
           pesquisa.criadoEm,
@@ -4089,7 +4387,16 @@ export default class RepositorioPesquisaCliente {
 
 
     return {
-      clientes,
+      clientes:
+        clientes.map(
+          cliente => ({
+            ...cliente,
+            setores:
+              normalizarSetoresCliente(
+                cliente.setores
+              ),
+          })
+        ),
 
       modelos:
         modelos.map(
@@ -4280,16 +4587,6 @@ export default class RepositorioPesquisaCliente {
                   true,
               },
             },
-
-            convites: {
-              select: {
-                id:
-                  true,
-
-                respondido:
-                  true,
-              },
-            },
           },
         }),
 
@@ -4332,28 +4629,6 @@ export default class RepositorioPesquisaCliente {
             pesquisa.respostas.length;
 
 
-          const totalConvites =
-            pesquisa.convites.length;
-
-
-          const totalConvitesRespondidos =
-            pesquisa.convites.filter(
-              convite =>
-                convite.respondido
-            ).length;
-
-
-          const taxaParticipacao =
-            totalConvites >
-            0
-              ? (
-                  totalConvitesRespondidos /
-                  totalConvites
-                ) *
-                100
-              : null;
-
-
           /*
            * Média antiga mantida SOMENTE por
            * retrocompatibilidade.
@@ -4382,6 +4657,10 @@ export default class RepositorioPesquisaCliente {
             status:
               pesquisa.status,
 
+            setor:
+              pesquisa.setor ??
+              null,
+
             criadoEm:
               pesquisa.criadoEm,
 
@@ -4406,11 +4685,19 @@ export default class RepositorioPesquisaCliente {
 
             totalRespostas,
 
-            totalConvites,
+            /*
+             * Compatibilidade temporária com os relatórios.
+             * Como não existem mais convites individuais,
+             * não há denominador para calcular cobertura/adesão.
+             */
+            totalConvites:
+              0,
 
-            totalConvitesRespondidos,
+            totalConvitesRespondidos:
+              0,
 
-            taxaParticipacao,
+            taxaParticipacao:
+              null,
 
             mediaGeral:
               notas.media,
@@ -4475,41 +4762,6 @@ export default class RepositorioPesquisaCliente {
       );
 
 
-    const totalConvites =
-      pesquisas.reduce(
-        (
-          total,
-          pesquisa
-        ) =>
-          total +
-          pesquisa.totalConvites,
-        0
-      );
-
-
-    const totalConvitesRespondidos =
-      pesquisas.reduce(
-        (
-          total,
-          pesquisa
-        ) =>
-          total +
-          pesquisa.totalConvitesRespondidos,
-        0
-      );
-
-
-    const taxaParticipacao =
-      totalConvites >
-      0
-        ? (
-            totalConvitesRespondidos /
-            totalConvites
-          ) *
-          100
-        : null;
-
-
     const mediaGeral =
       quantidadeNotasGeral >
       0
@@ -4538,10 +4790,6 @@ export default class RepositorioPesquisaCliente {
           totalPesquisas: number;
 
           totalRespostas: number;
-
-          totalConvites: number;
-
-          totalConvitesRespondidos: number;
 
           somaNotas: number;
 
@@ -4573,12 +4821,6 @@ export default class RepositorioPesquisaCliente {
           totalRespostas:
             0,
 
-          totalConvites:
-            0,
-
-          totalConvitesRespondidos:
-            0,
-
           somaNotas:
             0,
 
@@ -4591,12 +4833,6 @@ export default class RepositorioPesquisaCliente {
 
       atual.totalRespostas +=
         pesquisa.totalRespostas;
-
-      atual.totalConvites +=
-        pesquisa.totalConvites;
-
-      atual.totalConvitesRespondidos +=
-        pesquisa.totalConvitesRespondidos;
 
       atual.somaNotas +=
         pesquisa.somaNotas;
@@ -4634,20 +4870,13 @@ export default class RepositorioPesquisaCliente {
               item.totalRespostas,
 
             totalConvites:
-              item.totalConvites,
+              0,
 
             totalConvitesRespondidos:
-              item.totalConvitesRespondidos,
+              0,
 
             taxaParticipacao:
-              item.totalConvites >
-              0
-                ? (
-                    item.totalConvitesRespondidos /
-                    item.totalConvites
-                  ) *
-                  100
-                : null,
+              null,
 
             mediaGeral:
               item.quantidadeNotas >
@@ -4675,12 +4904,19 @@ export default class RepositorioPesquisaCliente {
     const analise =
       tipo ===
       TipoModuloPesquisa.CLIMA
-        ? montarAnaliseClima(
-            pesquisasBanco
-          )
+        ? {
+            ...montarAnaliseClima(
+              pesquisasBanco
+            ),
+
+            setores:
+              montarAnaliseClimaPorSetor(
+                pesquisasBanco
+              ),
+          }
         : tipo ===
-            TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
-          ? montarAnaliseDiagnostico(
+            TipoModuloPesquisa.AVALIACAO_DESEMPENHO
+          ? montarAnaliseDesempenho(
               pesquisasBanco
             )
           : {
@@ -4745,11 +4981,19 @@ export default class RepositorioPesquisaCliente {
 
         totalRespostas,
 
-        totalConvites,
+        /*
+         * Sem convites individuais não existe uma população-alvo
+         * cadastrada automaticamente. Portanto cobertura/adesão
+         * ficam indisponíveis até existir outro denominador.
+         */
+        totalConvites:
+          0,
 
-        totalConvitesRespondidos,
+        totalConvitesRespondidos:
+          0,
 
-        taxaParticipacao,
+        taxaParticipacao:
+          null,
 
         /*
          * Legado.
@@ -4779,113 +5023,6 @@ export default class RepositorioPesquisaCliente {
 
       analise,
     };
-  }
-
-
-  static async gerarConvites(
-    pesquisaId: string,
-    quantidade: number,
-    tipo?: TipoModuloPesquisa
-  ) {
-    if (
-      !pesquisaId
-    ) {
-      throw new Error(
-        "Aplicação é obrigatória."
-      );
-    }
-
-
-    if (
-      !Number.isInteger(
-        quantidade
-      ) ||
-      quantidade <
-        1
-    ) {
-      throw new Error(
-        "Informe uma quantidade válida de convites."
-      );
-    }
-
-
-    if (
-      quantidade >
-      500
-    ) {
-      throw new Error(
-        "Você pode gerar no máximo 500 convites por vez."
-      );
-    }
-
-
-    const pesquisa =
-      await prisma.pesquisaCliente.findFirst({
-        where: {
-          id:
-            pesquisaId,
-
-          ...(tipo
-            ? {
-                tipo,
-              }
-            : {}),
-        },
-      });
-
-
-    if (
-      !pesquisa
-    ) {
-      throw new Error(
-        "Aplicação não encontrada."
-      );
-    }
-
-
-    if (
-      pesquisa.status !==
-      StatusPesquisaCliente.ABERTA
-    ) {
-      throw new Error(
-        "Não é possível gerar convites para uma aplicação fechada ou arquivada."
-      );
-    }
-
-
-    const convites =
-      Array.from({
-        length:
-          quantidade,
-      }).map(
-        () => ({
-          pesquisaId,
-
-          token:
-            randomUUID(),
-
-          unidade:
-            null,
-
-          setor:
-            null,
-
-          cargo:
-            null,
-        })
-      );
-
-
-    await prisma.convitePesquisa.createMany({
-      data:
-        convites,
-    });
-
-
-    return this.obterPorId(
-      pesquisaId,
-      tipo
-    );
   }
 
 
@@ -4956,6 +5093,9 @@ export default class RepositorioPesquisaCliente {
 
         status:
           pesquisa.status,
+
+        setor:
+          pesquisa.setor,
 
         criadoEm:
           pesquisa.criadoEm,
@@ -5178,13 +5318,6 @@ export default class RepositorioPesquisaCliente {
             "desc" as const,
         },
       },
-
-      convites: {
-        orderBy: {
-          criadoEm:
-            "desc" as const,
-        },
-      },
     };
   }
 
@@ -5257,6 +5390,10 @@ export default class RepositorioPesquisaCliente {
 
       status:
         pesquisa.status,
+
+      setor:
+        pesquisa.setor ??
+        null,
 
       perguntas:
         perguntasPesquisa,
@@ -5337,65 +5474,6 @@ export default class RepositorioPesquisaCliente {
 
       totalRespostas:
         pesquisa.respostas.length,
-
-      convites:
-        (
-          pesquisa.convites ||
-          []
-        ).map(
-          (
-            convite: any
-          ) => ({
-            id:
-              convite.id,
-
-            pesquisaId:
-              convite.pesquisaId,
-
-            token:
-              convite.token,
-
-            nome:
-              convite.nome,
-
-            email:
-              convite.email,
-
-            unidade:
-              convite.unidade,
-
-            setor:
-              convite.setor,
-
-            cargo:
-              convite.cargo,
-
-            respondido:
-              convite.respondido,
-
-            respondidoEm:
-              convite.respondidoEm,
-
-            criadoEm:
-              convite.criadoEm,
-
-            atualizadoEm:
-              convite.atualizadoEm,
-          })
-        ),
-
-      totalConvites:
-        pesquisa.convites?.length ||
-        0,
-
-      totalConvitesRespondidos:
-        pesquisa.convites?.filter(
-          (
-            convite: any
-          ) =>
-            convite.respondido
-        ).length ||
-        0,
     };
   }
 }

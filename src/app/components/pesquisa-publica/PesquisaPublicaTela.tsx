@@ -47,9 +47,10 @@ export default function PesquisaPublicaTela({
     useRespostaPesquisaPublica();
 
 
-  const pesquisaJaRespondida =
-    pesquisa.convite?.respondido ===
-    true;
+  const ehPesquisaClima =
+    pesquisa.tipo ===
+    TipoModuloPesquisa.CLIMA;
+
 
 
   async function enviarResposta(
@@ -57,12 +58,6 @@ export default function PesquisaPublicaTela({
   ) {
     event.preventDefault();
 
-
-    if (
-      pesquisaJaRespondida
-    ) {
-      return;
-    }
 
 
     const formData =
@@ -100,45 +95,33 @@ export default function PesquisaPublicaTela({
       token:
         pesquisa.token,
 
-      conviteToken:
-        pesquisa.convite?.token ??
-        null,
-
       nome:
-        String(
-          formData.get(
-            "nome"
-          ) ??
-            ""
-        ).trim() ||
-        null,
+        ehPesquisaClima
+          ? null
+          : String(
+              formData.get("nome") ?? ""
+            ).trim() || null,
 
       email:
-        String(
-          formData.get(
-            "email"
-          ) ??
-            ""
-        ).trim() ||
-        null,
+        ehPesquisaClima
+          ? null
+          : String(
+              formData.get("email") ?? ""
+            ).trim() || null,
 
       setor:
-        String(
-          formData.get(
-            "setor"
-          ) ??
-            ""
-        ).trim() ||
-        null,
+        ehPesquisaClima
+          ? null
+          : String(
+              formData.get("setor") ?? ""
+            ).trim() || null,
 
       cargo:
-        String(
-          formData.get(
-            "cargo"
-          ) ??
-            ""
-        ).trim() ||
-        null,
+        ehPesquisaClima
+          ? null
+          : String(
+              formData.get("cargo") ?? ""
+            ).trim() || null,
 
       respostas,
     });
@@ -182,27 +165,17 @@ export default function PesquisaPublicaTela({
         </div>
 
 
-        {pesquisaJaRespondida ? (
-          <div className="rounded-3xl border border-yellow-100 bg-yellow-50 p-6 text-sm font-semibold leading-6 text-yellow-800 shadow-sm">
-            Esta pesquisa já foi respondida por este link. Caso acredite que
-            isso seja um erro, entre em contato com a empresa responsável.
-          </div>
-        ) : (
-          <form
-            onSubmit={
-              enviarResposta
-            }
-            className="space-y-5"
-          >
-            {erro && (
-              <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-                {
-                  erro
-                }
-              </div>
-            )}
+        <form
+          onSubmit={enviarResposta}
+          className="space-y-5"
+        >
+          {erro && (
+            <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              {erro}
+            </div>
+          )}
 
-
+          {!ehPesquisaClima && (
             <Card
               titulo="Identificação"
               descricao="Essas informações são opcionais."
@@ -223,7 +196,6 @@ export default function PesquisaPublicaTela({
 
                 <CampoSetor
                   setores={pesquisa.cliente.setores ?? []}
-                  valorPredefinido={pesquisa.convite?.setor ?? null}
                 />
 
                 <Campo
@@ -233,75 +205,48 @@ export default function PesquisaPublicaTela({
                 />
               </div>
             </Card>
+          )}
 
+          {pesquisa.perguntas.map(
+            pergunta => (
+              <Card key={pergunta.id}>
+                <div className="mb-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                    Pergunta {pergunta.ordem}
+                  </p>
 
-            {pesquisa.perguntas.map(
-              pergunta => (
-                <Card
-                  key={
-                    pergunta.id
-                  }
-                >
-                  <div className="mb-4">
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                      Pergunta{" "}
-                      {
-                        pergunta.ordem
-                      }
-                    </p>
-
-
-                    <h3 className="mt-1 text-base font-bold text-slate-900 sm:text-lg">
-                      {
-                        pergunta.titulo
-                      }
-
-                      {pergunta.obrigatoria && (
-                        <span className="ml-1 text-red-500">
-                          *
-                        </span>
-                      )}
-                    </h3>
-
-
-                    {pergunta.descricao && (
-                      <p className="mt-2 text-sm leading-6 text-slate-500">
-                        {
-                          pergunta.descricao
-                        }
-                      </p>
+                  <h3 className="mt-1 text-base font-bold text-slate-900 sm:text-lg">
+                    {pergunta.titulo}
+                    {pergunta.obrigatoria && (
+                      <span className="ml-1 text-red-500">*</span>
                     )}
-                  </div>
+                  </h3>
 
+                  {pergunta.descricao && (
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      {pergunta.descricao}
+                    </p>
+                  )}
+                </div>
 
-                  <CampoResposta
-                    pergunta={
-                      pergunta
-                    }
-                    tipoModulo={
-                      pesquisa.tipo
-                    }
-                  />
-                </Card>
-              )
-            )}
+                <CampoResposta
+                  pergunta={pergunta}
+                  tipoModulo={pesquisa.tipo}
+                />
+              </Card>
+            )
+          )}
 
-
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <button
-                type="submit"
-                disabled={
-                  processando
-                }
-                className="w-full rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {processando
-                  ? "Enviando..."
-                  : "Enviar resposta"}
-              </button>
-            </div>
-          </form>
-        )}
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <button
+              type="submit"
+              disabled={processando}
+              className="w-full rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {processando ? "Enviando..." : "Enviar resposta"}
+            </button>
+          </div>
+        </form>
       </section>
     </main>
   );
@@ -352,11 +297,13 @@ function Campo({
   label,
   placeholder,
   type = "text",
+  required = false,
 }: {
   name: string;
   label: string;
   placeholder?: string;
   type?: string;
+  required?: boolean;
 }) {
   return (
     <div>
@@ -377,6 +324,7 @@ function Campo({
         placeholder={
           placeholder
         }
+        required={required}
         className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
       />
     </div>
@@ -386,45 +334,46 @@ function Campo({
 
 function CampoSetor({
   setores,
-  valorPredefinido,
+  required = false,
 }: {
   setores: string[];
-  valorPredefinido?: string | null;
+  required?: boolean;
 }) {
-  if (valorPredefinido) {
-    return (
-      <div>
-        <label className="mb-2 block text-sm font-semibold text-slate-700">Setor</label>
-        <input
-          name="setor"
-          value={valorPredefinido}
-          readOnly
-          className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 outline-none"
-        />
-      </div>
-    );
-  }
-
   if (setores.length > 0) {
     return (
       <div>
-        <label className="mb-2 block text-sm font-semibold text-slate-700">Setor</label>
+        <label className="mb-2 block text-sm font-semibold text-slate-700">
+          Setor
+          {required && <span className="ml-1 text-red-500">*</span>}
+        </label>
+
         <select
           name="setor"
           defaultValue=""
+          required={required}
           className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
         >
           <option value="">Selecione o setor</option>
-          {setores.map((setor) => (
-            <option key={setor} value={setor}>{setor}</option>
-          ))}
+
+          {setores.map(
+            setor => (
+              <option key={setor} value={setor}>
+                {setor}
+              </option>
+            )
+          )}
         </select>
       </div>
     );
   }
 
   return (
-    <Campo name="setor" label="Setor" placeholder="Ex: Operacional" />
+    <Campo
+      name="setor"
+      label="Setor"
+      placeholder="Informe seu setor"
+      required={required}
+    />
   );
 }
 
@@ -685,6 +634,40 @@ function obterEscala(
   }
 
 
+  if (
+    tipo ===
+    TipoModuloPesquisa.AVALIACAO_DESEMPENHO
+  ) {
+    return [
+      {
+        valor: 1,
+        rotulo:
+          "Muito abaixo do esperado",
+      },
+      {
+        valor: 2,
+        rotulo:
+          "Abaixo do esperado",
+      },
+      {
+        valor: 3,
+        rotulo:
+          "Dentro do esperado",
+      },
+      {
+        valor: 4,
+        rotulo:
+          "Acima do esperado",
+      },
+      {
+        valor: 5,
+        rotulo:
+          "Muito acima do esperado",
+      },
+    ];
+  }
+
+
   return [
     {
       valor: 1,
@@ -728,9 +711,9 @@ function obterNomeModulo(
 
   if (
     tipo ===
-    TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+    TipoModuloPesquisa.AVALIACAO_DESEMPENHO
   ) {
-    return "Diagnóstico Organizacional";
+    return "Avaliação de Desempenho";
   }
 
 

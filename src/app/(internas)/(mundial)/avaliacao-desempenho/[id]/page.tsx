@@ -4,31 +4,30 @@ import {
 
 import PesquisasModuloTela from "@/src/app/components/pesquisas/PesquisasModuloTela";
 
+
 type Props = {
   params: Promise<{
     id: string;
   }>;
 };
 
+
 export default async function Page({
   params,
 }: Props) {
-  const {
-    id,
-  } =
+  const { id } =
     await params;
+
 
   return (
     <PesquisasModuloTela
       modo="detalhe"
-      pesquisaId={
-        id
-      }
+      pesquisaId={id}
       tipo={
-        TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+        TipoModuloPesquisa.AVALIACAO_DESEMPENHO
       }
-      tituloModulo="Diagnóstico Organizacional"
-      baseHref="/diagnostico-organizacional"
+      tituloModulo="Avaliação de Desempenho"
+      baseHref="/avaliacao-desempenho"
     />
   );
 }

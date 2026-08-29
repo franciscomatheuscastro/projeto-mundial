@@ -14,11 +14,11 @@ import {
   obterDadosRelatorioModuloPesquisa,
 } from "@/src/backend/pesquisaCliente/acoesModuloPesquisa";
 
-import RelatorioDiagnosticoOrganizacionalImpressaoTela from "@/src/app/components/pesquisas/RelatorioDiagnosticoOrganizacionalImpressaoTela";
+import RelatorioAvaliacaoDesempenhoImpressaoTela from "@/src/app/components/pesquisas/RelatorioAvaliacaoDesempenhoImpressaoTela";
 
 import type {
-  DadosRelatorioDiagnostico,
-} from "@/src/app/components/pesquisas/RelatorioDiagnosticoOrganizacionalTela";
+  DadosRelatorioDesempenho,
+} from "@/src/app/components/pesquisas/RelatorioAvaliacaoDesempenhoTela";
 
 
 type PageProps = {
@@ -30,7 +30,7 @@ type PageProps = {
 };
 
 
-export default async function RelatorioDiagnosticoOrganizacionalImpressaoPage({
+export default async function RelatorioAvaliacaoDesempenhoImpressaoPage({
   searchParams,
 }: PageProps) {
   const session =
@@ -52,7 +52,7 @@ export default async function RelatorioDiagnosticoOrganizacionalImpressaoPage({
 
   const resultado =
     await obterDadosRelatorioModuloPesquisa(
-      TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL,
+      TipoModuloPesquisa.AVALIACAO_DESEMPENHO,
       {
         dataInicio:
           filtros.dataInicio,
@@ -68,7 +68,7 @@ export default async function RelatorioDiagnosticoOrganizacionalImpressaoPage({
 
   if (
     resultado.tipo !==
-    TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+    TipoModuloPesquisa.AVALIACAO_DESEMPENHO
   ) {
     throw new Error(
       "Tipo de relatório inválido."
@@ -79,17 +79,17 @@ export default async function RelatorioDiagnosticoOrganizacionalImpressaoPage({
   if (
     !resultado.analise ||
     !(
-      "scoreOrganizacional" in
+      "scoreDesempenho" in
       resultado.analise
     )
   ) {
     throw new Error(
-      "Dados da análise de diagnóstico organizacional inválidos."
+      "Dados da análise de avaliação de desempenho inválidos."
     );
   }
 
 
-  const dados: DadosRelatorioDiagnostico =
+  const dados: DadosRelatorioDesempenho =
     {
       tipo:
         resultado.tipo,
@@ -114,26 +114,31 @@ export default async function RelatorioDiagnosticoOrganizacionalImpressaoPage({
         [],
 
       analise: {
-        scoreOrganizacional:
-          resultado.analise.scoreOrganizacional,
+        scoreDesempenho:
+          resultado.analise
+            .scoreDesempenho,
 
         dimensoes:
-          resultado.analise.dimensoes,
+          resultado.analise
+            .dimensoes,
 
         forcas:
-          resultado.analise.forcas,
+          resultado.analise
+            .forcas,
 
         pontosAtencao:
-          resultado.analise.pontosAtencao,
+          resultado.analise
+            .pontosAtencao,
 
         prioridades:
-          resultado.analise.prioridades,
+          resultado.analise
+            .prioridades,
       },
     };
 
 
   return (
-    <RelatorioDiagnosticoOrganizacionalImpressaoTela
+    <RelatorioAvaliacaoDesempenhoImpressaoTela
       dados={
         dados
       }
