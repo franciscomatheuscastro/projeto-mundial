@@ -74,7 +74,7 @@ const includePlano = {
 const TIPOS_ORIGEM_PESQUISA: TipoOrigemPlanoAcao[] =
   [
     TipoOrigemPlanoAcao.PESQUISA_CLIMA,
-    TipoOrigemPlanoAcao.DIAGNOSTICO_ORGANIZACIONAL,
+    TipoOrigemPlanoAcao.AVALIACAO_DESEMPENHO,
     TipoOrigemPlanoAcao.AVALIACAO_PSICOSSOCIAL,
   ];
 
@@ -95,8 +95,8 @@ function obterTipoModuloEsperado(
     case TipoOrigemPlanoAcao.PESQUISA_CLIMA:
       return TipoModuloPesquisa.CLIMA;
 
-    case TipoOrigemPlanoAcao.DIAGNOSTICO_ORGANIZACIONAL:
-      return TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL;
+    case TipoOrigemPlanoAcao.AVALIACAO_DESEMPENHO:
+      return TipoModuloPesquisa.AVALIACAO_DESEMPENHO;
 
     case TipoOrigemPlanoAcao.AVALIACAO_PSICOSSOCIAL:
       return TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL;
@@ -115,8 +115,8 @@ function nomeOrigem(
     case TipoOrigemPlanoAcao.PESQUISA_CLIMA:
       return "pesquisa de clima";
 
-    case TipoOrigemPlanoAcao.DIAGNOSTICO_ORGANIZACIONAL:
-      return "diagnóstico organizacional";
+    case TipoOrigemPlanoAcao.AVALIACAO_DESEMPENHO:
+      return "avaliação de desempenho";
 
     case TipoOrigemPlanoAcao.AVALIACAO_PSICOSSOCIAL:
       return "avaliação psicossocial";
@@ -299,7 +299,7 @@ function validarOrigem(
       plano.pesquisaId
     ) {
       throw new Error(
-        "Um plano de denúncia não pode estar vinculado a uma pesquisa, diagnóstico ou avaliação psicossocial."
+        "Um plano de denúncia não pode estar vinculado a uma pesquisa de clima, avaliação de desempenho ou avaliação psicossocial."
       );
     }
 
@@ -457,7 +457,7 @@ export default class RepositorioPlanoAcao {
        * O tipo da origem é imutável depois da criação.
        *
        * Exemplo:
-       * um plano criado para Diagnóstico Organizacional
+       * um plano criado para Avaliação de Desempenho
        * não pode posteriormente virar um plano de
        * Avaliação Psicossocial ou Denúncia.
        */
@@ -690,10 +690,10 @@ export default class RepositorioPlanoAcao {
   }
 
   /*
-   * PesquisaCliente agora é a tabela-base das três aplicações:
+   * PesquisaCliente é a tabela-base das três modalidades de aplicação:
    *
    * - Pesquisa de Clima
-   * - Diagnóstico Organizacional
+   * - Avaliação de Desempenho
    * - Avaliação Psicossocial
    *
    * Portanto não devemos limitar este método a PESQUISA_CLIMA.

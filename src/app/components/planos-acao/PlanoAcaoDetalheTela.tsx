@@ -105,9 +105,7 @@ export default function PlanoAcaoDetalheTela({
     return (
       <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
         <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          {
-            erro
-          }
+          {erro}
         </div>
       </main>
     );

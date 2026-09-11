@@ -92,8 +92,8 @@ function tipoModuloDaOrigem(
     case "PESQUISA_CLIMA":
       return TipoModuloPesquisa.CLIMA;
 
-    case "DIAGNOSTICO_ORGANIZACIONAL":
-      return TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL;
+    case "AVALIACAO_DESEMPENHO":
+      return TipoModuloPesquisa.AVALIACAO_DESEMPENHO;
 
     case "AVALIACAO_PSICOSSOCIAL":
       return TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL;
@@ -112,7 +112,7 @@ function nomeTipoOrigem(
     case "PESQUISA_CLIMA":
       return "Pesquisa de clima";
 
-    case "DIAGNOSTICO_ORGANIZACIONAL":
+    case "AVALIACAO_DESEMPENHO":
       return "Avaliação de desempenho";
 
     case "AVALIACAO_PSICOSSOCIAL":
@@ -282,7 +282,7 @@ export default function PlanoAcaoFormularioTela({
 
         const [
           clima,
-          diagnosticos,
+          desempenhos,
           psicossociais,
           denunciasResultado,
         ] =
@@ -292,7 +292,7 @@ export default function PlanoAcaoFormularioTela({
             ),
 
             obterTodosModuloPesquisa(
-              TipoModuloPesquisa.DIAGNOSTICO_ORGANIZACIONAL
+              TipoModuloPesquisa.AVALIACAO_DESEMPENHO
             ),
 
             obterTodosModuloPesquisa(
@@ -311,7 +311,7 @@ export default function PlanoAcaoFormularioTela({
         setPesquisas([
           ...(clima as PesquisaOpcao[]),
 
-          ...(diagnosticos as PesquisaOpcao[]),
+          ...(desempenhos as PesquisaOpcao[]),
 
           ...(psicossociais as PesquisaOpcao[]),
         ]);
@@ -561,8 +561,8 @@ export default function PlanoAcaoFormularioTela({
             </h1>
 
             <p className="mt-1 max-w-3xl text-sm text-slate-500">
-              Estruture diagnóstico, objetivos e ações relacionadas a pesquisas,
-              diagnósticos, avaliações psicossociais ou denúncias.
+              Estruture contexto, objetivos e ações relacionadas a pesquisas de clima,
+              avaliações de desempenho, avaliações psicossociais ou denúncias.
             </p>
           </div>
         </div>
@@ -610,8 +610,8 @@ export default function PlanoAcaoFormularioTela({
                   Pesquisa de clima
                 </option>
 
-                <option value="DIAGNOSTICO_ORGANIZACIONAL">
-                  Diagnóstico organizacional
+                <option value="AVALIACAO_DESEMPENHO">
+                  Avaliação de desempenho
                 </option>
 
                 <option value="AVALIACAO_PSICOSSOCIAL">
@@ -777,12 +777,12 @@ export default function PlanoAcaoFormularioTela({
 
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="text-lg font-bold text-slate-900">
-              Diagnóstico estratégico
+              Contexto e direcionamento
             </h2>
 
             <div className="mt-5 space-y-4">
               <CampoTexto
-                label="Diagnóstico"
+                label="Análise / contexto"
                 value={
                   diagnostico
                 }
@@ -793,6 +793,9 @@ export default function PlanoAcaoFormularioTela({
                   tipoOrigem ===
                   "DENUNCIA"
                     ? "Resumo dos fatos, riscos e causas identificadas na denúncia."
+                    : tipoOrigem ===
+                      "AVALIACAO_DESEMPENHO"
+                    ? "Resumo dos principais resultados, competências observadas e pontos de desenvolvimento identificados na avaliação."
                     : `Resumo dos principais pontos identificados em ${textoOrigem.toLowerCase()}.`
                 }
               />

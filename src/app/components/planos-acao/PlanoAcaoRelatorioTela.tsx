@@ -299,17 +299,17 @@ export default function PlanoAcaoRelatorioTela({
   const resumoPadrao =
     planoDeDenuncia
       ? "Este plano de ação foi estruturado a partir da análise da denúncia, considerando os fatos relatados, os riscos identificados, as tratativas necessárias e as medidas de prevenção."
-      : `Este plano de ação foi estruturado a partir da análise dos resultados de ${textoOrigemExecutivo}, com foco em melhorias práticas, priorização de ações e fortalecimento da organização.`;
+      : `Este plano de ação foi estruturado a partir da análise dos resultados de ${textoOrigemExecutivo}, com foco em melhorias práticas, priorização de ações e evolução dos resultados.`;
 
   const objetivoPadrao =
     planoDeDenuncia
       ? "Estabelecer medidas corretivas, preventivas e de acompanhamento para tratar adequadamente os fatos identificados e reduzir a recorrência de situações semelhantes."
-      : `Transformar os achados de ${textoOrigemExecutivo} em iniciativas aplicáveis, mensuráveis e conectadas à melhoria organizacional.`;
+      : `Transformar os achados de ${textoOrigemExecutivo} em iniciativas aplicáveis, mensuráveis e conectadas à melhoria dos resultados e desenvolvimento das pessoas.`;
 
   const conclusaoPadrao =
     planoDeDenuncia
       ? "A execução consistente deste plano contribui para uma tratativa responsável da denúncia, mitigação dos riscos identificados e fortalecimento dos mecanismos internos de prevenção e governança."
-      : `A execução consistente deste plano busca converter os achados de ${textoOrigemExecutivo} em melhorias mensuráveis de gestão, ambiente de trabalho e desempenho organizacional.`;
+      : `A execução consistente deste plano busca converter os achados de ${textoOrigemExecutivo} em melhorias mensuráveis de gestão, ambiente de trabalho e desempenho.`;
 
   return (
     <>

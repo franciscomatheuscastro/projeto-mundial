@@ -134,14 +134,14 @@ export default function PlanosAcaoTela({
           />
 
           <Card
-            titulo="Diagnósticos"
+            titulo="Desempenho"
             valor={
               planos.filter(
                 (
                   plano
                 ) =>
                   plano.tipoOrigem ===
-                  "DIAGNOSTICO_ORGANIZACIONAL"
+                  "AVALIACAO_DESEMPENHO"
               ).length
             }
           />
@@ -412,13 +412,13 @@ function TipoBadge({
 
   if (
     tipo ===
-    "DIAGNOSTICO_ORGANIZACIONAL"
+    "AVALIACAO_DESEMPENHO"
   ) {
     classe =
       "bg-violet-100 text-violet-700";
 
     texto =
-      "Diagnóstico organizacional";
+      "Avaliação de desempenho";
   }
 
   if (
