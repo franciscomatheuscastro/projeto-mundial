@@ -10,7 +10,9 @@ import {
   auth,
 } from "@/src/auth";
 
-import Backend from "@/src/backend";
+import {
+  obterDadosRelatorioModuloPesquisa,
+} from "@/src/backend/pesquisaCliente/acoesModuloPesquisa";
 
 import RelatorioPesquisasClimaTela from "@/src/app/components/pesquisas/RelatorioPesquisasClimaTela";
 
@@ -24,6 +26,7 @@ type PageProps = {
     dataInicio?: string;
     dataFim?: string;
     clienteId?: string;
+    setor?: string;
   }>;
 };
 
@@ -49,16 +52,22 @@ export default async function RelatorioPesquisasPage({
 
 
   const resultado =
-    await Backend.pesquisasCliente.obterDadosRelatorio({
-      dataInicio:
-        filtros.dataInicio,
+    await obterDadosRelatorioModuloPesquisa(
+      TipoModuloPesquisa.CLIMA,
+      {
+        dataInicio:
+          filtros.dataInicio,
 
-      dataFim:
-        filtros.dataFim,
+        dataFim:
+          filtros.dataFim,
 
-      clienteId:
-        filtros.clienteId,
-    });
+        clienteId:
+          filtros.clienteId,
+
+        setor:
+          filtros.setor,
+      }
+    );
 
 
   /*
@@ -95,40 +104,52 @@ export default async function RelatorioPesquisasPage({
   }
 
 
-  const dados: DadosRelatorioClima =
-    {
-      ...resultado,
+  const dados: DadosRelatorioClima = {
+    ...resultado,
 
-      tipo:
-        resultado.tipo,
+    tipo:
+      resultado.tipo,
 
-      analise: {
-        indiceGeralClima:
-          resultado.analise
-            .indiceGeralClima,
+    filtros: {
+      dataInicio:
+        resultado.filtros.dataInicio,
 
-        dimensoes:
-          resultado.analise
-            .dimensoes,
+      dataFim:
+        resultado.filtros.dataFim,
 
-        /*
-         * Comparativo entre os setores
-         * definidos pela Mundial nas aplicações.
-         */
-        setores:
-          resultado.analise
-            .setores ??
-          [],
+      clienteId:
+        resultado.filtros.clienteId,
 
-        comentariosAbertos:
-          resultado.analise
-            .comentariosAbertos,
+      setor:
+        resultado.filtros.setor,
+    },
 
-        historico:
-          resultado.analise
-            .historico,
-      },
-    };
+    setores:
+      resultado.setores ??
+      [],
+
+    analise: {
+      indiceGeralClima:
+        resultado.analise.indiceGeralClima,
+
+      dimensoes:
+        resultado.analise.dimensoes,
+
+      /*
+       * Comparativo entre os setores
+       * definidos pela Mundial nas aplicações.
+       */
+      setores:
+        resultado.analise.setores ??
+        [],
+
+      comentariosAbertos:
+        resultado.analise.comentariosAbertos,
+
+      historico:
+        resultado.analise.historico,
+    },
+  };
 
 
   return (

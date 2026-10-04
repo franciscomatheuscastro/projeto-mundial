@@ -17,17 +17,17 @@ import {
 import RelatorioAvaliacaoPsicossocialImpressaoTela from "@/src/app/components/pesquisas/RelatorioAvaliacaoPsicossocialImpressaoTela";
 
 import type {
+  AnalisePsicossocial,
   DadosRelatorioPsicossocial,
-} from "@/src/app/components/pesquisas/RelatorioAvaliacaoPsicossocialTela";
+} from "@/src/app/components/pesquisas/RelatorioAvaliacaoPsicossocialImpressaoTela";
 
 
 type Props = {
   searchParams: Promise<{
     dataInicio?: string;
-
     dataFim?: string;
-
     clienteId?: string;
+    setor?: string;
   }>;
 };
 
@@ -64,6 +64,9 @@ export default async function RelatorioAvaliacaoPsicossocialImpressaoPage({
 
         clienteId:
           filtros.clienteId,
+
+        setor:
+          filtros.setor,
       }
     );
 
@@ -78,10 +81,29 @@ export default async function RelatorioAvaliacaoPsicossocialImpressaoPage({
   }
 
 
+  /*
+   * O relatório psicossocial de impressão
+   * atualmente utiliza:
+   *
+   * - fatores;
+   * - dimensões consolidadas;
+   * - heatmap.
+   *
+   * Portanto validamos explicitamente
+   * os três blocos antes de montar os dados.
+   */
   if (
     !resultado.analise ||
     !(
       "fatores" in
+      resultado.analise
+    ) ||
+    !(
+      "dimensoes" in
+      resultado.analise
+    ) ||
+    !(
+      "heatmap" in
       resultado.analise
     )
   ) {
@@ -91,73 +113,54 @@ export default async function RelatorioAvaliacaoPsicossocialImpressaoPage({
   }
 
 
-  const analise = {
+  const analise: AnalisePsicossocial = {
     fatores:
       resultado.analise.fatores,
+
+    dimensoes:
+      resultado.analise.dimensoes,
 
     heatmap:
       resultado.analise.heatmap,
   };
 
 
-  const dados: DadosRelatorioPsicossocial =
-    {
-      tipo:
-        resultado.tipo,
+  const dados: DadosRelatorioPsicossocial = {
+    tipo:
+      resultado.tipo,
 
-      filtros:
-        resultado.filtros,
+    filtros: {
+      dataInicio:
+        resultado.filtros.dataInicio,
 
-      clientes:
-        resultado.clientes,
+      dataFim:
+        resultado.filtros.dataFim,
 
-      resumo:
-        resultado.resumo,
+      clienteId:
+        resultado.filtros.clienteId,
 
-      porCliente:
-        resultado.porCliente,
+      setor:
+        resultado.filtros.setor,
+    },
 
-      pesquisas:
-        resultado.pesquisas,
+    clientes:
+      resultado.clientes,
 
-      informacoesAdicionais:
-        resultado.informacoesAdicionais ??
-        [],
+    resumo:
+      resultado.resumo,
 
-      analise,
-    };
+    porCliente:
+      resultado.porCliente,
 
+    pesquisas:
+      resultado.pesquisas,
 
-  /*
-   * Contadores usados pelo relatório
-   * de impressão.
-   */
-  const altos =
-    analise.fatores.filter(
-      fator =>
-        normalizarClassificacao(
-          fator.classificacao
-        ) ===
-        "ALTO"
-    ).length;
+    informacoesAdicionais:
+      resultado.informacoesAdicionais ??
+      [],
 
-
-  const criticos =
-    analise.fatores.filter(
-      fator =>
-        normalizarClassificacao(
-          fator.classificacao
-        ) ===
-        "CRITICO"
-    ).length;
-
-
-  const pendentes =
-    Math.max(
-      0,
-      dados.resumo.totalConvites -
-        dados.resumo.totalConvitesRespondidos
-    );
+    analise,
+  };
 
 
   return (
@@ -168,40 +171,6 @@ export default async function RelatorioAvaliacaoPsicossocialImpressaoPage({
       analise={
         analise
       }
-      altos={
-        altos
-      }
-      criticos={
-        criticos
-      }
-      pendentes={
-        pendentes
-      }
     />
   );
-}
-
-
-function normalizarClassificacao(
-  valor?: string | null
-) {
-  return (
-    valor ??
-    ""
-  )
-    .normalize(
-      "NFD"
-    )
-    .replace(
-      /[\u0300-\u036f]/g,
-      ""
-    )
-    .trim()
-    .toLocaleUpperCase(
-      "pt-BR"
-    )
-    .replace(
-      /\s+/g,
-      "_"
-    );
 }

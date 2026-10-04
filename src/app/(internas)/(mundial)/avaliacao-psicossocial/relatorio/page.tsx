@@ -24,10 +24,9 @@ import type {
 type Props = {
   searchParams: Promise<{
     dataInicio?: string;
-
     dataFim?: string;
-
     clienteId?: string;
+    setor?: string;
   }>;
 };
 
@@ -64,6 +63,9 @@ export default async function RelatorioAvaliacaoPsicossocialPage({
 
         clienteId:
           filtros.clienteId,
+
+        setor:
+          filtros.setor,
       }
     );
 
@@ -83,6 +85,14 @@ export default async function RelatorioAvaliacaoPsicossocialPage({
     !(
       "fatores" in
       resultado.analise
+    ) ||
+    !(
+      "dimensoes" in
+      resultado.analise
+    ) ||
+    !(
+      "heatmap" in
+      resultado.analise
     )
   ) {
     throw new Error(
@@ -91,38 +101,58 @@ export default async function RelatorioAvaliacaoPsicossocialPage({
   }
 
 
-  const dados: DadosRelatorioPsicossocial =
-    {
-      tipo:
-        resultado.tipo,
+  const dados: DadosRelatorioPsicossocial = {
+    tipo:
+      resultado.tipo,
 
-      filtros:
-        resultado.filtros,
+    filtros: {
+      dataInicio:
+        resultado.filtros.dataInicio,
 
-      clientes:
-        resultado.clientes,
+      dataFim:
+        resultado.filtros.dataFim,
 
-      resumo:
-        resultado.resumo,
+      clienteId:
+        resultado.filtros.clienteId,
 
-      porCliente:
-        resultado.porCliente,
+      setor:
+        resultado.filtros.setor,
+    },
 
-      pesquisas:
-        resultado.pesquisas,
+    setores:
+      resultado.setores ??
+      [],
 
-      informacoesAdicionais:
-        resultado.informacoesAdicionais ??
-        [],
+    privacidadeSetor:
+      resultado.privacidadeSetor,
 
-      analise: {
-        fatores:
-          resultado.analise.fatores,
+    clientes:
+      resultado.clientes,
 
-        heatmap:
-          resultado.analise.heatmap,
-      },
-    };
+    resumo:
+      resultado.resumo,
+
+    porCliente:
+      resultado.porCliente,
+
+    pesquisas:
+      resultado.pesquisas,
+
+    informacoesAdicionais:
+      resultado.informacoesAdicionais ??
+      [],
+
+    analise: {
+      fatores:
+        resultado.analise.fatores,
+
+      dimensoes:
+        resultado.analise.dimensoes,
+
+      heatmap:
+        resultado.analise.heatmap,
+    },
+  };
 
 
   return (

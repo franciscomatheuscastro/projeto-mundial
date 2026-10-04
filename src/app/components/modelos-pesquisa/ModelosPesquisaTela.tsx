@@ -53,6 +53,121 @@ const TIPO_PERGUNTA = {
 } as const;
 
 
+type ClassificacaoFaixaFixa = {
+  valor: string;
+  nomePadrao: string;
+};
+
+
+const CLASSIFICACOES_DESEMPENHO: ClassificacaoFaixaFixa[] = [
+  {
+    valor:
+      "CRITICO",
+
+    nomePadrao:
+      "Desempenho crítico",
+  },
+
+  {
+    valor:
+      "ABAIXO_ESPERADO",
+
+    nomePadrao:
+      "Abaixo do esperado",
+  },
+
+  {
+    valor:
+      "DENTRO_ESPERADO",
+
+    nomePadrao:
+      "Dentro do esperado",
+  },
+
+  {
+    valor:
+      "ACIMA_ESPERADO",
+
+    nomePadrao:
+      "Acima do esperado",
+  },
+
+  {
+    valor:
+      "ALTO_DESEMPENHO",
+
+    nomePadrao:
+      "Alto desempenho",
+  },
+];
+
+
+const CLASSIFICACOES_PSICOSSOCIAL: ClassificacaoFaixaFixa[] = [
+  {
+    valor:
+      "TRIVIAL",
+
+    nomePadrao:
+      "Trivial",
+  },
+
+  {
+    valor:
+      "TOLERÁVEL",
+
+    nomePadrao:
+      "Tolerável",
+  },
+
+  {
+    valor:
+      "MODERADO",
+
+    nomePadrao:
+      "Moderado",
+  },
+
+  {
+    valor:
+      "SUBSTANCIAL",
+
+    nomePadrao:
+      "Substancial",
+  },
+
+  {
+    valor:
+      "INTOLERÁVEL",
+
+    nomePadrao:
+      "Intolerável",
+  },
+];
+
+
+function obterClassificacoesFaixa(
+  tipo: TipoModuloPesquisa
+): ClassificacaoFaixaFixa[] {
+  if (
+    tipo ===
+    TIPO_MODULO.AVALIACAO_DESEMPENHO
+  ) {
+    return CLASSIFICACOES_DESEMPENHO;
+  }
+
+
+  if (
+    tipo ===
+    TIPO_MODULO.AVALIACAO_PSICOSSOCIAL
+  ) {
+    return CLASSIFICACOES_PSICOSSOCIAL;
+  }
+
+
+  return [];
+}
+
+
 /* =========================================================
  * PROPS
  * ======================================================= */
@@ -1550,18 +1665,23 @@ export default function ModelosPesquisaTela({
                   />
                 ) : (
                   <div className="space-y-5">
-                    {modeloSelecionado.perguntas.map(
-                      (
-                        pergunta,
-                        index
-                      ) => (
+                    {[...modeloSelecionado.perguntas]
+                      .sort(
+                        (
+                          a,
+                          b
+                        ) =>
+                          b.ordem -
+                          a.ordem
+                      )
+                      .map(
+                        pergunta => (
                         <PerguntaCard
                           key={
                             pergunta.id
                           }
                           indice={
-                            index +
-                            1
+                            pergunta.ordem
                           }
                           pergunta={
                             pergunta
@@ -1909,6 +2029,9 @@ function ConfiguracaoAnaliseEditor({
       {tipo !==
         TIPO_MODULO.CLIMA && (
         <FaixasEditor
+          tipo={
+            tipo
+          }
           faixas={
             configuracao.faixas
           }
@@ -1918,10 +2041,6 @@ function ConfiguracaoAnaliseEditor({
             alterar({
               faixas,
             })
-          }
-          psicossocial={
-            tipo ===
-            TIPO_MODULO.AVALIACAO_PSICOSSOCIAL
           }
         />
       )}
@@ -1935,19 +2054,51 @@ function ConfiguracaoAnaliseEditor({
  * ======================================================= */
 
 function FaixasEditor({
+  tipo,
   faixas,
   onChange,
-  psicossocial,
 }: {
+  tipo: TipoModuloPesquisa;
+
   faixas: FaixaInterpretacaoModelo[];
 
   onChange: (
     valor: FaixaInterpretacaoModelo[]
   ) => void;
-
-  psicossocial: boolean;
 }) {
+  const psicossocial =
+    tipo ===
+    TIPO_MODULO.AVALIACAO_PSICOSSOCIAL;
+
+
+  const classificacoes =
+    obterClassificacoesFaixa(
+      tipo
+    );
+
+
+  const proximaClassificacao =
+    classificacoes.find(
+      opcao =>
+        !faixas.some(
+          faixa =>
+            faixa.classificacao ===
+            opcao.valor
+        )
+    ) ||
+    null;
+
+
   function adicionar() {
+    if (
+      !proximaClassificacao ||
+      faixas.length >=
+        classificacoes.length
+    ) {
+      return;
+    }
+
+
     onChange([
       ...faixas,
 
@@ -1958,7 +2109,7 @@ function FaixasEditor({
           ),
 
         nome:
-          "Nova faixa",
+          proximaClassificacao.nomePadrao,
 
         minimo:
           0,
@@ -1967,7 +2118,7 @@ function FaixasEditor({
           100,
 
         classificacao:
-          "NOVA_FAIXA",
+          proximaClassificacao.valor,
 
         ordem:
           faixas.length +
@@ -1981,6 +2132,32 @@ function FaixasEditor({
     id: string,
     dados: Partial<FaixaInterpretacaoModelo>
   ) {
+    const minimo =
+      dados.minimo ===
+      undefined
+        ? undefined
+        : Math.min(
+            100,
+            Math.max(
+              0,
+              dados.minimo
+            )
+          );
+
+
+    const maximo =
+      dados.maximo ===
+      undefined
+        ? undefined
+        : Math.min(
+            100,
+            Math.max(
+              0,
+              dados.maximo
+            )
+          );
+
+
     onChange(
       faixas.map(
         faixa =>
@@ -1989,6 +2166,20 @@ function FaixasEditor({
             ? {
                 ...faixa,
                 ...dados,
+
+                ...(minimo !==
+                undefined
+                  ? {
+                      minimo,
+                    }
+                  : {}),
+
+                ...(maximo !==
+                undefined
+                  ? {
+                      maximo,
+                    }
+                  : {}),
               }
             : faixa
       )
@@ -2033,8 +2224,8 @@ function FaixasEditor({
 
           <p className="mt-1 text-xs leading-5 text-slate-500">
             {psicossocial
-              ? "Cadastre apenas as faixas previstas pela metodologia psicossocial utilizada."
-              : "Defina como o score de desempenho será classificado."}
+              ? "Use as classificações psicossociais padronizadas. Os limites devem permanecer entre 0 e 100."
+              : "Use as classificações de desempenho padronizadas. Os limites devem permanecer entre 0 e 100."}
           </p>
         </div>
 
@@ -2044,7 +2235,12 @@ function FaixasEditor({
           onClick={
             adicionar
           }
-          className="shrink-0 rounded-xl bg-slate-950 px-3 py-2 text-xs font-bold text-white"
+          disabled={
+            !proximaClassificacao ||
+            faixas.length >=
+              classificacoes.length
+          }
+          className="shrink-0 rounded-xl bg-slate-950 px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           + Faixa
         </button>
@@ -2056,115 +2252,198 @@ function FaixasEditor({
           (
             faixa,
             index
-          ) => (
-            <div
-              key={
-                faixa.id
-              }
-              className="rounded-2xl border border-slate-200 bg-white p-3"
-            >
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <span className="text-xs font-black uppercase tracking-wide text-slate-400">
-                  Faixa{" "}
-                  {
-                    index +
-                    1
-                  }
-                </span>
+          ) => {
+            const classificacaoValida =
+              classificacoes.some(
+                opcao =>
+                  opcao.valor ===
+                  faixa.classificacao
+              );
 
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    excluir(
-                      faixa.id
-                    )
-                  }
-                  className="text-xs font-bold text-red-600"
-                >
-                  Excluir
-                </button>
+            return (
+              <div
+                key={
+                  faixa.id
+                }
+                className="rounded-2xl border border-slate-200 bg-white p-3"
+              >
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <span className="text-xs font-black uppercase tracking-wide text-slate-400">
+                    Faixa{" "}
+                    {
+                      index +
+                      1
+                    }
+                  </span>
+
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      excluir(
+                        faixa.id
+                      )
+                    }
+                    className="text-xs font-bold text-red-600"
+                  >
+                    Excluir
+                  </button>
+                </div>
+
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <CampoCompacto
+                    label="Nome"
+                    value={
+                      faixa.nome
+                    }
+                    onChange={(
+                      valor
+                    ) =>
+                      atualizar(
+                        faixa.id,
+                        {
+                          nome:
+                            valor,
+                        }
+                      )
+                    }
+                  />
+
+
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-600">
+                      Classificação
+                    </label>
+
+
+                    <select
+                      value={
+                        faixa.classificacao
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        atualizar(
+                          faixa.id,
+                          {
+                            classificacao:
+                              event.target.value,
+                          }
+                        )
+                      }
+                      className={
+                        inputClassName
+                      }
+                    >
+                      {!classificacaoValida && (
+                        <option
+                          value={
+                            faixa.classificacao
+                          }
+                          disabled
+                        >
+                          {faixa.classificacao ||
+                            "Classificação antiga"}
+                        </option>
+                      )}
+
+
+                      {classificacoes.map(
+                        opcao => {
+                          const usadaEmOutraFaixa =
+                            faixas.some(
+                              outraFaixa =>
+                                outraFaixa.id !==
+                                  faixa.id &&
+                                outraFaixa.classificacao ===
+                                  opcao.valor
+                            );
+
+
+                          return (
+                            <option
+                              key={
+                                opcao.valor
+                              }
+                              value={
+                                opcao.valor
+                              }
+                              disabled={
+                                usadaEmOutraFaixa
+                              }
+                            >
+                              {
+                                opcao.valor
+                              }
+                            </option>
+                          );
+                        }
+                      )}
+                    </select>
+
+
+                    {!classificacaoValida && (
+                      <p className="mt-1 text-xs font-semibold text-amber-700">
+                        Classificação antiga. Selecione uma opção padronizada antes de salvar.
+                      </p>
+                    )}
+                  </div>
+
+
+                  <CampoNumero
+                    label="Mínimo"
+                    value={
+                      faixa.minimo
+                    }
+                    min={
+                      0
+                    }
+                    max={
+                      100
+                    }
+                    onChange={(
+                      valor
+                    ) =>
+                      atualizar(
+                        faixa.id,
+                        {
+                          minimo:
+                            valor,
+                        }
+                      )
+                    }
+                  />
+
+
+                  <CampoNumero
+                    label="Máximo"
+                    value={
+                      faixa.maximo
+                    }
+                    min={
+                      0
+                    }
+                    max={
+                      100
+                    }
+                    onChange={(
+                      valor
+                    ) =>
+                      atualizar(
+                        faixa.id,
+                        {
+                          maximo:
+                            valor,
+                        }
+                      )
+                    }
+                  />
+                </div>
               </div>
-
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <CampoCompacto
-                  label="Nome"
-                  value={
-                    faixa.nome
-                  }
-                  onChange={(
-                    valor
-                  ) =>
-                    atualizar(
-                      faixa.id,
-                      {
-                        nome:
-                          valor,
-                      }
-                    )
-                  }
-                />
-
-
-                <CampoCompacto
-                  label="Classificação"
-                  value={
-                    faixa.classificacao
-                  }
-                  onChange={(
-                    valor
-                  ) =>
-                    atualizar(
-                      faixa.id,
-                      {
-                        classificacao:
-                          valor,
-                      }
-                    )
-                  }
-                />
-
-
-                <CampoNumero
-                  label="Mínimo"
-                  value={
-                    faixa.minimo
-                  }
-                  onChange={(
-                    valor
-                  ) =>
-                    atualizar(
-                      faixa.id,
-                      {
-                        minimo:
-                          valor,
-                      }
-                    )
-                  }
-                />
-
-
-                <CampoNumero
-                  label="Máximo"
-                  value={
-                    faixa.maximo
-                  }
-                  onChange={(
-                    valor
-                  ) =>
-                    atualizar(
-                      faixa.id,
-                      {
-                        maximo:
-                          valor,
-                      }
-                    )
-                  }
-                />
-              </div>
-            </div>
-          )
+            );
+          }
         )}
 
 
@@ -2174,6 +2453,15 @@ function FaixasEditor({
             <p className="text-xs font-semibold text-slate-500">
               Nenhuma faixa configurada.
             </p>
+          </div>
+        )}
+
+
+        {faixas.length >
+          0 &&
+          !proximaClassificacao && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">
+            Todas as classificações padronizadas deste módulo já foram utilizadas.
           </div>
         )}
       </div>
@@ -2827,6 +3115,8 @@ function CampoNumero({
   label,
   value,
   onChange,
+  min,
+  max,
 }: {
   label: string;
 
@@ -2835,6 +3125,10 @@ function CampoNumero({
   onChange: (
     valor: number
   ) => void;
+
+  min?: number;
+
+  max?: number;
 }) {
   return (
     <div className="mb-4">
@@ -2848,6 +3142,12 @@ function CampoNumero({
       <input
         type="number"
         step="0.01"
+        min={
+          min
+        }
+        max={
+          max
+        }
         value={
           value
         }

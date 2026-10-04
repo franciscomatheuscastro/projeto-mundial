@@ -221,30 +221,7 @@ function MenuNavegacao({
       </GrupoMenu>
 
 
-      <GrupoMenu
-        titulo="Avaliação Desempenho"
-        mobile={
-          mobile
-        }
-      >
-        <MenuLink
-          href="/avaliacao-desempenho"
-          mobile={
-            mobile
-          }
-        >
-          Avaliações
-        </MenuLink>
-
-        <MenuLink
-          href="/avaliacao-desempenho/relatorio"
-          mobile={
-            mobile
-          }
-        >
-          Relatório de Desempenho
-        </MenuLink>
-      </GrupoMenu>
+      
 
 
       <GrupoMenu
@@ -269,6 +246,33 @@ function MenuNavegacao({
           }
         >
           Relatório Psicossocial
+        </MenuLink>
+      </GrupoMenu>
+
+
+
+      <GrupoMenu
+        titulo="Avaliação Desempenho"
+        mobile={
+          mobile
+        }
+      >
+        <MenuLink
+          href="/avaliacao-desempenho"
+          mobile={
+            mobile
+          }
+        >
+          Avaliações
+        </MenuLink>
+
+        <MenuLink
+          href="/avaliacao-desempenho/relatorio"
+          mobile={
+            mobile
+          }
+        >
+          Relatório de Desempenho
         </MenuLink>
       </GrupoMenu>
 

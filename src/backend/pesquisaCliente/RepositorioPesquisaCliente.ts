@@ -169,6 +169,16 @@ type HeatmapPsicossocial = {
 };
 
 
+const MINIMO_RESPOSTAS_FILTRO_SETOR =
+  5;
+
+
+type SetorRelatorioCliente = {
+  nome: string;
+  disponivel: boolean;
+};
+
+
 type MetodologiaAplicacaoRelatorio = {
   modeloId: string;
   modeloTitulo: string;
@@ -270,6 +280,273 @@ function normalizarSetoresCliente(
     (a, b) =>
       a.localeCompare(b, "pt-BR")
   );
+}
+
+
+function normalizarChaveSetor(
+  valor: unknown
+) {
+  return String(
+    valor ??
+    ""
+  )
+    .normalize(
+      "NFD"
+    )
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .trim()
+    .toLocaleLowerCase(
+      "pt-BR"
+    );
+}
+
+
+function listarSetoresRelatorio(
+  pesquisasBanco: any[],
+  tipo: TipoModuloPesquisa
+): string[] {
+  const mapa =
+    new Map<
+      string,
+      string
+    >();
+
+
+  const adicionar = (
+    valor: unknown
+  ) => {
+    const nome =
+      String(
+        valor ??
+        ""
+      ).trim();
+
+
+    if (
+      !nome
+    ) {
+      return;
+    }
+
+
+    const chave =
+      normalizarChaveSetor(
+        nome
+      );
+
+
+    if (
+      !chave ||
+      mapa.has(
+        chave
+      )
+    ) {
+      return;
+    }
+
+
+    mapa.set(
+      chave,
+      nome
+    );
+  };
+
+
+  for (
+    const pesquisa
+    of pesquisasBanco
+  ) {
+    if (
+      tipo ===
+      TipoModuloPesquisa.CLIMA
+    ) {
+      adicionar(
+        pesquisa.setor
+      );
+
+      continue;
+    }
+
+
+    for (
+      const resposta
+      of pesquisa.respostas ||
+      []
+    ) {
+      adicionar(
+        resposta.setor
+      );
+    }
+  }
+
+
+  return Array.from(
+    mapa.values()
+  ).sort(
+    (
+      a,
+      b
+    ) =>
+      a.localeCompare(
+        b,
+        "pt-BR"
+      )
+  );
+}
+
+
+function contarRespostasPorSetor(
+  pesquisasBanco: any[],
+  tipo: TipoModuloPesquisa
+): Map<string, number> {
+  const mapa =
+    new Map<
+      string,
+      number
+    >();
+
+
+  const adicionar = (
+    setor: unknown,
+    quantidade = 1
+  ) => {
+    const chave =
+      normalizarChaveSetor(
+        setor
+      );
+
+
+    if (
+      !chave ||
+      quantidade <=
+        0
+    ) {
+      return;
+    }
+
+
+    mapa.set(
+      chave,
+      (
+        mapa.get(
+          chave
+        ) ||
+        0
+      ) +
+      quantidade
+    );
+  };
+
+
+  for (
+    const pesquisa
+    of pesquisasBanco
+  ) {
+    if (
+      tipo ===
+      TipoModuloPesquisa.CLIMA
+    ) {
+      adicionar(
+        pesquisa.setor,
+        (
+          pesquisa.respostas ||
+          []
+        ).length
+      );
+
+      continue;
+    }
+
+
+    for (
+      const resposta
+      of pesquisa.respostas ||
+      []
+    ) {
+      adicionar(
+        resposta.setor,
+        1
+      );
+    }
+  }
+
+
+  return mapa;
+}
+
+
+function filtrarPesquisasPorSetor(
+  pesquisasBanco: any[],
+  tipo: TipoModuloPesquisa,
+  setor?: string
+) {
+  const chaveFiltro =
+    normalizarChaveSetor(
+      setor
+    );
+
+
+  if (
+    !chaveFiltro
+  ) {
+    return pesquisasBanco;
+  }
+
+
+  /*
+   * CLIMA:
+   * o setor pertence à própria aplicação.
+   */
+  if (
+    tipo ===
+    TipoModuloPesquisa.CLIMA
+  ) {
+    return pesquisasBanco.filter(
+      pesquisa =>
+        normalizarChaveSetor(
+          pesquisa.setor
+        ) ===
+        chaveFiltro
+    );
+  }
+
+
+  /*
+   * DESEMPENHO / PSICOSSOCIAL:
+   * o setor pertence à resposta.
+   *
+   * Mantemos somente as respostas do setor selecionado
+   * e descartamos aplicações que ficaram sem respostas
+   * após o recorte.
+   */
+  return pesquisasBanco
+    .map(
+      pesquisa => ({
+        ...pesquisa,
+
+        respostas:
+          (
+            pesquisa.respostas ||
+            []
+          ).filter(
+            (
+              resposta: any
+            ) =>
+              normalizarChaveSetor(
+                resposta.setor
+              ) ===
+              chaveFiltro
+          ),
+      })
+    )
+    .filter(
+      pesquisa =>
+        pesquisa.respostas.length >
+        0
+    );
 }
 
 
@@ -3327,6 +3604,148 @@ function montarAnalisePsicossocial(
 
 
 
+function montarDimensoesPsicossociais(
+  pesquisasBanco: any[]
+) {
+  const mapaDimensoes =
+    new Map<
+      string,
+      {
+        id: string;
+        nome: string;
+        fatorRisco: string | null;
+        somaPonderada: number;
+        pesoTotal: number;
+        respondentes: Set<string>;
+      }
+    >();
+
+
+  for (
+    const pesquisa
+    of pesquisasBanco
+  ) {
+    const resultado =
+      analisarPesquisaPsicossocial(
+        pesquisa
+      );
+
+
+    for (
+      const dimensao
+      of resultado.fatores
+    ) {
+      const chave =
+        chaveTexto(
+          dimensao.nome
+        );
+
+
+      const atual =
+        mapaDimensoes.get(
+          chave
+        ) || {
+          id:
+            `${dimensao.id}::${chave}`,
+
+          nome:
+            dimensao.nome,
+
+          fatorRisco:
+            dimensao.fatorRisco,
+
+          somaPonderada:
+            0,
+
+          pesoTotal:
+            0,
+
+          respondentes:
+            new Set<string>(),
+        };
+
+
+      atual.somaPonderada +=
+        dimensao.score *
+        dimensao.pesoDimensao;
+
+      atual.pesoTotal +=
+        dimensao.pesoDimensao;
+
+
+      for (
+        const respondente
+        of dimensao.respondentes
+      ) {
+        atual.respondentes.add(
+          `${pesquisa.id}:${respondente}`
+        );
+      }
+
+
+      mapaDimensoes.set(
+        chave,
+        atual
+      );
+    }
+  }
+
+
+  const faixas =
+    obterFaixasCompativeis(
+      pesquisasBanco
+    );
+
+
+  return Array.from(
+    mapaDimensoes.values()
+  )
+    .map(
+      item => {
+        const score =
+          item.pesoTotal >
+          0
+            ? item.somaPonderada /
+              item.pesoTotal
+            : null;
+
+
+        const faixa =
+          score !==
+          null
+            ? encontrarFaixa(
+                score,
+                faixas
+              )
+            : null;
+
+
+        return {
+          id:
+            item.id,
+
+          nome:
+            item.nome,
+
+          fatorRisco:
+            item.fatorRisco,
+
+          score,
+
+          classificacao:
+            faixa?.classificacao ||
+            faixa?.nome ||
+            null,
+
+          totalRespostas:
+            item.respondentes.size,
+        };
+      }
+    );
+}
+
+
+
 /* =========================================================
  * HEATMAP PSICOSSOCIAL — SETOR × FATOR
  * ======================================================= */
@@ -4482,6 +4901,7 @@ export default class RepositorioPesquisaCliente {
       dataInicio?: string;
       dataFim?: string;
       clienteId?: string;
+      setor?: string;
     } = {}
   ) {
     const dataInicio =
@@ -4496,32 +4916,24 @@ export default class RepositorioPesquisaCliente {
       );
 
 
-    const where: Prisma.PesquisaClienteWhereInput =
+    const whereBase: Prisma.PesquisaClienteWhereInput =
       {
         tipo,
       };
 
 
     if (
-      filtros.clienteId
-    ) {
-      where.clienteId =
-        filtros.clienteId;
-    }
-
-
-    if (
       dataInicio ||
       dataFim
     ) {
-      where.criadoEm =
+      whereBase.criadoEm =
         {};
 
 
       if (
         dataInicio
       ) {
-        where.criadoEm.gte =
+        whereBase.criadoEm.gte =
           dataInicio;
       }
 
@@ -4529,19 +4941,35 @@ export default class RepositorioPesquisaCliente {
       if (
         dataFim
       ) {
-        where.criadoEm.lte =
+        whereBase.criadoEm.lte =
           dataFim;
       }
     }
 
 
+    const whereRelatorio: Prisma.PesquisaClienteWhereInput =
+      {
+        ...whereBase,
+      };
+
+
+    if (
+      filtros.clienteId
+    ) {
+      whereRelatorio.clienteId =
+        filtros.clienteId;
+    }
+
+
     const [
-      pesquisasBanco,
+      pesquisasBancoBase,
+      pesquisasSetoresBase,
       clientes,
     ] =
       await Promise.all([
         prisma.pesquisaCliente.findMany({
-          where,
+          where:
+            whereRelatorio,
 
           orderBy: {
             criadoEm:
@@ -4590,6 +5018,39 @@ export default class RepositorioPesquisaCliente {
           },
         }),
 
+        prisma.pesquisaCliente.findMany({
+          where:
+            whereBase,
+
+          select: {
+            id:
+              true,
+
+            clienteId:
+              true,
+
+            setor:
+              true,
+
+            cliente: {
+              select: {
+                id:
+                  true,
+              },
+            },
+
+            respostas: {
+              select: {
+                id:
+                  true,
+
+                setor:
+                  true,
+              },
+            },
+          },
+        }),
+
         prisma.cliente.findMany({
           orderBy: {
             nome:
@@ -4605,9 +5066,221 @@ export default class RepositorioPesquisaCliente {
 
             empresa:
               true,
+
+            setores:
+              true,
           },
         }),
       ]);
+
+
+    /*
+     * Cada cliente possui a sua própria lista de setores.
+     *
+     * Além dos setores cadastrados no Cliente, preservamos setores
+     * encontrados nas aplicações/respostas já existentes daquele
+     * cliente. Isso mantém compatibilidade com dados históricos.
+     */
+    const clientesComSetores =
+      clientes.map(
+        cliente => {
+          const setoresCadastrados =
+            normalizarSetoresCliente(
+              cliente.setores
+            );
+
+
+          const pesquisasCliente =
+            pesquisasSetoresBase.filter(
+              pesquisa =>
+                pesquisa.cliente.id ===
+                cliente.id
+            );
+
+
+          const setoresEncontrados =
+            listarSetoresRelatorio(
+              pesquisasCliente,
+              tipo
+            );
+
+
+          const contagemPorSetor =
+            contarRespostasPorSetor(
+              pesquisasCliente,
+              tipo
+            );
+
+
+          const mapaSetores =
+            new Map<
+              string,
+              string
+            >();
+
+
+          for (
+            const setor
+            of [
+              ...setoresCadastrados,
+              ...setoresEncontrados,
+            ]
+          ) {
+            const chave =
+              normalizarChaveSetor(
+                setor
+              );
+
+
+            if (
+              chave &&
+              !mapaSetores.has(
+                chave
+              )
+            ) {
+              mapaSetores.set(
+                chave,
+                setor
+              );
+            }
+          }
+
+
+          const setores =
+            Array.from(
+              mapaSetores.values()
+            ).sort(
+              (
+                a,
+                b
+              ) =>
+                a.localeCompare(
+                  b,
+                  "pt-BR"
+                )
+            );
+
+
+          const setoresRelatorio: SetorRelatorioCliente[] =
+            setores.map(
+              setor => {
+                const totalRespostas =
+                  contagemPorSetor.get(
+                    normalizarChaveSetor(
+                      setor
+                    )
+                  ) ||
+                  0;
+
+
+                return {
+                  nome:
+                    setor,
+
+                  disponivel:
+                    totalRespostas >=
+                    MINIMO_RESPOSTAS_FILTRO_SETOR,
+                };
+              }
+            );
+
+
+          return {
+            id:
+              cliente.id,
+
+            nome:
+              cliente.nome,
+
+            empresa:
+              cliente.empresa,
+
+            setores,
+
+            setoresRelatorio,
+          };
+        }
+      );
+
+
+    /*
+     * O setor só pode ser usado como filtro quando um cliente
+     * também estiver selecionado.
+     *
+     * Isso impede misturar setores de empresas diferentes que
+     * possuam nomes iguais, como "Financeiro" ou "Administrativo".
+     */
+    const clienteSelecionado =
+      filtros.clienteId
+        ? clientesComSetores.find(
+            cliente =>
+              cliente.id ===
+              filtros.clienteId
+          ) ||
+          null
+        : null;
+
+
+    const chaveSetorSolicitado =
+      clienteSelecionado
+        ? normalizarChaveSetor(
+            filtros.setor
+          )
+        : "";
+
+
+    const setorSolicitado =
+      chaveSetorSolicitado
+        ? clienteSelecionado?.setoresRelatorio.find(
+            setor =>
+              normalizarChaveSetor(
+                setor.nome
+              ) ===
+              chaveSetorSolicitado
+          ) ||
+          null
+        : null;
+
+
+    const setorSelecionado =
+      setorSolicitado?.disponivel
+        ? setorSolicitado.nome
+        : null;
+
+
+    const filtroSetorBloqueado =
+      Boolean(
+        chaveSetorSolicitado &&
+        setorSolicitado &&
+        !setorSolicitado.disponivel
+      );
+
+
+    /*
+     * Lista exibida no dropdown de setor:
+     * somente setores do cliente atualmente selecionado.
+     */
+    const setores =
+      clienteSelecionado?.setores ||
+      [];
+
+
+    /*
+     * Aplica o recorte correto por módulo:
+     *
+     * CLIMA:
+     *   PesquisaCliente.setor
+     *
+     * DESEMPENHO / PSICOSSOCIAL:
+     *   RespostaPesquisaCliente.setor
+     */
+    const pesquisasBanco =
+      filtrarPesquisasPorSetor(
+        pesquisasBancoBase,
+        tipo,
+        setorSelecionado ||
+        undefined
+      );
 
 
     /*
@@ -4925,6 +5598,16 @@ export default class RepositorioPesquisaCliente {
               ),
 
               /*
+               * Ranking executivo por dimensão.
+               * No psicossocial, menor score = menor exposição
+               * e maior score = maior exposição ao risco.
+               */
+              dimensoes:
+                montarDimensoesPsicossociais(
+                  pesquisasBanco
+                ),
+
+              /*
                * O radar usa diretamente "fatores".
                * O heatmap precisa do recorte por setor.
                */
@@ -4966,9 +5649,32 @@ export default class RepositorioPesquisaCliente {
         clienteId:
           filtros.clienteId ||
           null,
+
+        setor:
+          setorSelecionado,
       },
 
-      clientes,
+      setores,
+
+      clientes:
+        clientesComSetores,
+
+      privacidadeSetor: {
+        minimoRespostas:
+          MINIMO_RESPOSTAS_FILTRO_SETOR,
+
+        filtroBloqueado:
+          filtroSetorBloqueado,
+
+        setorSolicitado:
+          setorSolicitado?.nome ||
+          null,
+
+        mensagem:
+          filtroSetorBloqueado
+            ? `Para preservar o anonimato, o filtro por setor só pode ser aplicado quando houver pelo menos ${MINIMO_RESPOSTAS_FILTRO_SETOR} respostas no setor selecionado.`
+            : null,
+      },
 
       resumo: {
         totalPesquisas,

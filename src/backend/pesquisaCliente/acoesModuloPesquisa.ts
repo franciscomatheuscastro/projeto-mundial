@@ -30,6 +30,7 @@ export type FiltrosRelatorioModuloPesquisa = {
   dataInicio?: string;
   dataFim?: string;
   clienteId?: string;
+  setor?: string;
 };
 
 
@@ -135,6 +136,7 @@ export async function obterTodosModuloPesquisa(
   tipo: TipoModuloPesquisa
 ) {
   await validarMundial();
+
   return RepositorioPesquisaCliente.obterTodos(tipo);
 }
 
@@ -157,6 +159,7 @@ export async function obterDadosFormularioModuloPesquisa(
   tipo: TipoModuloPesquisa
 ) {
   await validarMundial();
+
   return RepositorioPesquisaCliente.obterDadosFormulario(tipo);
 }
 
@@ -177,6 +180,7 @@ export async function salvarPesquisaModulo(
     );
 
   revalidarModulo(tipo, resultado.id);
+
   return resultado;
 }
 
@@ -192,9 +196,13 @@ export async function excluirPesquisaModulo(
   }
 
   const resultado =
-    await RepositorioPesquisaCliente.excluir(id, tipo);
+    await RepositorioPesquisaCliente.excluir(
+      id,
+      tipo
+    );
 
   revalidarModulo(tipo);
+
   return resultado;
 }
 
@@ -218,6 +226,7 @@ export async function alterarStatusPesquisaModulo(
     );
 
   revalidarModulo(tipo, id);
+
   return resultado;
 }
 
@@ -232,7 +241,10 @@ export async function obterRelatorioModuloPesquisa(
     throw new Error("Aplicação não informada.");
   }
 
-  return RepositorioPesquisaCliente.obterRelatorio(id, tipo);
+  return RepositorioPesquisaCliente.obterRelatorio(
+    id,
+    tipo
+  );
 }
 
 
@@ -245,9 +257,17 @@ export async function obterDadosRelatorioModuloPesquisa(
   return RepositorioPesquisaCliente.obterDadosRelatorio(
     tipo,
     {
-      dataInicio: filtros.dataInicio,
-      dataFim: filtros.dataFim,
-      clienteId: filtros.clienteId,
+      dataInicio:
+        filtros.dataInicio,
+
+      dataFim:
+        filtros.dataFim,
+
+      clienteId:
+        filtros.clienteId,
+
+      setor:
+        filtros.setor,
     }
   );
 }
@@ -256,7 +276,9 @@ export async function obterDadosRelatorioModuloPesquisa(
 export async function obterMinhasAplicacoesModulo(
   tipo: TipoModuloPesquisa
 ) {
-  const { clienteId } =
+  const {
+    clienteId,
+  } =
     await validarCliente();
 
   return RepositorioPesquisaCliente.obterMinhas(
@@ -270,7 +292,9 @@ export async function obterMinhaAplicacaoModuloPorId(
   id: string,
   tipo: TipoModuloPesquisa
 ) {
-  const { clienteId } =
+  const {
+    clienteId,
+  } =
     await validarCliente();
 
   if (!id?.trim()) {
@@ -289,7 +313,9 @@ export async function obterMeuRelatorioModulo(
   id: string,
   tipo: TipoModuloPesquisa
 ) {
-  const { clienteId } =
+  const {
+    clienteId,
+  } =
     await validarCliente();
 
   if (!id?.trim()) {

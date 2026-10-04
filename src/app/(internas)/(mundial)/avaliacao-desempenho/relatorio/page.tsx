@@ -26,6 +26,7 @@ type Props = {
     dataInicio?: string;
     dataFim?: string;
     clienteId?: string;
+    setor?: string;
   }>;
 };
 
@@ -37,8 +38,12 @@ export default async function RelatorioAvaliacaoDesempenhoPage({
     await auth();
 
 
-  if (!session?.user) {
-    redirect("/login");
+  if (
+    !session?.user
+  ) {
+    redirect(
+      "/login"
+    );
   }
 
 
@@ -49,7 +54,19 @@ export default async function RelatorioAvaliacaoDesempenhoPage({
   const resultado =
     await obterDadosRelatorioModuloPesquisa(
       TipoModuloPesquisa.AVALIACAO_DESEMPENHO,
-      filtros
+      {
+        dataInicio:
+          filtros.dataInicio,
+
+        dataFim:
+          filtros.dataFim,
+
+        clienteId:
+          filtros.clienteId,
+
+        setor:
+          filtros.setor,
+      }
     );
 
 
@@ -82,6 +99,24 @@ export default async function RelatorioAvaliacaoDesempenhoPage({
     tipo:
       resultado.tipo,
 
+    filtros: {
+      dataInicio:
+        resultado.filtros.dataInicio,
+
+      dataFim:
+        resultado.filtros.dataFim,
+
+      clienteId:
+        resultado.filtros.clienteId,
+
+      setor:
+        resultado.filtros.setor,
+    },
+
+    setores:
+      resultado.setores ??
+      [],
+
     analise: {
       scoreDesempenho:
         resultado.analise.scoreDesempenho,
@@ -103,7 +138,9 @@ export default async function RelatorioAvaliacaoDesempenhoPage({
 
   return (
     <RelatorioAvaliacaoDesempenhoTela
-      dados={dados}
+      dados={
+        dados
+      }
     />
   );
 }
