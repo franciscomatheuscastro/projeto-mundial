@@ -5855,9 +5855,36 @@ export default class RepositorioPesquisaCliente {
     }
 
 
-    return this.formatarDetalhada(
-      pesquisa
-    );
+    const detalhada =
+      this.formatarDetalhada(
+        pesquisa
+      );
+
+
+    /*
+     * PRIVACIDADE DO PAINEL DO CLIENTE
+     *
+     * Pesquisa de Clima e Avaliação Psicossocial:
+     * o detalhe da aplicação não devolve o conteúdo
+     * das respostas ao navegador do cliente.
+     *
+     * Mantemos totalRespostas para os indicadores
+     * operacionais e removemos apenas o conteúdo bruto.
+     *
+     * Avaliação de Desempenho permanece com o
+     * comportamento completo.
+     */
+    if (
+      this.clienteVeSomenteParticipacao(
+        detalhada.tipo
+      )
+    ) {
+      detalhada.respostas =
+        [];
+    }
+
+
+    return detalhada;
   }
 
 
@@ -5866,14 +5893,63 @@ export default class RepositorioPesquisaCliente {
     clienteId: string,
     tipo?: TipoModuloPesquisa
   ) {
+    /*
+     * Não usamos obterPorIdECliente() aqui porque esse método
+     * já remove as respostas brutas de Clima/Psicossocial.
+     *
+     * Para calcular a participação, precisamos ler as respostas
+     * somente no servidor e devolver ao cliente exclusivamente
+     * as contagens e percentuais.
+     */
+    const pesquisaBanco =
+      await prisma.pesquisaCliente.findFirst({
+        where: {
+          id,
+
+          clienteId,
+
+          ...(tipo
+            ? {
+                tipo,
+              }
+            : {}),
+        },
+
+        include:
+          this.includeCompleto(),
+      });
+
+
+    if (
+      !pesquisaBanco
+    ) {
+      throw new Error(
+        "Aplicação não encontrada."
+      );
+    }
+
+
     const pesquisa =
-      await this.obterPorIdECliente(
-        id,
-        clienteId,
-        tipo
+      this.formatarDetalhada(
+        pesquisaBanco
       );
 
 
+    if (
+      this.clienteVeSomenteParticipacao(
+        pesquisa.tipo
+      )
+    ) {
+      return this.montarRelatorioClienteSomenteParticipacao(
+        pesquisa
+      );
+    }
+
+
+    /*
+     * Avaliação de Desempenho:
+     * mantém o relatório individual completo.
+     */
     return this.montarRelatorio(
       pesquisa
     );
@@ -5881,10 +5957,235 @@ export default class RepositorioPesquisaCliente {
 
 
   /*
-   * Relatório individual antigo continua funcionando.
+   * Pesquisa de Clima e Avaliação Psicossocial:
+   * o cliente visualiza somente participação.
    *
-   * Depois podemos também fazer o relatório individual
-   * retornar a análise especializada de cada módulo.
+   * A regra fica no backend para impedir que o conteúdo
+   * das respostas seja exposto mesmo que alguém inspecione
+   * a requisição no navegador.
+   */
+  private static clienteVeSomenteParticipacao(
+    tipo: TipoModuloPesquisa
+  ) {
+    return (
+      tipo ===
+        TipoModuloPesquisa.CLIMA ||
+      tipo ===
+        TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
+    );
+  }
+
+
+  /*
+   * Relatório seguro para o painel do cliente.
+   *
+   * Retorna:
+   * - total de respondentes;
+   * - total de respondentes por pergunta;
+   * - percentual de respondentes por pergunta;
+   * - estrutura das perguntas/dimensões necessária à tela.
+   *
+   * NÃO retorna:
+   * - valores escolhidos;
+   * - respostas de texto;
+   * - distribuição por alternativa;
+   * - médias/notas calculadas a partir das respostas;
+   * - dados individuais dos respondentes.
+   */
+  private static montarRelatorioClienteSomenteParticipacao(
+    pesquisa: any
+  ) {
+    const perguntas: PerguntaPesquisaCliente[] =
+      Array.isArray(
+        pesquisa.perguntas
+      )
+        ? pesquisa.perguntas
+        : [];
+
+
+    const respostasPesquisa: RespostaPesquisaCliente[] =
+      Array.isArray(
+        pesquisa.respostas
+      )
+        ? pesquisa.respostas
+        : [];
+
+
+    const totalRespondentes =
+      respostasPesquisa.length;
+
+
+    /*
+     * Para cada pergunta guardamos os IDs dos respondentes
+     * que efetivamente preencheram algum valor.
+     *
+     * O Set evita contagem duplicada caso exista, por qualquer
+     * motivo histórico, mais de um item da mesma pergunta
+     * dentro da mesma resposta.
+     */
+    const respondentesPorPergunta =
+      new Map<
+        string,
+        Set<string>
+      >();
+
+
+    for (
+      const respostaCliente
+      of respostasPesquisa
+    ) {
+      const perguntasRespondidas =
+        new Set<string>();
+
+
+      const respostas =
+        Array.isArray(
+          respostaCliente.respostas
+        )
+          ? respostaCliente.respostas
+          : [];
+
+
+      for (
+        const resposta
+        of respostas
+      ) {
+        const perguntaId =
+          String(
+            resposta.perguntaId ??
+            ""
+          ).trim();
+
+
+        const valor =
+          String(
+            resposta.valor ??
+            ""
+          ).trim();
+
+
+        if (
+          !perguntaId ||
+          !valor
+        ) {
+          continue;
+        }
+
+
+        perguntasRespondidas.add(
+          perguntaId
+        );
+      }
+
+
+      for (
+        const perguntaId
+        of perguntasRespondidas
+      ) {
+        const atual =
+          respondentesPorPergunta.get(
+            perguntaId
+          ) ||
+          new Set<string>();
+
+
+        atual.add(
+          respostaCliente.id
+        );
+
+
+        respondentesPorPergunta.set(
+          perguntaId,
+          atual
+        );
+      }
+    }
+
+
+    const perguntasComResumo =
+      perguntas.map(
+        pergunta => {
+          const totalRespostas =
+            respondentesPorPergunta.get(
+              pergunta.id
+            )?.size ||
+            0;
+
+
+          const percentualRespondentes =
+            totalRespondentes >
+            0
+              ? (
+                  totalRespostas /
+                  totalRespondentes
+                ) *
+                100
+              : 0;
+
+
+          return {
+            pergunta,
+
+            totalRespostas,
+
+            percentualRespondentes,
+
+            /*
+             * Campos mantidos por compatibilidade estrutural
+             * com o relatório antigo. Não carregam qualquer
+             * conteúdo real das respostas.
+             */
+            media:
+              0,
+
+            respostas:
+              [] as RespostaPesquisaItem[],
+          };
+        }
+      );
+
+
+    return {
+      ...pesquisa,
+
+      /*
+       * O conteúdo bruto nunca sai do servidor.
+       */
+      respostas:
+        [],
+
+      totalRespondentes,
+
+      /*
+       * totalRespostas já era utilizado como total de
+       * questionários respondidos em outras telas.
+       */
+      totalRespostas:
+        totalRespondentes,
+
+      perguntasComResumo,
+
+      /*
+       * Campo legado mantido apenas para compatibilidade.
+       * A tela restrita do cliente não o utiliza.
+       */
+      mediaGeral:
+        0,
+
+      relatorioRestritoCliente:
+        true,
+
+      conteudoRespostasDisponivel:
+        false,
+    };
+  }
+
+
+  /*
+   * Relatório individual completo.
+   *
+   * Utilizado pela Mundial e, atualmente, pela Avaliação
+   * de Desempenho no contexto do cliente.
    */
   private static montarRelatorio(
     pesquisa: any

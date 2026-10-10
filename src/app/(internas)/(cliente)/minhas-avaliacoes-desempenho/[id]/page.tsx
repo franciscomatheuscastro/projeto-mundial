@@ -20,7 +20,7 @@ type PageProps = {
 };
 
 
-export default async function MinhaAvaliacaoDesempenhoRelatorioPage({
+export default async function MinhaAvaliacaoDesempenhoPage({
   params,
 }: PageProps) {
   const session =
@@ -67,7 +67,7 @@ export default async function MinhaAvaliacaoDesempenhoRelatorioPage({
 
   return (
     <PesquisasModuloTela
-      modo="relatorio"
+      modo="detalhe"
       tipo={
         TipoModuloPesquisa.AVALIACAO_DESEMPENHO
       }

@@ -232,13 +232,13 @@ function MenuNavegacao({
 
 
           <GrupoMenu
-            titulo="Avaliação Desempenho"
+            titulo="Avaliação Psicossocial"
             mobile={
               mobile
             }
           >
             <MenuLink
-              href="/minhas-avaliacoes-desempenho"
+              href="/minhas-avaliacoes-psicossociais"
               mobile={
                 mobile
               }
@@ -249,13 +249,13 @@ function MenuNavegacao({
 
 
           <GrupoMenu
-            titulo="Avaliação Psicossocial"
+            titulo="Avaliação Desempenho"
             mobile={
               mobile
             }
           >
             <MenuLink
-              href="/minhas-avaliacoes-psicossociais"
+              href="/minhas-avaliacoes-desempenho"
               mobile={
                 mobile
               }
@@ -289,6 +289,15 @@ function MenuNavegacao({
           }
         >
           Central de ajuda
+        </MenuLink>
+
+        <MenuLink
+          href="/fale-conosco"
+          mobile={
+            mobile
+          }
+        >
+          Fale conosco
         </MenuLink>
       </GrupoMenu>
     </nav>
