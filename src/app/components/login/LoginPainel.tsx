@@ -5,6 +5,7 @@ import type {
 } from "react";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 
 import { useDenuncias } from "@/src/app/data/hooks/useDenuncias";
@@ -22,6 +23,9 @@ type AbaLogin =
 
 type Props = {
   temErro: boolean;
+
+  senhaRedefinida?: boolean;
+
   entrar: (
     formData: FormData
   ) => void | Promise<void>;
@@ -29,6 +33,7 @@ type Props = {
 
 export default function LoginPainel({
   temErro,
+  senhaRedefinida = false,
   entrar,
 }: Props) {
   const [aba, setAba] =
@@ -61,8 +66,15 @@ export default function LoginPainel({
           <div className="mt-8">
             {aba === "ENTRAR" ? (
               <FormularioLogin
-                temErro={temErro}
-                entrar={entrar}
+                temErro={
+                  temErro
+                }
+                senhaRedefinida={
+                  senhaRedefinida
+                }
+                entrar={
+                  entrar
+                }
               />
             ) : (
               <ConsultaProtocolo />
@@ -185,6 +197,7 @@ function BotaoAba({
 
 function FormularioLogin({
   temErro,
+  senhaRedefinida = false,
   entrar,
 }: Props) {
   const [mostrarSenha, setMostrarSenha] =
@@ -205,6 +218,12 @@ function FormularioLogin({
           Acesse a plataforma Mundial Connect com suas credenciais.
         </p>
       </div>
+
+      {senhaRedefinida && (
+        <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-700">
+          Senha redefinida com sucesso. Você já pode entrar com a nova senha.
+        </div>
+      )}
 
       {temErro && (
         <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-700">
@@ -290,6 +309,15 @@ function FormularioLogin({
                 />
               )}
             </button>
+          </div>
+
+          <div className="mt-2 flex justify-end">
+            <Link
+              href="/esqueci-senha"
+              className="text-sm font-bold text-blue-600 transition hover:text-blue-800 hover:underline"
+            >
+              Esqueci minha senha
+            </Link>
           </div>
         </div>
 

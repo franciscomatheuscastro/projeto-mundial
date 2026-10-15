@@ -850,3 +850,269 @@ export async function enviarEmailConvitePesquisa({
   });
 }
 
+
+type EnviarEmailRedefinicaoSenhaInput = {
+  nome: string;
+  email: string;
+  token: string;
+};
+
+
+function obterUrlRedefinicaoSenha(
+  token: string
+) {
+  const url =
+    new URL(
+      "/redefinir-senha",
+      APP_URL
+    );
+
+
+  url.searchParams.set(
+    "token",
+    token
+  );
+
+
+  return url.toString();
+}
+
+
+export async function enviarEmailRedefinicaoSenha({
+  nome,
+  email,
+  token,
+}: EnviarEmailRedefinicaoSenhaInput): Promise<void> {
+  validarConfiguracaoEmail();
+
+
+  const destinatario =
+    email
+      .trim()
+      .toLowerCase();
+
+
+  if (
+    !destinatario
+  ) {
+    throw new Error(
+      "E-mail do usuário não informado."
+    );
+  }
+
+
+  const nomeExibicao =
+    nome?.trim() ||
+    "Usuário";
+
+
+  const urlRedefinicao =
+    obterUrlRedefinicaoSenha(
+      token
+    );
+
+
+  const nomeSeguro =
+    escaparHtml(
+      nomeExibicao
+    );
+
+
+  const urlSegura =
+    escaparHtml(
+      urlRedefinicao
+    );
+
+
+  await transporter.sendMail({
+    from: {
+      name:
+        SMTP_FROM_NAME,
+
+      address:
+        SMTP_FROM!,
+    },
+
+    to: {
+      name:
+        nomeExibicao,
+
+      address:
+        destinatario,
+    },
+
+    subject:
+      "Redefinição de senha — Mundial Connect",
+
+    text: [
+      `Olá, ${nomeExibicao}.`,
+      "",
+      "Recebemos uma solicitação para redefinir a senha da sua conta na Mundial Connect.",
+      "",
+      "Use o link abaixo para criar uma nova senha:",
+      urlRedefinicao,
+      "",
+      "O link é válido por 30 minutos e deixa de funcionar após a senha ser alterada.",
+      "",
+      "Se você não solicitou esta alteração, ignore este e-mail.",
+      "",
+      "Mundial Connect",
+    ].join(
+      "\n"
+    ),
+
+    html: `
+      <!doctype html>
+      <html lang="pt-BR">
+        <head>
+          <meta charset="utf-8" />
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1"
+          />
+        </head>
+
+        <body
+          style="
+            margin:0;
+            padding:0;
+            background:#f1f5f9;
+            font-family:Arial,Helvetica,sans-serif;
+            color:#0f172a;
+          "
+        >
+          <table
+            role="presentation"
+            width="100%"
+            cellspacing="0"
+            cellpadding="0"
+            style="background:#f1f5f9;padding:32px 16px;"
+          >
+            <tr>
+              <td align="center">
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellspacing="0"
+                  cellpadding="0"
+                  style="
+                    max-width:600px;
+                    background:#ffffff;
+                    border:1px solid #e2e8f0;
+                    border-radius:20px;
+                    overflow:hidden;
+                  "
+                >
+                  <tr>
+                    <td
+                      style="
+                        padding:24px 28px;
+                        background:#0f3fce;
+                        color:#ffffff;
+                      "
+                    >
+                      <p
+                        style="
+                          margin:0;
+                          font-size:12px;
+                          font-weight:700;
+                          letter-spacing:2px;
+                          text-transform:uppercase;
+                        "
+                      >
+                        Mundial Connect
+                      </p>
+
+                      <h1
+                        style="
+                          margin:8px 0 0;
+                          font-size:24px;
+                          line-height:1.3;
+                        "
+                      >
+                        Redefinir sua senha
+                      </h1>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td style="padding:28px;">
+                      <p
+                        style="
+                          margin:0 0 16px;
+                          font-size:16px;
+                          line-height:1.6;
+                        "
+                      >
+                        Olá, <strong>${nomeSeguro}</strong>.
+                      </p>
+
+                      <p
+                        style="
+                          margin:0 0 22px;
+                          color:#475569;
+                          font-size:15px;
+                          line-height:1.7;
+                        "
+                      >
+                        Recebemos uma solicitação para redefinir a senha
+                        da sua conta na Mundial Connect.
+                      </p>
+
+                      <p style="margin:0 0 24px;">
+                        <a
+                          href="${urlSegura}"
+                          style="
+                            display:inline-block;
+                            padding:14px 24px;
+                            border-radius:12px;
+                            background:#2563eb;
+                            color:#ffffff;
+                            font-size:14px;
+                            font-weight:700;
+                            text-decoration:none;
+                          "
+                        >
+                          Criar nova senha
+                        </a>
+                      </p>
+
+                      <div
+                        style="
+                          margin:0 0 20px;
+                          padding:16px;
+                          border:1px solid #bfdbfe;
+                          border-radius:12px;
+                          background:#eff6ff;
+                          color:#1e3a8a;
+                          font-size:13px;
+                          line-height:1.6;
+                        "
+                      >
+                        Este link é válido por <strong>30 minutos</strong>
+                        e deixa de funcionar após a senha ser alterada.
+                      </div>
+
+                      <p
+                        style="
+                          margin:0;
+                          color:#64748b;
+                          font-size:13px;
+                          line-height:1.6;
+                        "
+                      >
+                        Se você não solicitou esta alteração, pode ignorar
+                        este e-mail. Sua senha atual continuará funcionando.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
+    `,
+  });
+}
+
