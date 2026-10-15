@@ -14,9 +14,13 @@ model Usuario {
   senha                 String
   perfil                PerfilUsuario       @default(RECEPCAO)
   ativo                 Boolean             @default(true)
+
+  membroComiteEtica     Boolean             @default(false)
+
   criadoEm              DateTime            @default(now())
   atualizadoEm          DateTime            @updatedAt
   clienteId             String?
+
   colaboradorCliente    ColaboradorCliente?
   denunciasLiberadas    Denuncia[]          @relation("DenunciaLiberadaPor")
   tratativasAtualizadas TratativaDenuncia[] @relation("TratativaAtualizadaPor")
@@ -25,6 +29,8 @@ model Usuario {
 
   @@index([clienteId])
   @@index([perfil])
+
+  @@index([membroComiteEtica])
 }
 
 model Cliente {

@@ -14,6 +14,12 @@ const CONTATO = {
   telefoneLink:
     "tel:+555134702476",
 
+  whatsappExibicao:
+    "(51) 99991-9319",
+
+  whatsappNumero:
+    "5551999919319",
+
   emailEmpresas:
     "comercial@mundialrh.com.br",
 
@@ -54,6 +60,23 @@ const CONTATO = {
 } as const;
 
 
+function obterLinkWhatsApp() {
+  const mensagem =
+    [
+      "Olá, equipe da Mundial RH.",
+      "",
+      "Sou cliente da Mundial Connect e gostaria de atendimento.",
+    ].join(
+      "\n"
+    );
+
+
+  return `https://wa.me/${CONTATO.whatsappNumero}?text=${encodeURIComponent(
+    mensagem
+  )}`;
+}
+
+
 export default async function FaleConoscoPage() {
   const session =
     await auth();
@@ -66,6 +89,10 @@ export default async function FaleConoscoPage() {
       "/login"
     );
   }
+
+
+  const linkWhatsApp =
+    obterLinkWhatsApp();
 
 
   return (
@@ -110,6 +137,17 @@ export default async function FaleConoscoPage() {
               <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <a
                   href={
+                    linkWhatsApp
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-600"
+                >
+                  Falar pelo WhatsApp
+                </a>
+
+                <a
+                  href={
                     CONTATO.telefoneLink
                   }
                   className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-black text-blue-800 transition hover:bg-blue-50"
@@ -142,6 +180,20 @@ export default async function FaleConoscoPage() {
 
 
             <section className="grid gap-4 sm:grid-cols-2">
+              <ContatoCard
+                titulo="WhatsApp"
+                valor={
+                  CONTATO.whatsappExibicao
+                }
+                descricao="Abra uma conversa com a equipe da Mundial RH diretamente pelo WhatsApp."
+                href={
+                  linkWhatsApp
+                }
+                acao="Falar pelo WhatsApp"
+                externo
+                destaque="whatsapp"
+              />
+
               <ContatoCard
                 titulo="Atendimento para empresas"
                 valor={
@@ -239,6 +291,18 @@ export default async function FaleConoscoPage() {
                 Isso ajuda a equipe a direcionar o atendimento.
               </p>
             </div>
+
+
+            <a
+              href={
+                linkWhatsApp
+              }
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-600"
+            >
+              Chamar a Mundial RH no WhatsApp
+            </a>
           </aside>
         </div>
       </section>
@@ -254,6 +318,7 @@ function ContatoCard({
   href,
   acao,
   externo = false,
+  destaque = "normal",
 }: {
   titulo: string;
   valor: string;
@@ -261,22 +326,54 @@ function ContatoCard({
   href: string;
   acao: string;
   externo?: boolean;
+  destaque?:
+    | "normal"
+    | "whatsapp";
 }) {
+  const whatsapp =
+    destaque ===
+    "whatsapp";
+
+
   return (
-    <article className="flex min-h-[220px] flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+    <article
+      className={`flex min-h-[220px] flex-col rounded-3xl p-6 shadow-sm ring-1 ${
+        whatsapp
+          ? "bg-emerald-50 ring-emerald-200"
+          : "bg-white ring-slate-200"
+      }`}
+    >
+      <p
+        className={`text-xs font-black uppercase tracking-[0.18em] ${
+          whatsapp
+            ? "text-emerald-700"
+            : "text-slate-400"
+        }`}
+      >
         {
           titulo
         }
       </p>
 
-      <h3 className="mt-3 break-words text-lg font-black text-slate-950">
+      <h3
+        className={`mt-3 break-words text-lg font-black ${
+          whatsapp
+            ? "text-emerald-950"
+            : "text-slate-950"
+        }`}
+      >
         {
           valor
         }
       </h3>
 
-      <p className="mt-2 flex-1 text-sm leading-6 text-slate-500">
+      <p
+        className={`mt-2 flex-1 text-sm leading-6 ${
+          whatsapp
+            ? "text-emerald-800"
+            : "text-slate-500"
+        }`}
+      >
         {
           descricao
         }
@@ -296,7 +393,11 @@ function ContatoCard({
             ? "noreferrer"
             : undefined
         }
-        className="mt-5 inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white transition hover:bg-slate-800"
+        className={`mt-5 inline-flex min-h-11 items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-black text-white transition ${
+          whatsapp
+            ? "bg-emerald-500 hover:bg-emerald-600"
+            : "bg-slate-950 hover:bg-slate-800"
+        }`}
       >
         {
           acao

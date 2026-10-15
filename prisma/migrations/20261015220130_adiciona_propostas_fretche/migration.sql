@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "PerfilUsuario" ADD VALUE 'COMITE_ETICA_MUNDIAL';

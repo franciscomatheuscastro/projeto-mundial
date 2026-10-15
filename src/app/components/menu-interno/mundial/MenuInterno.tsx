@@ -1,11 +1,55 @@
 import Link from "next/link";
 
 import {
+  auth,
   signOut,
 } from "@/src/auth";
 
+import {
+  prisma,
+} from "@/src/lib/prisma";
 
-export function MenuInterno() {
+
+export async function MenuInterno() {
+  const session =
+    await auth();
+
+
+  const usuarioSessao =
+    session?.user as
+      | {
+          id?: string;
+        }
+      | undefined;
+
+
+  let membroComiteEtica =
+    false;
+
+
+  if (
+    usuarioSessao?.id
+  ) {
+    const usuario =
+      await prisma.usuario.findUnique({
+        where: {
+          id:
+            usuarioSessao.id,
+        },
+
+        select: {
+          membroComiteEtica:
+            true,
+        },
+      });
+
+
+    membroComiteEtica =
+      usuario?.membroComiteEtica ??
+      false;
+  }
+
+
   async function sair() {
     "use server";
 
@@ -42,6 +86,9 @@ export function MenuInterno() {
               sair={
                 sair
               }
+              membroComiteEtica={
+                membroComiteEtica
+              }
             />
           </div>
         </details>
@@ -66,7 +113,11 @@ export function MenuInterno() {
 
           <div className="relative min-h-0 flex-1">
             <div className="h-full overflow-y-auto px-5 pb-24 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <MenuNavegacao />
+              <MenuNavegacao
+                membroComiteEtica={
+                  membroComiteEtica
+                }
+              />
             </div>
 
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-cyan-600 via-cyan-600/90 to-transparent" />
@@ -96,8 +147,10 @@ export function MenuInterno() {
 
 function MenuNavegacao({
   mobile = false,
+  membroComiteEtica,
 }: {
   mobile?: boolean;
+  membroComiteEtica: boolean;
 }) {
   return (
     <nav
@@ -192,6 +245,17 @@ function MenuNavegacao({
         >
           Perguntas
         </MenuLink>
+
+        {!membroComiteEtica && (
+          <MenuLink
+            href="/comite-etica"
+            mobile={
+              mobile
+            }
+          >
+            Comitê de Ética
+          </MenuLink>
+        )}
       </GrupoMenu>
 
 
@@ -221,9 +285,6 @@ function MenuNavegacao({
       </GrupoMenu>
 
 
-      
-
-
       <GrupoMenu
         titulo="Avaliação Psicossocial"
         mobile={
@@ -248,7 +309,6 @@ function MenuNavegacao({
           Relatório Psicossocial
         </MenuLink>
       </GrupoMenu>
-
 
 
       <GrupoMenu
@@ -308,13 +368,18 @@ function MenuNavegacao({
 
 function MenuMobile({
   sair,
+  membroComiteEtica,
 }: {
   sair: () => Promise<void>;
+  membroComiteEtica: boolean;
 }) {
   return (
     <div>
       <MenuNavegacao
         mobile
+        membroComiteEtica={
+          membroComiteEtica
+        }
       />
 
       <form
