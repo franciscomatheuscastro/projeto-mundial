@@ -46,11 +46,15 @@ export default function DenunciasTela({
   const [clienteId, setClienteId] =
     useState("");
 
+  const [status, setStatus] =
+    useState("");
+
   const [filtrosAplicados, setFiltrosAplicados] =
     useState({
       dataInicio: "",
       dataFim: "",
       clienteId: "",
+      status: "",
     });
 
   const [erroFiltro, setErroFiltro] =
@@ -91,7 +95,7 @@ export default function DenunciasTela({
     carregarClientes,
   ]);
 
-  const denunciasFiltradas = useMemo(() => {
+  const denunciasBaseFiltradas = useMemo(() => {
     return denuncias.filter((denuncia) => {
       const dataDenuncia = new Date(
         denuncia.criadoEm
@@ -136,30 +140,52 @@ export default function DenunciasTela({
     });
   }, [
     denuncias,
-    filtrosAplicados,
+    filtrosAplicados.dataInicio,
+    filtrosAplicados.dataFim,
+    filtrosAplicados.clienteId,
     usuarioMundial,
   ]);
 
+
+  const denunciasFiltradas =
+    useMemo(() => {
+      if (
+        !filtrosAplicados.status
+      ) {
+        return denunciasBaseFiltradas;
+      }
+
+      return denunciasBaseFiltradas.filter(
+        denuncia =>
+          denuncia.status ===
+          filtrosAplicados.status
+      );
+    }, [
+      denunciasBaseFiltradas,
+      filtrosAplicados.status,
+    ]);
+
+
   const recebidas =
-    denunciasFiltradas.filter(
+    denunciasBaseFiltradas.filter(
       (denuncia) =>
         denuncia.status === "RECEBIDA"
     ).length;
 
   const emAnalise =
-    denunciasFiltradas.filter(
+    denunciasBaseFiltradas.filter(
       (denuncia) =>
         denuncia.status === "EM_ANALISE"
     ).length;
 
   const emTratativa =
-    denunciasFiltradas.filter(
+    denunciasBaseFiltradas.filter(
       (denuncia) =>
         denuncia.status === "EM_TRATATIVA"
     ).length;
 
   const concluidas =
-    denunciasFiltradas.filter(
+    denunciasBaseFiltradas.filter(
       (denuncia) =>
         denuncia.status === "CONCLUIDA"
     ).length;
@@ -201,6 +227,7 @@ export default function DenunciasTela({
         usuarioMundial
           ? clienteId
           : "",
+      status,
     });
   }
 
@@ -208,14 +235,33 @@ export default function DenunciasTela({
     setDataInicio("");
     setDataFim("");
     setClienteId("");
+    setStatus("");
     setErroFiltro(null);
 
     setFiltrosAplicados({
       dataInicio: "",
       dataFim: "",
       clienteId: "",
+      status: "",
     });
   }
+
+  function filtrarPorStatus(
+    novoStatus: string
+  ) {
+    setStatus(
+      novoStatus
+    );
+
+    setFiltrosAplicados(
+      atual => ({
+        ...atual,
+        status:
+          novoStatus,
+      })
+    );
+  }
+
 
   function gerarRelatorio() {
     if (!validarPeriodo()) {
@@ -248,6 +294,16 @@ export default function DenunciasTela({
         clienteId
       );
     }
+
+    if (
+      status
+    ) {
+      parametros.set(
+        "status",
+        status
+      );
+    }
+
 
     const query =
       parametros.toString();
@@ -312,18 +368,18 @@ export default function DenunciasTela({
             <p className="mt-1 text-sm text-slate-500">
               Selecione o período
               {usuarioMundial
-                ? " e o cliente"
+                ? ", o cliente"
                 : ""}
               {" "}
-              para consultar ou gerar o relatório.
+              e o status para consultar ou gerar o relatório.
             </p>
           </div>
 
           <div
             className={`mt-5 grid gap-4 ${
               usuarioMundial
-                ? "md:grid-cols-2 xl:grid-cols-3"
-                : "md:grid-cols-2"
+                ? "md:grid-cols-2 xl:grid-cols-4"
+                : "md:grid-cols-3"
             }`}
           >
             <CampoData
@@ -369,6 +425,50 @@ export default function DenunciasTela({
                 </select>
               </div>
             )}
+
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Status
+              </label>
+
+              <select
+                value={
+                  status
+                }
+                onChange={
+                  event =>
+                    setStatus(
+                      event.target.value
+                    )
+                }
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              >
+                <option value="">
+                  Todos os status
+                </option>
+
+                <option value="RECEBIDA">
+                  Recebida
+                </option>
+
+                <option value="EM_ANALISE">
+                  Em análise
+                </option>
+
+                <option value="EM_TRATATIVA">
+                  Em tratativa
+                </option>
+
+                <option value="CONCLUIDA">
+                  Concluída
+                </option>
+
+                <option value="ARQUIVADA">
+                  Arquivada
+                </option>
+              </select>
+            </div>
           </div>
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
@@ -401,27 +501,82 @@ export default function DenunciasTela({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <Card
             titulo="Total"
-            valor={denunciasFiltradas.length}
+            valor={
+              denunciasBaseFiltradas.length
+            }
+            ativo={
+              filtrosAplicados.status ===
+              ""
+            }
+            onClick={() =>
+              filtrarPorStatus(
+                ""
+              )
+            }
           />
 
           <Card
             titulo="Recebidas"
-            valor={recebidas}
+            valor={
+              recebidas
+            }
+            ativo={
+              filtrosAplicados.status ===
+              "RECEBIDA"
+            }
+            onClick={() =>
+              filtrarPorStatus(
+                "RECEBIDA"
+              )
+            }
           />
 
           <Card
             titulo="Em análise"
-            valor={emAnalise}
+            valor={
+              emAnalise
+            }
+            ativo={
+              filtrosAplicados.status ===
+              "EM_ANALISE"
+            }
+            onClick={() =>
+              filtrarPorStatus(
+                "EM_ANALISE"
+              )
+            }
           />
 
           <Card
             titulo="Em tratativa"
-            valor={emTratativa}
+            valor={
+              emTratativa
+            }
+            ativo={
+              filtrosAplicados.status ===
+              "EM_TRATATIVA"
+            }
+            onClick={() =>
+              filtrarPorStatus(
+                "EM_TRATATIVA"
+              )
+            }
           />
 
           <Card
             titulo="Concluídas"
-            valor={concluidas}
+            valor={
+              concluidas
+            }
+            ativo={
+              filtrosAplicados.status ===
+              "CONCLUIDA"
+            }
+            onClick={() =>
+              filtrarPorStatus(
+                "CONCLUIDA"
+              )
+            }
           />
         </div>
 
@@ -599,20 +754,65 @@ function CampoData({
 function Card({
   titulo,
   valor,
+  ativo = false,
+  onClick,
 }: {
   titulo: string;
   valor: number | string;
+  ativo?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-sm font-medium text-slate-500">
-        {titulo}
+    <button
+      type="button"
+      onClick={
+        onClick
+      }
+      aria-pressed={
+        ativo
+      }
+      className={`rounded-3xl border p-5 text-left shadow-sm transition ${
+        ativo
+          ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100"
+          : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
+      }`}
+    >
+      <p
+        className={`text-sm font-medium ${
+          ativo
+            ? "text-blue-700"
+            : "text-slate-500"
+        }`}
+      >
+        {
+          titulo
+        }
       </p>
 
-      <strong className="mt-2 block text-3xl font-bold text-slate-900">
-        {valor}
+      <strong
+        className={`mt-2 block text-3xl font-bold ${
+          ativo
+            ? "text-blue-900"
+            : "text-slate-900"
+        }`}
+      >
+        {
+          valor
+        }
       </strong>
-    </div>
+
+      <span
+        className={`mt-3 block text-xs font-semibold ${
+          ativo
+            ? "text-blue-600"
+            : "text-slate-400"
+        }`}
+      >
+        {ativo
+          ? "Filtro ativo"
+          : "Clique para filtrar"}
+      </span>
+    </button>
   );
 }
 
