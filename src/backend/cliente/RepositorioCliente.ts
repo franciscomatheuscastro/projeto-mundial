@@ -130,9 +130,62 @@ export default class RepositorioCliente {
 
             data: dados,
           })
-        : await prisma.cliente.create({
-            data: dados,
-          });
+        : await prisma.$transaction(
+            async (tx) => {
+              const novoCliente =
+                await tx.cliente.create({
+                  data: dados,
+                });
+
+
+              /*
+               * Perguntas marcadas como "todosCanais"
+               * precisam ser atribuídas automaticamente
+               * a todo novo cliente criado.
+               *
+               * Mantemos também o vínculo físico na tabela
+               * PerguntaCanalDenunciaCliente para preservar
+               * a compatibilidade com o restante do sistema.
+               */
+              const perguntasGlobais =
+                await tx.perguntaCanalDenuncia.findMany({
+                  where: {
+                    todosCanais:
+                      true,
+                  },
+
+                  select: {
+                    id:
+                      true,
+                  },
+                });
+
+
+              if (
+                perguntasGlobais.length >
+                0
+              ) {
+                await tx.perguntaCanalDenunciaCliente.createMany({
+                  data:
+                    perguntasGlobais.map(
+                      (pergunta) => ({
+                        perguntaId:
+                          pergunta.id,
+
+                        clienteId:
+                          novoCliente.id,
+                      })
+                    ),
+
+                  skipDuplicates:
+                    true,
+                });
+              }
+
+
+              return novoCliente;
+            }
+          );
 
 
     return {

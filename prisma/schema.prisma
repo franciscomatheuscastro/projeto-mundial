@@ -348,6 +348,9 @@ model PerguntaCanalDenuncia {
   respostas           RespostaPerguntaCanalDenuncia[]
 
   @@index([ativo, ordem])
+
+  todosCanais Boolean @default(false)
+  
 }
 
 model PerguntaCanalDenunciaCliente {

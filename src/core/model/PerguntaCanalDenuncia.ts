@@ -2,6 +2,7 @@ import {
   TipoPerguntaCanalDenuncia,
 } from "@prisma/client";
 
+
 export type PerguntaCanalDenuncia = {
   id?: string;
 
@@ -26,6 +27,17 @@ export type PerguntaCanalDenuncia = {
   ativo: boolean;
   ordem: number;
 
+  /**
+   * Quando true, a pergunta é global:
+   * - aparece para todos os clientes atuais;
+   * - continua válida para clientes criados futuramente.
+   *
+   * Mantido como opcional para compatibilidade com
+   * pontos antigos do sistema que ainda possam montar
+   * este objeto sem informar o campo.
+   */
+  todosCanais?: boolean;
+
   clienteIds: string[];
 
   clientes?: Array<{
@@ -37,6 +49,7 @@ export type PerguntaCanalDenuncia = {
   criadoEm?: Date | string;
   atualizadoEm?: Date | string;
 };
+
 
 export type PerguntaCanalPublica = {
   id: string;
@@ -54,6 +67,7 @@ export type PerguntaCanalPublica = {
 
   ordem: number;
 };
+
 
 export type RespostaPerguntaCanalInput = {
   perguntaId: string;

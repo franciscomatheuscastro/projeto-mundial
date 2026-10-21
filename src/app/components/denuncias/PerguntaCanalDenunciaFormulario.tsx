@@ -1,152 +1,443 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
-import { TipoPerguntaCanalDenuncia } from "@prisma/client";
-import { useRouter } from "next/navigation";
+import type {
+  FormEvent,
+} from "react";
 
-import Backend from "@/src/backend";
-import { useClientes } from "@/src/app/data/hooks/useClientes";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  TipoPerguntaCanalDenuncia,
+} from "@prisma/client";
+
+import {
+  useRouter,
+} from "next/navigation";
+
+import {
+  obterPerguntaCanalDenunciaPorId,
+  salvarPerguntaCanalDenuncia,
+} from "@/src/backend/perguntaCanalDenuncia/acoesPerguntasCanalDenuncia";
+
+import {
+  useClientes,
+} from "@/src/app/data/hooks/useClientes";
 
 import type {
   PerguntaCanalDenuncia,
 } from "@/src/core/model/PerguntaCanalDenuncia";
 
+
+type PerguntaInicialCompativel =
+  PerguntaCanalDenuncia & {
+    todosCanais?: boolean;
+  };
+
+
 type Props = {
-  perguntaInicial?: PerguntaCanalDenuncia | null;
+  perguntaInicial?:
+    | PerguntaInicialCompativel
+    | null;
 };
+
 
 export default function PerguntaCanalDenunciaFormulario({
   perguntaInicial = null,
 }: Props) {
-  const router = useRouter();
+  const router =
+    useRouter();
+
 
   const {
     clientes,
     carregarClientes,
-  } = useClientes();
+  } =
+    useClientes();
 
-  const [enunciado, setEnunciado] =
+
+  const [
+    enunciado,
+    setEnunciado,
+  ] =
     useState(
-      perguntaInicial?.enunciado || ""
+      perguntaInicial?.enunciado ||
+      ""
     );
 
-  const [descricao, setDescricao] =
+
+  const [
+    descricao,
+    setDescricao,
+  ] =
     useState(
-      perguntaInicial?.descricao || ""
+      perguntaInicial?.descricao ||
+      ""
     );
 
-  const [tipo, setTipo] =
+
+  const [
+    tipo,
+    setTipo,
+  ] =
     useState<TipoPerguntaCanalDenuncia>(
-      perguntaInicial?.tipo || "TEXTO"
+      perguntaInicial?.tipo ||
+      TipoPerguntaCanalDenuncia.TEXTO
     );
 
-  const [obrigatoria, setObrigatoria] =
+
+  const [
+    obrigatoria,
+    setObrigatoria,
+  ] =
     useState(
-      perguntaInicial?.obrigatoria || false
+      perguntaInicial?.obrigatoria ||
+      false
     );
+
 
   const [
     abrirComplementoSim,
     setAbrirComplementoSim,
-  ] = useState(
-    perguntaInicial?.abrirComplementoSim ?? false
+  ] =
+    useState(
+      perguntaInicial?.abrirComplementoSim ??
+      false
+    );
+
+
+  const [
+    ativo,
+    setAtivo,
+  ] =
+    useState(
+      perguntaInicial?.ativo ??
+      true
+    );
+
+
+  const [
+    ordem,
+    setOrdem,
+  ] =
+    useState(
+      perguntaInicial?.ordem ||
+      0
+    );
+
+
+  const [
+    clienteIds,
+    setClienteIds,
+  ] =
+    useState<string[]>(
+      perguntaInicial?.clienteIds ||
+      []
+    );
+
+
+  const [
+    todosCanais,
+    setTodosCanais,
+  ] =
+    useState(
+      perguntaInicial?.todosCanais ??
+      false
+    );
+
+
+  const [
+    opcoesTexto,
+    setOpcoesTexto,
+  ] =
+    useState(
+      perguntaInicial?.opcoes.join(
+        "\n"
+      ) ||
+      ""
+    );
+
+
+  const [
+    salvando,
+    setSalvando,
+  ] =
+    useState(
+      false
+    );
+
+
+  const [
+    carregandoPergunta,
+    setCarregandoPergunta,
+  ] =
+    useState(
+      Boolean(
+        perguntaInicial?.id
+      )
+    );
+
+
+  const [
+    erro,
+    setErro,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+
+  useEffect(
+    () => {
+      void carregarClientes();
+    },
+    [
+      carregarClientes,
+    ]
   );
 
-  const [ativo, setAtivo] =
-    useState(
-      perguntaInicial?.ativo ?? true
-    );
 
-  const [ordem, setOrdem] =
-    useState(
-      perguntaInicial?.ordem || 0
-    );
+  /*
+   * Ao editar, carregamos novamente a pergunta pela nova
+   * action. Isso garante que o campo todosCanais seja
+   * reconhecido mesmo que a page antiga ainda entregue
+   * um objeto sem esse campo.
+   */
+  useEffect(
+    () => {
+      const id =
+        perguntaInicial?.id;
 
-  const [clienteIds, setClienteIds] =
-    useState<string[]>(
-      perguntaInicial?.clienteIds || []
-    );
 
-  const [opcoesTexto, setOpcoesTexto] =
-    useState(
-      perguntaInicial?.opcoes.join("\n") || ""
-    );
+      if (
+        !id
+      ) {
+        setCarregandoPergunta(
+          false
+        );
 
-  const [salvando, setSalvando] =
-    useState(false);
+        return;
+      }
 
-  const [erro, setErro] =
-    useState<string | null>(null);
 
-  useEffect(() => {
-    void carregarClientes();
-  }, [carregarClientes]);
+      let ativoEfeito =
+        true;
+
+
+      async function carregarPergunta() {
+        try {
+          const pergunta =
+            await obterPerguntaCanalDenunciaPorId(
+              id!
+            );
+
+
+          if (
+            !ativoEfeito
+          ) {
+            return;
+          }
+
+
+          setEnunciado(
+            pergunta.enunciado
+          );
+
+          setDescricao(
+            pergunta.descricao ||
+            ""
+          );
+
+          setTipo(
+            pergunta.tipo
+          );
+
+          setObrigatoria(
+            pergunta.obrigatoria
+          );
+
+          setAbrirComplementoSim(
+            pergunta.abrirComplementoSim
+          );
+
+          setAtivo(
+            pergunta.ativo
+          );
+
+          setOrdem(
+            pergunta.ordem
+          );
+
+          setClienteIds(
+            pergunta.clienteIds
+          );
+
+          setTodosCanais(
+            pergunta.todosCanais
+          );
+
+          setOpcoesTexto(
+            pergunta.opcoes.join(
+              "\n"
+            )
+          );
+        } catch (
+          error
+        ) {
+          if (
+            ativoEfeito
+          ) {
+            setErro(
+              error instanceof Error
+                ? error.message
+                : "Não foi possível carregar a pergunta."
+            );
+          }
+        } finally {
+          if (
+            ativoEfeito
+          ) {
+            setCarregandoPergunta(
+              false
+            );
+          }
+        }
+      }
+
+
+      void carregarPergunta();
+
+
+      return () => {
+        ativoEfeito =
+          false;
+      };
+    },
+    [
+      perguntaInicial?.id,
+    ]
+  );
+
 
   const idsClientesDisponiveis =
     useMemo(
       () =>
         clientes.map(
-          (cliente) => cliente.id
+          cliente =>
+            cliente.id
         ),
-      [clientes]
+      [
+        clientes,
+      ]
     );
 
-  const todosSelecionados =
-    clientes.length > 0 &&
+
+  const todosClientesAtuaisSelecionados =
+    clientes.length >
+      0 &&
     idsClientesDisponiveis.every(
-      (id) => clienteIds.includes(id)
+      id =>
+        clienteIds.includes(
+          id
+        )
     );
 
-  function alternarTodos() {
-    if (todosSelecionados) {
-      setClienteIds([]);
-      return;
+
+  function alternarTodosCanais() {
+    const novoValor =
+      !todosCanais;
+
+
+    setTodosCanais(
+      novoValor
+    );
+
+
+    if (
+      novoValor
+    ) {
+      /*
+       * Não precisamos gravar manualmente os IDs aqui.
+       * O backend vincula todos os clientes atuais e
+       * mantém o marcador para os futuros.
+       */
+      setClienteIds(
+        []
+      );
     }
-
-    setClienteIds(
-      idsClientesDisponiveis
-    );
   }
+
 
   function alternarCliente(
     id: string
   ) {
-    setClienteIds((atual) =>
-      atual.includes(id)
-        ? atual.filter(
-            (item) => item !== id
-          )
-        : [...atual, id]
+    setTodosCanais(
+      false
+    );
+
+
+    setClienteIds(
+      atual =>
+        atual.includes(
+          id
+        )
+          ? atual.filter(
+              item =>
+                item !==
+                id
+            )
+          : [
+              ...atual,
+              id,
+            ]
     );
   }
+
 
   async function salvar(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-    if (salvando) {
+
+    if (
+      salvando
+    ) {
       return;
     }
+
 
     const enunciadoNormalizado =
       enunciado.trim();
 
+
     const descricaoNormalizada =
       descricao.trim();
 
+
     const opcoesNormalizadas =
-      tipo === "MULTIPLA_ESCOLHA"
+      tipo ===
+        TipoPerguntaCanalDenuncia.MULTIPLA_ESCOLHA
         ? opcoesTexto
-            .split("\n")
-            .map((opcao) =>
-              opcao.trim()
+            .split(
+              "\n"
             )
-            .filter(Boolean)
+            .map(
+              opcao =>
+                opcao.trim()
+            )
+            .filter(
+              Boolean
+            )
         : [];
 
-    if (!enunciadoNormalizado) {
+
+    if (
+      !enunciadoNormalizado
+    ) {
       setErro(
         "Informe o texto da pergunta."
       );
@@ -154,17 +445,25 @@ export default function PerguntaCanalDenunciaFormulario({
       return;
     }
 
-    if (clienteIds.length === 0) {
+
+    if (
+      !todosCanais &&
+      clienteIds.length ===
+        0
+    ) {
       setErro(
-        "Selecione pelo menos um canal ou marque a opção Todos os canais."
+        "Selecione pelo menos um canal ou marque Todos os canais."
       );
 
       return;
     }
 
+
     if (
-      tipo === "MULTIPLA_ESCOLHA" &&
-      opcoesNormalizadas.length < 2
+      tipo ===
+        TipoPerguntaCanalDenuncia.MULTIPLA_ESCOLHA &&
+      opcoesNormalizadas.length <
+        2
     ) {
       setErro(
         "Informe pelo menos duas opções para a pergunta de múltipla escolha."
@@ -173,12 +472,20 @@ export default function PerguntaCanalDenunciaFormulario({
       return;
     }
 
-    try {
-      setSalvando(true);
-      setErro(null);
 
-      await Backend.perguntasCanalDenuncia.salvar({
-        id: perguntaInicial?.id,
+    try {
+      setSalvando(
+        true
+      );
+
+      setErro(
+        null
+      );
+
+
+      await salvarPerguntaCanalDenuncia({
+        id:
+          perguntaInicial?.id,
 
         enunciado:
           enunciadoNormalizado,
@@ -188,35 +495,56 @@ export default function PerguntaCanalDenunciaFormulario({
           null,
 
         tipo,
+
         obrigatoria,
+
         abrirComplementoSim:
-          tipo === "SIM_NAO"
+          tipo ===
+            TipoPerguntaCanalDenuncia.SIM_NAO
             ? abrirComplementoSim
             : false,
+
         ativo,
+
         ordem,
 
-        clienteIds,
+        todosCanais,
+
+        clienteIds:
+          todosCanais
+            ? []
+            : clienteIds,
 
         opcoes:
           opcoesNormalizadas,
       });
+
 
       router.push(
         "/denuncias/perguntas"
       );
 
       router.refresh();
-    } catch (error) {
+    } catch (
+      error
+    ) {
       setErro(
         error instanceof Error
           ? error.message
           : "Não foi possível salvar a pergunta."
       );
     } finally {
-      setSalvando(false);
+      setSalvando(
+        false
+      );
     }
   }
+
+
+  const bloqueado =
+    salvando ||
+    carregandoPergunta;
+
 
   return (
     <main className="min-h-screen bg-slate-100">
@@ -232,15 +560,28 @@ export default function PerguntaCanalDenunciaFormulario({
         </h1>
       </header>
 
+
       <form
-        onSubmit={salvar}
+        onSubmit={
+          salvar
+        }
         className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6"
       >
         {erro && (
           <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-semibold text-red-700">
-            {erro}
+            {
+              erro
+            }
           </div>
         )}
+
+
+        {carregandoPergunta && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-500">
+            Carregando dados da pergunta...
+          </div>
+        )}
+
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="grid gap-4 md:grid-cols-2">
@@ -250,17 +591,23 @@ export default function PerguntaCanalDenunciaFormulario({
               </label>
 
               <input
-                value={enunciado}
-                onChange={(event) =>
-                  setEnunciado(
-                    event.target.value
-                  )
+                value={
+                  enunciado
+                }
+                onChange={
+                  event =>
+                    setEnunciado(
+                      event.target.value
+                    )
                 }
                 required
-                disabled={salvando}
+                disabled={
+                  bloqueado
+                }
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
               />
             </div>
+
 
             <div className="md:col-span-2">
               <label className="mb-2 block text-sm font-semibold text-slate-700">
@@ -268,17 +615,25 @@ export default function PerguntaCanalDenunciaFormulario({
               </label>
 
               <textarea
-                value={descricao}
-                onChange={(event) =>
-                  setDescricao(
-                    event.target.value
-                  )
+                value={
+                  descricao
                 }
-                rows={3}
-                disabled={salvando}
+                onChange={
+                  event =>
+                    setDescricao(
+                      event.target.value
+                    )
+                }
+                rows={
+                  3
+                }
+                disabled={
+                  bloqueado
+                }
                 className="w-full resize-y rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
               />
             </div>
+
 
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
@@ -286,18 +641,33 @@ export default function PerguntaCanalDenunciaFormulario({
               </label>
 
               <select
-                value={tipo}
-                disabled={salvando}
-                onChange={(event) => {
-                  const novoTipo =
-                    event.target.value as TipoPerguntaCanalDenuncia;
+                value={
+                  tipo
+                }
+                disabled={
+                  bloqueado
+                }
+                onChange={
+                  event => {
+                    const novoTipo =
+                      event.target.value as TipoPerguntaCanalDenuncia;
 
-                  setTipo(novoTipo);
 
-                  if (novoTipo !== "SIM_NAO") {
-                    setAbrirComplementoSim(false);
+                    setTipo(
+                      novoTipo
+                    );
+
+
+                    if (
+                      novoTipo !==
+                      TipoPerguntaCanalDenuncia.SIM_NAO
+                    ) {
+                      setAbrirComplementoSim(
+                        false
+                      );
+                    }
                   }
-                }}
+                }
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
               >
                 <option value="TEXTO">
@@ -318,6 +688,7 @@ export default function PerguntaCanalDenunciaFormulario({
               </select>
             </div>
 
+
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Ordem
@@ -325,52 +696,74 @@ export default function PerguntaCanalDenunciaFormulario({
 
               <input
                 type="number"
-                min={0}
-                value={ordem}
-                disabled={salvando}
-                onChange={(event) =>
-                  setOrdem(
-                    Number(
-                      event.target.value
+                min={
+                  0
+                }
+                value={
+                  ordem
+                }
+                disabled={
+                  bloqueado
+                }
+                onChange={
+                  event =>
+                    setOrdem(
+                      Number(
+                        event.target.value
+                      )
                     )
-                  )
                 }
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
               />
             </div>
 
+
             {tipo ===
-              "MULTIPLA_ESCOLHA" && (
+              TipoPerguntaCanalDenuncia.MULTIPLA_ESCOLHA && (
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Opções — uma por linha
                 </label>
 
                 <textarea
-                  value={opcoesTexto}
-                  onChange={(event) =>
-                    setOpcoesTexto(
-                      event.target.value
-                    )
+                  value={
+                    opcoesTexto
+                  }
+                  onChange={
+                    event =>
+                      setOpcoesTexto(
+                        event.target.value
+                      )
                   }
                   required
-                  rows={5}
-                  disabled={salvando}
+                  rows={
+                    5
+                  }
+                  disabled={
+                    bloqueado
+                  }
                   className="w-full resize-y rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-100"
                 />
               </div>
             )}
 
-            {tipo === "SIM_NAO" && (
+
+            {tipo ===
+              TipoPerguntaCanalDenuncia.SIM_NAO && (
               <label className="md:col-span-2 flex cursor-pointer items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4">
                 <input
                   type="checkbox"
-                  checked={abrirComplementoSim}
-                  disabled={salvando}
-                  onChange={(event) =>
-                    setAbrirComplementoSim(
-                      event.target.checked
-                    )
+                  checked={
+                    abrirComplementoSim
+                  }
+                  disabled={
+                    bloqueado
+                  }
+                  onChange={
+                    event =>
+                      setAbrirComplementoSim(
+                        event.target.checked
+                      )
                   }
                   className="mt-1 h-4 w-4 accent-blue-600"
                 />
@@ -387,30 +780,42 @@ export default function PerguntaCanalDenunciaFormulario({
               </label>
             )}
 
+
             <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-4">
               <input
                 type="checkbox"
-                checked={obrigatoria}
-                disabled={salvando}
-                onChange={(event) =>
-                  setObrigatoria(
-                    event.target.checked
-                  )
+                checked={
+                  obrigatoria
+                }
+                disabled={
+                  bloqueado
+                }
+                onChange={
+                  event =>
+                    setObrigatoria(
+                      event.target.checked
+                    )
                 }
               />
 
               Pergunta obrigatória
             </label>
 
+
             <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-4">
               <input
                 type="checkbox"
-                checked={ativo}
-                disabled={salvando}
-                onChange={(event) =>
-                  setAtivo(
-                    event.target.checked
-                  )
+                checked={
+                  ativo
+                }
+                disabled={
+                  bloqueado
+                }
+                onChange={
+                  event =>
+                    setAtivo(
+                      event.target.checked
+                    )
                 }
               />
 
@@ -419,58 +824,77 @@ export default function PerguntaCanalDenunciaFormulario({
           </div>
         </section>
 
+
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-bold text-slate-900">
             Canais em que a pergunta aparecerá
           </h2>
 
           <p className="mt-1 text-sm text-slate-500">
-            Selecione todos os canais ou escolha clientes específicos.
+            Marque Todos os canais para tornar a pergunta global ou selecione clientes específicos.
           </p>
 
+
           <div className="mt-5">
-            <label className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-blue-200 bg-blue-50 p-4 transition hover:bg-blue-100">
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-blue-200 bg-blue-50 p-4 transition hover:bg-blue-100">
               <input
                 type="checkbox"
-                checked={todosSelecionados}
-                disabled={
-                  salvando ||
-                  clientes.length === 0
+                checked={
+                  todosCanais
                 }
-                onChange={alternarTodos}
-                className="h-4 w-4 accent-blue-600"
+                disabled={
+                  bloqueado
+                }
+                onChange={
+                  alternarTodosCanais
+                }
+                className="mt-1 h-4 w-4 accent-blue-600"
               />
 
               <div>
                 <span className="block text-sm font-bold text-blue-900">
-                  Todos os canais
+                  Todos os canais, atuais e futuros
                 </span>
 
-                <span className="mt-1 block text-xs text-blue-700">
-                  A pergunta será exibida nos canais de todos os clientes cadastrados atualmente.
+                <span className="mt-1 block text-xs leading-5 text-blue-700">
+                  A pergunta será exibida para todos os clientes atuais e também será atribuída automaticamente a qualquer novo cliente criado depois.
                 </span>
               </div>
             </label>
           </div>
 
+
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {clientes.length === 0 ? (
+            {clientes.length ===
+            0 ? (
               <p className="md:col-span-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
                 Nenhum cliente disponível.
               </p>
             ) : (
               clientes.map(
-                (cliente) => (
+                cliente => (
                   <label
-                    key={cliente.id}
-                    className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:bg-slate-50"
+                    key={
+                      cliente.id
+                    }
+                    className={`flex items-center gap-3 rounded-xl border p-4 transition ${
+                      todosCanais
+                        ? "cursor-default border-slate-200 bg-slate-100 opacity-70"
+                        : "cursor-pointer border-slate-200 hover:bg-slate-50"
+                    }`}
                   >
                     <input
                       type="checkbox"
-                      checked={clienteIds.includes(
-                        cliente.id
-                      )}
-                      disabled={salvando}
+                      checked={
+                        todosCanais ||
+                        clienteIds.includes(
+                          cliente.id
+                        )
+                      }
+                      disabled={
+                        bloqueado ||
+                        todosCanais
+                      }
                       onChange={() =>
                         alternarCliente(
                           cliente.id
@@ -488,12 +912,23 @@ export default function PerguntaCanalDenunciaFormulario({
               )
             )}
           </div>
+
+
+          {!todosCanais &&
+            todosClientesAtuaisSelecionados && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
+              Todos os clientes atuais estão marcados, mas a pergunta ainda não é global. Para incluir também clientes futuros, marque <strong>Todos os canais, atuais e futuros</strong>.
+            </div>
+          )}
         </section>
+
 
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
-            disabled={salvando}
+            disabled={
+              bloqueado
+            }
             onClick={() =>
               router.push(
                 "/denuncias/perguntas"
@@ -506,7 +941,9 @@ export default function PerguntaCanalDenunciaFormulario({
 
           <button
             type="submit"
-            disabled={salvando}
+            disabled={
+              bloqueado
+            }
             className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
           >
             {salvando
