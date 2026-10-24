@@ -3349,7 +3349,7 @@ function Campo({
 
           <span className="ml-1 text-red-500">
 
-            \*
+            *
 
           </span>
 
