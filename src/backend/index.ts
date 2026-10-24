@@ -22,7 +22,7 @@ import excluirPesquisaCliente from "./pesquisaCliente/excluirPesquisa";
 import salvarPesquisa from "./pesquisaCliente/salvarPesquisa";
 import obterTodosPesquisasCliente from "./pesquisaCliente/obterTodos";
 import obterPesquisaClientePorId from "./pesquisaCliente/obterPorId";
-import obterRelatorioPesquisaCliente from "./pesquisaCliente/ObterRelatorio";
+import obterRelatorioPesquisaCliente from "./pesquisaCliente/obterRelatorio";
 import alterarStatusPesquisaCliente from "./pesquisaCliente/alterarStatus";
 import obterDadosFormularioPesquisaCliente from "./pesquisaCliente/obterDadosFormulario";
 import obterMinhasPesquisasCliente from "./pesquisaCliente/obterMinhas";

@@ -35,6 +35,7 @@ import type {
 type PerguntaInicialCompativel =
   PerguntaCanalDenuncia & {
     todosCanais?: boolean;
+    exclusivaMundial?: boolean;
   };
 
 
@@ -116,6 +117,16 @@ export default function PerguntaCanalDenunciaFormulario({
     useState(
       perguntaInicial?.ativo ??
       true
+    );
+
+
+  const [
+    exclusivaMundial,
+    setExclusivaMundial,
+  ] =
+    useState(
+      perguntaInicial?.exclusivaMundial ??
+      false
     );
 
 
@@ -265,6 +276,10 @@ export default function PerguntaCanalDenunciaFormulario({
 
           setAtivo(
             pergunta.ativo
+          );
+
+          setExclusivaMundial(
+            pergunta.exclusivaMundial
           );
 
           setOrdem(
@@ -505,6 +520,8 @@ export default function PerguntaCanalDenunciaFormulario({
             : false,
 
         ativo,
+
+        exclusivaMundial,
 
         ordem,
 
@@ -820,6 +837,36 @@ export default function PerguntaCanalDenunciaFormulario({
               />
 
               Pergunta ativa
+            </label>
+
+
+            <label className="md:col-span-2 flex cursor-pointer items-start gap-3 rounded-xl border border-violet-200 bg-violet-50 p-4">
+              <input
+                type="checkbox"
+                checked={
+                  exclusivaMundial
+                }
+                disabled={
+                  bloqueado
+                }
+                onChange={
+                  event =>
+                    setExclusivaMundial(
+                      event.target.checked
+                    )
+                }
+                className="mt-1 h-4 w-4 accent-violet-600"
+              />
+
+              <span>
+                <strong className="block text-sm text-violet-950">
+                  Resposta exclusiva da Mundial
+                </strong>
+
+                <span className="mt-1 block text-xs leading-5 text-violet-700">
+                  A pergunta continuará aparecendo normalmente para o denunciante, mas a resposta ficará visível apenas para a Mundial. Usuários do cliente e colaboradores não poderão visualizar essa resposta.
+                </span>
+              </span>
             </label>
           </div>
         </section>

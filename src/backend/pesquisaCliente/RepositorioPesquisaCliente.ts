@@ -69,6 +69,12 @@ type AnaliseClimaSetor = {
   totalRespostas: number;
   indiceGeralClima: number | null;
   dimensoes: DimensaoClimaSetor[];
+
+  /*
+   * true somente para o grupo sintético "Geral",
+   * formado pela soma dos setores com menos de 5 respostas.
+   */
+  agrupado?: boolean;
 };
 
 
@@ -173,9 +179,27 @@ const MINIMO_RESPOSTAS_FILTRO_SETOR =
   5;
 
 
+/*
+ * Valor interno usado no filtro para representar o agrupamento
+ * dos setores que possuem menos de 5 respostas.
+ *
+ * Não usamos simplesmente "Geral" como valor do filtro para
+ * evitar conflito caso exista um setor real chamado "Geral".
+ */
+const VALOR_FILTRO_SETOR_GERAL =
+  "__GERAL__";
+
+
+const NOME_SETOR_GERAL =
+  "Geral";
+
+
 type SetorRelatorioCliente = {
   nome: string;
+  valor: string;
   disponivel: boolean;
+  agrupado: boolean;
+  totalRespostas: number;
 };
 
 
@@ -305,8 +329,7 @@ function normalizarChaveSetor(
 
 
 function listarSetoresRelatorio(
-  pesquisasBanco: any[],
-  tipo: TipoModuloPesquisa
+  pesquisasBanco: any[]
 ): string[] {
   const mapa =
     new Map<
@@ -355,22 +378,17 @@ function listarSetoresRelatorio(
   };
 
 
+  /*
+   * O setor pertence à RESPOSTA em todos os módulos.
+   *
+   * Na Pesquisa de Clima ele deixou de ser definido
+   * na aplicação e passou a ser informado
+   * opcionalmente pelo participante.
+   */
   for (
     const pesquisa
     of pesquisasBanco
   ) {
-    if (
-      tipo ===
-      TipoModuloPesquisa.CLIMA
-    ) {
-      adicionar(
-        pesquisa.setor
-      );
-
-      continue;
-    }
-
-
     for (
       const resposta
       of pesquisa.respostas ||
@@ -399,8 +417,7 @@ function listarSetoresRelatorio(
 
 
 function contarRespostasPorSetor(
-  pesquisasBanco: any[],
-  tipo: TipoModuloPesquisa
+  pesquisasBanco: any[]
 ): Map<string, number> {
   const mapa =
     new Map<
@@ -410,8 +427,7 @@ function contarRespostasPorSetor(
 
 
   const adicionar = (
-    setor: unknown,
-    quantidade = 1
+    setor: unknown
   ) => {
     const chave =
       normalizarChaveSetor(
@@ -420,9 +436,7 @@ function contarRespostasPorSetor(
 
 
     if (
-      !chave ||
-      quantidade <=
-        0
+      !chave
     ) {
       return;
     }
@@ -436,39 +450,29 @@ function contarRespostasPorSetor(
         ) ||
         0
       ) +
-      quantidade
+      1
     );
   };
 
 
+  /*
+   * Cada resposta conta individualmente para o setor
+   * informado pelo respondente.
+   *
+   * Respostas sem setor permanecem no consolidado geral,
+   * mas não entram em nenhum recorte setorial.
+   */
   for (
     const pesquisa
     of pesquisasBanco
   ) {
-    if (
-      tipo ===
-      TipoModuloPesquisa.CLIMA
-    ) {
-      adicionar(
-        pesquisa.setor,
-        (
-          pesquisa.respostas ||
-          []
-        ).length
-      );
-
-      continue;
-    }
-
-
     for (
       const resposta
       of pesquisa.respostas ||
       []
     ) {
       adicionar(
-        resposta.setor,
-        1
+        resposta.setor
       );
     }
   }
@@ -480,16 +484,33 @@ function contarRespostasPorSetor(
 
 function filtrarPesquisasPorSetor(
   pesquisasBanco: any[],
-  tipo: TipoModuloPesquisa,
-  setor?: string
+  setor?: string,
+  chavesSetoresAgrupados:
+    Set<string> =
+      new Set()
 ) {
+  if (
+    !setor
+  ) {
+    return pesquisasBanco;
+  }
+
+
+  const filtroGeral =
+    setor ===
+    VALOR_FILTRO_SETOR_GERAL;
+
+
   const chaveFiltro =
-    normalizarChaveSetor(
-      setor
-    );
+    filtroGeral
+      ? ""
+      : normalizarChaveSetor(
+          setor
+        );
 
 
   if (
+    !filtroGeral &&
     !chaveFiltro
   ) {
     return pesquisasBanco;
@@ -497,30 +518,12 @@ function filtrarPesquisasPorSetor(
 
 
   /*
-   * CLIMA:
-   * o setor pertence à própria aplicação.
-   */
-  if (
-    tipo ===
-    TipoModuloPesquisa.CLIMA
-  ) {
-    return pesquisasBanco.filter(
-      pesquisa =>
-        normalizarChaveSetor(
-          pesquisa.setor
-        ) ===
-        chaveFiltro
-    );
-  }
-
-
-  /*
-   * DESEMPENHO / PSICOSSOCIAL:
-   * o setor pertence à resposta.
+   * Para um setor normal, mantemos somente respostas
+   * daquele setor.
    *
-   * Mantemos somente as respostas do setor selecionado
-   * e descartamos aplicações que ficaram sem respostas
-   * após o recorte.
+   * Para o filtro "Geral", mantemos as respostas cujos
+   * setores pertencem ao conjunto de setores com menos
+   * de MINIMO_RESPOSTAS_FILTRO_SETOR respostas.
    */
   return pesquisasBanco
     .map(
@@ -534,11 +537,34 @@ function filtrarPesquisasPorSetor(
           ).filter(
             (
               resposta: any
-            ) =>
-              normalizarChaveSetor(
-                resposta.setor
-              ) ===
-              chaveFiltro
+            ) => {
+              const chaveResposta =
+                normalizarChaveSetor(
+                  resposta.setor
+                );
+
+
+              if (
+                !chaveResposta
+              ) {
+                return false;
+              }
+
+
+              if (
+                filtroGeral
+              ) {
+                return chavesSetoresAgrupados.has(
+                  chaveResposta
+                );
+              }
+
+
+              return (
+                chaveResposta ===
+                chaveFiltro
+              );
+            }
           ),
       })
     )
@@ -547,85 +573,6 @@ function filtrarPesquisasPorSetor(
         pesquisa.respostas.length >
         0
     );
-}
-
-
-function resolverSetorAplicacao(
-  valor: unknown,
-  setoresCliente: unknown
-): string | null {
-  const setorInformado =
-    String(
-      valor ??
-      ""
-    ).trim();
-
-
-  /*
-   * Sem setor significa aplicação
-   * para toda a empresa.
-   */
-  if (
-    !setorInformado
-  ) {
-    return null;
-  }
-
-
-  const setores =
-    normalizarSetoresCliente(
-      setoresCliente
-    );
-
-
-  const normalizarChave = (
-    texto: string
-  ) =>
-    texto
-      .normalize(
-        "NFD"
-      )
-      .replace(
-        /[\u0300-\u036f]/g,
-        ""
-      )
-      .trim()
-      .toLocaleLowerCase(
-        "pt-BR"
-      );
-
-
-  const chaveInformada =
-    normalizarChave(
-      setorInformado
-    );
-
-
-  const setorEncontrado =
-    setores.find(
-      setor =>
-        normalizarChave(
-          setor
-        ) ===
-        chaveInformada
-    );
-
-
-  if (
-    !setorEncontrado
-  ) {
-    throw new Error(
-      "O setor selecionado não pertence ao cliente."
-    );
-  }
-
-
-  /*
-   * Retorna exatamente o nome cadastrado
-   * no cliente, preservando acentuação
-   * e capitalização.
-   */
-  return setorEncontrado;
 }
 
 
@@ -2573,16 +2520,35 @@ function montarAnaliseClima(
  * permanecem apenas no consolidado geral, pois não formam
  * um recorte setorial específico.
  */
+/*
+ * O setor pertence à RESPOSTA da Pesquisa de Clima.
+ *
+ * Portanto:
+ * - a aplicação é criada para toda a empresa;
+ * - o respondente pode informar o setor opcionalmente;
+ * - respostas sem setor permanecem somente no consolidado geral;
+ * - cada recorte setorial considera apenas as respostas que
+ *   declararam aquele setor;
+ * - por privacidade, somente setores com pelo menos
+ *   MINIMO_RESPOSTAS_FILTRO_SETOR respostas entram na análise.
+ */
 function montarAnaliseClimaPorSetor(
   pesquisasBanco: any[]
 ): AnaliseClimaSetor[] {
+  type GrupoSetor = {
+    setor: string;
+
+    pesquisas: Map<
+      string,
+      any
+    >;
+  };
+
+
   const grupos =
     new Map<
       string,
-      {
-        setor: string;
-        pesquisas: any[];
-      }
+      GrupoSetor
     >();
 
 
@@ -2590,98 +2556,270 @@ function montarAnaliseClimaPorSetor(
     const pesquisa
     of pesquisasBanco
   ) {
-    const setor =
-      String(
-        pesquisa.setor ??
-        ""
-      ).trim();
+    for (
+      const resposta
+      of pesquisa.respostas ||
+      []
+    ) {
+      const setor =
+        String(
+          resposta.setor ??
+          ""
+        ).trim();
+
+
+      /*
+       * Resposta sem setor continua participando do
+       * consolidado geral da pesquisa, mas não entra
+       * em nenhum recorte setorial.
+       */
+      if (
+        !setor
+      ) {
+        continue;
+      }
+
+
+      const chave =
+        normalizarChaveSetor(
+          setor
+        );
+
+
+      if (
+        !chave
+      ) {
+        continue;
+      }
+
+
+      const grupo =
+        grupos.get(
+          chave
+        ) || {
+          setor,
+
+          pesquisas:
+            new Map<
+              string,
+              any
+            >(),
+        };
+
+
+      const pesquisaSetor =
+        grupo.pesquisas.get(
+          pesquisa.id
+        ) || {
+          ...pesquisa,
+
+          respostas:
+            [],
+        };
+
+
+      pesquisaSetor.respostas.push(
+        resposta
+      );
+
+
+      grupo.pesquisas.set(
+        pesquisa.id,
+        pesquisaSetor
+      );
+
+
+      grupos.set(
+        chave,
+        grupo
+      );
+    }
+  }
+
+
+  const resultados:
+    AnaliseClimaSetor[] =
+      [];
+
+
+  /*
+   * Os setores com menos de 5 respostas não serão
+   * exibidos individualmente. Suas respostas serão
+   * acumuladas aqui para formar o grupo "Geral".
+   */
+  const pesquisasGeral =
+    new Map<
+      string,
+      any
+    >();
+
+
+  let totalRespostasGeral =
+    0;
+
+
+  for (
+    const grupo
+    of grupos.values()
+  ) {
+    const pesquisas =
+      Array.from(
+        grupo.pesquisas.values()
+      );
+
+
+    const totalRespostas =
+      pesquisas.reduce(
+        (
+          total,
+          pesquisa
+        ) =>
+          total +
+          (
+            pesquisa.respostas ||
+            []
+          ).length,
+        0
+      );
 
 
     if (
-      !setor
+      totalRespostas <
+      MINIMO_RESPOSTAS_FILTRO_SETOR
     ) {
+      totalRespostasGeral +=
+        totalRespostas;
+
+
+      for (
+        const pesquisa
+        of pesquisas
+      ) {
+        const pesquisaGeral =
+          pesquisasGeral.get(
+            pesquisa.id
+          ) || {
+            ...pesquisa,
+
+            respostas:
+              [],
+          };
+
+
+        pesquisaGeral.respostas.push(
+          ...(
+            pesquisa.respostas ||
+            []
+          )
+        );
+
+
+        pesquisasGeral.set(
+          pesquisa.id,
+          pesquisaGeral
+        );
+      }
+
+
       continue;
     }
 
 
-    const chave =
-      chaveTexto(
-        setor
+    const analise =
+      montarAnaliseClima(
+        pesquisas
       );
 
 
-    const atual =
-      grupos.get(
-        chave
-      ) || {
-        setor,
-        pesquisas:
-          [],
-      };
+    resultados.push({
+      setor:
+        grupo.setor,
 
+      totalPesquisas:
+        pesquisas.length,
 
-    atual.pesquisas.push(
-      pesquisa
-    );
+      totalRespostas,
 
+      indiceGeralClima:
+        analise.indiceGeralClima,
 
-    grupos.set(
-      chave,
-      atual
-    );
+      dimensoes:
+        analise.dimensoes,
+
+      agrupado:
+        false,
+    });
   }
 
 
-  return Array.from(
-    grupos.values()
-  )
-    .map(
-      grupo => {
-        const analise =
-          montarAnaliseClima(
-            grupo.pesquisas
-          );
+  /*
+   * Exceção solicitada:
+   *
+   * "Geral" NÃO precisa atingir 5 respostas.
+   * Se existir ao menos uma resposta pertencente a um
+   * setor pequeno, o agrupamento será apresentado.
+   */
+  if (
+    totalRespostasGeral >
+    0
+  ) {
+    const pesquisas =
+      Array.from(
+        pesquisasGeral.values()
+      );
 
 
-        const totalRespostas =
-          grupo.pesquisas.reduce(
-            (
-              total,
-              pesquisa
-            ) =>
-              total +
-              pesquisa.respostas.length,
-            0
-          );
+    const analise =
+      montarAnaliseClima(
+        pesquisas
+      );
 
 
-        return {
-          setor:
-            grupo.setor,
+    resultados.push({
+      setor:
+        NOME_SETOR_GERAL,
 
-          totalPesquisas:
-            grupo.pesquisas.length,
+      totalPesquisas:
+        pesquisas.length,
 
-          totalRespostas,
+      totalRespostas:
+        totalRespostasGeral,
 
-          indiceGeralClima:
-            analise.indiceGeralClima,
+      indiceGeralClima:
+        analise.indiceGeralClima,
 
-          dimensoes:
-            analise.dimensoes,
-        };
+      dimensoes:
+        analise.dimensoes,
+
+      agrupado:
+        true,
+    });
+  }
+
+
+  return resultados.sort(
+    (
+      a,
+      b
+    ) => {
+      /*
+       * Mantemos o grupo Geral ao final da comparação.
+       */
+      if (
+        Boolean(
+          a.agrupado
+        ) !==
+        Boolean(
+          b.agrupado
+        )
+      ) {
+        return a.agrupado
+          ? 1
+          : -1;
       }
-    )
-    .filter(
-      setor =>
-        setor.totalRespostas >
-        0
-    )
-    .sort(
-      (
-        a,
-        b
-      ) =>
+
+
+      return (
         (
           b.indiceGeralClima ??
           -1
@@ -2694,7 +2832,9 @@ function montarAnaliseClimaPorSetor(
           b.setor,
           "pt-BR"
         )
-    );
+      );
+    }
+  );
 }
 
 
@@ -4312,16 +4452,6 @@ export default class RepositorioPesquisaCliente {
     }
 
 
-    const setorAplicacao =
-      tipoEsperado ===
-      TipoModuloPesquisa.CLIMA
-        ? resolverSetorAplicacao(
-            pesquisa.setor,
-            cliente.setores
-          )
-        : null;
-
-
     const dimensoesModelo =
       normalizarDimensoes(
         modelo.dimensoes
@@ -4480,8 +4610,12 @@ export default class RepositorioPesquisaCliente {
               pesquisa.status ??
               atual.status,
 
+            /*
+             * O setor não pertence mais à aplicação.
+             * Ele é informado opcionalmente em cada resposta.
+             */
             setor:
-              setorAplicacao,
+              null,
 
             perguntas:
               perguntas as unknown as Prisma.InputJsonValue,
@@ -4533,8 +4667,12 @@ export default class RepositorioPesquisaCliente {
             pesquisa.token ||
             randomUUID(),
 
+          /*
+           * O setor não pertence mais à aplicação.
+           * Ele é informado opcionalmente em cada resposta.
+           */
           setor:
-            setorAplicacao,
+            null,
 
           perguntas:
             perguntasModelo as unknown as Prisma.InputJsonValue,
@@ -5029,9 +5167,6 @@ export default class RepositorioPesquisaCliente {
             clienteId:
               true,
 
-            setor:
-              true,
-
             cliente: {
               select: {
                 id:
@@ -5078,8 +5213,8 @@ export default class RepositorioPesquisaCliente {
      * Cada cliente possui a sua própria lista de setores.
      *
      * Além dos setores cadastrados no Cliente, preservamos setores
-     * encontrados nas aplicações/respostas já existentes daquele
-     * cliente. Isso mantém compatibilidade com dados históricos.
+     * encontrados nas respostas já existentes daquele cliente.
+     * Isso mantém compatibilidade com dados históricos.
      */
     const clientesComSetores =
       clientes.map(
@@ -5100,15 +5235,13 @@ export default class RepositorioPesquisaCliente {
 
           const setoresEncontrados =
             listarSetoresRelatorio(
-              pesquisasCliente,
-              tipo
+              pesquisasCliente
             );
 
 
           const contagemPorSetor =
             contarRespostasPorSetor(
-              pesquisasCliente,
-              tipo
+              pesquisasCliente
             );
 
 
@@ -5146,43 +5279,129 @@ export default class RepositorioPesquisaCliente {
           }
 
 
-          const setores =
-            Array.from(
-              mapaSetores.values()
-            ).sort(
-              (
-                a,
-                b
-              ) =>
-                a.localeCompare(
-                  b,
-                  "pt-BR"
-                )
+          const setoresComMinimo:
+            SetorRelatorioCliente[] =
+              [];
+
+
+          const chavesSetoresGerais:
+            string[] =
+              [];
+
+
+          let totalRespostasGeral =
+            0;
+
+
+          for (
+            const [
+              chave,
+              nome,
+            ]
+            of mapaSetores.entries()
+          ) {
+            const totalRespostas =
+              contagemPorSetor.get(
+                chave
+              ) ||
+              0;
+
+
+            /*
+             * Setor sem resposta não aparece no relatório.
+             */
+            if (
+              totalRespostas <=
+              0
+            ) {
+              continue;
+            }
+
+
+            if (
+              totalRespostas >=
+              MINIMO_RESPOSTAS_FILTRO_SETOR
+            ) {
+              setoresComMinimo.push({
+                nome,
+
+                valor:
+                  nome,
+
+                disponivel:
+                  true,
+
+                agrupado:
+                  false,
+
+                totalRespostas,
+              });
+
+
+              continue;
+            }
+
+
+            /*
+             * Setores com menos de 5 respostas deixam de
+             * aparecer individualmente e passam a integrar
+             * o recorte sintético "Geral".
+             */
+            chavesSetoresGerais.push(
+              chave
             );
 
-
-          const setoresRelatorio: SetorRelatorioCliente[] =
-            setores.map(
-              setor => {
-                const totalRespostas =
-                  contagemPorSetor.get(
-                    normalizarChaveSetor(
-                      setor
-                    )
-                  ) ||
-                  0;
+            totalRespostasGeral +=
+              totalRespostas;
+          }
 
 
-                return {
-                  nome:
-                    setor,
+          setoresComMinimo.sort(
+            (
+              a,
+              b
+            ) =>
+              a.nome.localeCompare(
+                b.nome,
+                "pt-BR"
+              )
+          );
 
-                  disponivel:
-                    totalRespostas >=
-                    MINIMO_RESPOSTAS_FILTRO_SETOR,
-                };
-              }
-            );
+
+          const setoresRelatorio:
+            SetorRelatorioCliente[] =
+              [
+                ...setoresComMinimo,
+              ];
+
+
+          /*
+           * O grupo "Geral" é sempre disponível quando
+           * existir pelo menos uma resposta de setor pequeno.
+           *
+           * Ele é uma exceção expressa à regra de 5 respostas.
+           */
+          if (
+            totalRespostasGeral >
+            0
+          ) {
+            setoresRelatorio.push({
+              nome:
+                NOME_SETOR_GERAL,
+
+              valor:
+                VALOR_FILTRO_SETOR_GERAL,
+
+              disponivel:
+                true,
+
+              agrupado:
+                true,
+
+              totalRespostas:
+                totalRespostasGeral,
+            });
+          }
 
 
           return {
@@ -5195,9 +5414,23 @@ export default class RepositorioPesquisaCliente {
             empresa:
               cliente.empresa,
 
-            setores,
+            /*
+             * Lista pública usada pelo relatório.
+             * Não expõe individualmente os setores pequenos.
+             */
+            setores:
+              setoresRelatorio.map(
+                setor =>
+                  setor.nome
+              ),
 
             setoresRelatorio,
+
+            /*
+             * Uso interno no servidor para saber quais
+             * respostas pertencem ao filtro "Geral".
+             */
+            chavesSetoresGerais,
           };
         }
       );
@@ -5221,22 +5454,30 @@ export default class RepositorioPesquisaCliente {
         : null;
 
 
-    const chaveSetorSolicitado =
+    const valorSetorSolicitado =
       clienteSelecionado
-        ? normalizarChaveSetor(
-            filtros.setor
-          )
+        ? String(
+            filtros.setor ??
+            ""
+          ).trim()
         : "";
 
 
     const setorSolicitado =
-      chaveSetorSolicitado
+      valorSetorSolicitado
         ? clienteSelecionado?.setoresRelatorio.find(
             setor =>
-              normalizarChaveSetor(
-                setor.nome
-              ) ===
-              chaveSetorSolicitado
+              setor.valor ===
+              valorSetorSolicitado ||
+              (
+                !setor.agrupado &&
+                normalizarChaveSetor(
+                  setor.valor
+                ) ===
+                normalizarChaveSetor(
+                  valorSetorSolicitado
+                )
+              )
           ) ||
           null
         : null;
@@ -5244,42 +5485,56 @@ export default class RepositorioPesquisaCliente {
 
     const setorSelecionado =
       setorSolicitado?.disponivel
-        ? setorSolicitado.nome
+        ? setorSolicitado.valor
         : null;
 
 
+    /*
+     * Um setor pequeno antigo, informado manualmente na URL,
+     * ou qualquer valor que não esteja disponível no relatório,
+     * é bloqueado. Para consultá-lo, o usuário deverá escolher
+     * o agrupamento "Geral".
+     */
     const filtroSetorBloqueado =
       Boolean(
-        chaveSetorSolicitado &&
-        setorSolicitado &&
-        !setorSolicitado.disponivel
+        valorSetorSolicitado &&
+        !setorSolicitado
       );
 
 
     /*
      * Lista exibida no dropdown de setor:
-     * somente setores do cliente atualmente selecionado.
+     * somente setores individuais com >= 5 respostas
+     * e o agrupamento "Geral", quando existir.
      */
     const setores =
-      clienteSelecionado?.setores ||
+      clienteSelecionado?.setoresRelatorio.map(
+        setor =>
+          setor.nome
+      ) ||
       [];
 
 
+    const chavesSetoresAgrupados =
+      new Set(
+        clienteSelecionado?.chavesSetoresGerais ||
+        []
+      );
+
+
     /*
-     * Aplica o recorte correto por módulo:
+     * O recorte mantém somente as respostas do setor
+     * selecionado.
      *
-     * CLIMA:
-     *   PesquisaCliente.setor
-     *
-     * DESEMPENHO / PSICOSSOCIAL:
-     *   RespostaPesquisaCliente.setor
+     * Para "__GERAL__", ele mantém todas as respostas
+     * dos setores que ficaram abaixo do mínimo de 5.
      */
     const pesquisasBanco =
       filtrarPesquisasPorSetor(
         pesquisasBancoBase,
-        tipo,
         setorSelecionado ||
-        undefined
+        undefined,
+        chavesSetoresAgrupados
       );
 
 
@@ -5330,9 +5585,16 @@ export default class RepositorioPesquisaCliente {
             status:
               pesquisa.status,
 
+            /*
+             * Campo legado da aplicação.
+             * No CLIMA o setor agora pertence à resposta.
+             */
             setor:
-              pesquisa.setor ??
-              null,
+              tipo ===
+              TipoModuloPesquisa.CLIMA
+                ? null
+                : pesquisa.setor ??
+                  null,
 
             criadoEm:
               pesquisa.criadoEm,
@@ -5657,7 +5919,13 @@ export default class RepositorioPesquisaCliente {
       setores,
 
       clientes:
-        clientesComSetores,
+        clientesComSetores.map(
+          ({
+            chavesSetoresGerais,
+            ...cliente
+          }) =>
+            cliente
+        ),
 
       privacidadeSetor: {
         minimoRespostas:
@@ -5668,11 +5936,14 @@ export default class RepositorioPesquisaCliente {
 
         setorSolicitado:
           setorSolicitado?.nome ||
-          null,
+          (
+            valorSetorSolicitado ||
+            null
+          ),
 
         mensagem:
           filtroSetorBloqueado
-            ? `Para preservar o anonimato, o filtro por setor só pode ser aplicado quando houver pelo menos ${MINIMO_RESPOSTAS_FILTRO_SETOR} respostas no setor selecionado.`
+            ? `Setores com menos de ${MINIMO_RESPOSTAS_FILTRO_SETOR} respostas não podem ser consultados individualmente. Essas respostas são reunidas no filtro "${NOME_SETOR_GERAL}".`
             : null,
       },
 

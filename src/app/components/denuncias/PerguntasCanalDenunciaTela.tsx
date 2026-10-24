@@ -578,7 +578,7 @@ export default function PerguntasCanalDenunciaTela() {
 
         <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1050px]">
+            <table className="w-full min-w-[1180px]">
               <thead className="bg-slate-50">
                 <tr>
                   <Th>
@@ -612,6 +612,10 @@ export default function PerguntasCanalDenunciaTela() {
                   </Th>
 
                   <Th>
+                    Visibilidade
+                  </Th>
+
+                  <Th>
                     Status
                   </Th>
 
@@ -625,7 +629,7 @@ export default function PerguntasCanalDenunciaTela() {
                 {carregando ? (
                   <Linha
                     colunas={
-                      7
+                      8
                     }
                     texto="Carregando..."
                   />
@@ -633,7 +637,7 @@ export default function PerguntasCanalDenunciaTela() {
                   0 ? (
                   <Linha
                     colunas={
-                      7
+                      8
                     }
                     texto="Nenhuma pergunta cadastrada."
                   />
@@ -720,6 +724,24 @@ export default function PerguntasCanalDenunciaTela() {
                               )
                           ) : (
                             "-"
+                          )}
+                        </td>
+
+                        <td className="px-4 py-4 text-sm">
+                          {pergunta.exclusivaMundial ? (
+                            <div>
+                              <span className="inline-flex rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700">
+                                Somente Mundial
+                              </span>
+
+                              <p className="mt-1 text-xs text-slate-500">
+                                O cliente não visualiza a resposta
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                              Mundial e cliente
+                            </span>
                           )}
                         </td>
 

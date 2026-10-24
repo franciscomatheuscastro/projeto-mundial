@@ -31,6 +31,7 @@ export type PerguntaCanalDenunciaDto = {
   abrirComplementoSim: boolean;
   opcoes: string[];
   ativo: boolean;
+  exclusivaMundial: boolean;
   ordem: number;
   todosCanais: boolean;
   clienteIds: string[];
@@ -49,6 +50,7 @@ export type SalvarPerguntaCanalDenunciaInput = {
   abrirComplementoSim?: boolean;
   opcoes?: string[];
   ativo: boolean;
+  exclusivaMundial?: boolean;
   ordem: number;
   todosCanais?: boolean;
   clienteIds?: string[];
@@ -167,6 +169,7 @@ function mapearPergunta(
     abrirComplementoSim: boolean;
     opcoes: Prisma.JsonValue;
     ativo: boolean;
+    exclusivaMundial: boolean;
     ordem: number;
     todosCanais: boolean;
     criadoEm: Date;
@@ -213,6 +216,9 @@ function mapearPergunta(
 
     ativo:
       pergunta.ativo,
+
+    exclusivaMundial:
+      pergunta.exclusivaMundial,
 
     ordem:
       pergunta.ordem,
@@ -549,6 +555,11 @@ export async function salvarPerguntaCanalDenuncia(
               dados.ativo
             ),
 
+          exclusivaMundial:
+            Boolean(
+              dados.exclusivaMundial
+            ),
+
           ordem:
             Number.isFinite(
               Number(
@@ -585,6 +596,29 @@ export async function salvarPerguntaCanalDenuncia(
           pergunta.id,
           clienteIds
         );
+
+
+        /*
+         * Mantemos a visibilidade das respostas já registradas
+         * sincronizada com a configuração atual da pergunta.
+         *
+         * Assim, ao marcar uma pergunta existente como exclusiva
+         * da Mundial, respostas antigas também deixam de ser
+         * retornadas aos usuários do cliente.
+         */
+        await tx.respostaPerguntaCanalDenuncia.updateMany({
+          where: {
+            perguntaId:
+              pergunta.id,
+          },
+
+          data: {
+            exclusivaMundial:
+              Boolean(
+                dados.exclusivaMundial
+              ),
+          },
+        });
 
 
         return tx.perguntaCanalDenuncia.findUniqueOrThrow({

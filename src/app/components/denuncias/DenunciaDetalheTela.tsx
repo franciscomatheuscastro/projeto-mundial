@@ -50,6 +50,24 @@ function formatarTamanho(tamanho: number) {
   return `${(tamanho / 1024 / 1024).toFixed(2)} MB`;
 }
 
+function respostaEhExclusivaMundial(
+  resposta: unknown
+) {
+  if (
+    !resposta ||
+    typeof resposta !== "object"
+  ) {
+    return false;
+  }
+
+  return (
+    resposta as {
+      exclusivaMundial?: unknown;
+    }
+  ).exclusivaMundial === true;
+}
+
+
 function formatarRespostaPersonalizada(
   resposta: unknown
 ) {
@@ -414,8 +432,26 @@ export default function DenunciaDetalheTela({
 
   const anexos = denunciaSelecionada.anexos ?? [];
 
+  /*
+   * Segurança em profundidade:
+   *
+   * O backend do contexto "cliente" DEVE filtrar respostas
+   * exclusivaMundial antes de enviá-las ao navegador.
+   *
+   * Mesmo assim, este componente também impede a renderização
+   * caso alguma resposta restrita chegue por engano.
+   */
   const respostasPerguntasCanal =
-    denunciaSelecionada.respostasPerguntasCanal ?? [];
+    (
+      denunciaSelecionada.respostasPerguntasCanal ??
+      []
+    ).filter(
+      item =>
+        usuarioMundial ||
+        !respostaEhExclusivaMundial(
+          item
+        )
+    );
 
   return (
     <main className="min-h-screen bg-slate-100">
@@ -529,40 +565,81 @@ export default function DenunciaDetalheTela({
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               {respostasPerguntasCanal.map(
-                (item) => (
-                  <div
-                    key={item.id}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
-                  >
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {item.perguntaEnunciado}
-                    </p>
+                (item) => {
+                  const exclusivaMundial =
+                    respostaEhExclusivaMundial(
+                      item
+                    );
 
-                    <p className="mt-2 whitespace-pre-wrap break-words text-sm font-medium leading-6 text-slate-900">
-                      {formatarRespostaPersonalizada(
-                        item.resposta
-                      )}
-                    </p>
-
-                    {item.complemento && (
-                      <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                          Complemento
+                  return (
+                    <div
+                      key={item.id}
+                      className={`rounded-2xl border px-4 py-4 ${
+                        exclusivaMundial
+                          ? "border-violet-200 bg-violet-50/60"
+                          : "border-slate-200 bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {item.perguntaEnunciado}
                         </p>
 
-                        <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
-                          {item.complemento}
-                        </p>
+                        {usuarioMundial &&
+                          exclusivaMundial && (
+                          <span className="inline-flex w-fit shrink-0 rounded-full bg-violet-100 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-violet-700">
+                            Somente Mundial
+                          </span>
+                        )}
                       </div>
-                    )}
 
-                    <p className="mt-3 text-xs text-slate-400">
-                      {formatarTexto(
-                        item.perguntaTipo
+                      <p className="mt-2 whitespace-pre-wrap break-words text-sm font-medium leading-6 text-slate-900">
+                        {formatarRespostaPersonalizada(
+                          item.resposta
+                        )}
+                      </p>
+
+                      {item.complemento && (
+                        <div
+                          className={`mt-3 rounded-xl border px-3 py-3 ${
+                            exclusivaMundial
+                              ? "border-violet-100 bg-white/70"
+                              : "border-blue-100 bg-blue-50"
+                          }`}
+                        >
+                          <p
+                            className={`text-xs font-semibold uppercase tracking-wide ${
+                              exclusivaMundial
+                                ? "text-violet-700"
+                                : "text-blue-700"
+                            }`}
+                          >
+                            Complemento
+                          </p>
+
+                          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                            {item.complemento}
+                          </p>
+                        </div>
                       )}
-                    </p>
-                  </div>
-                )
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <p className="text-xs text-slate-400">
+                          {formatarTexto(
+                            item.perguntaTipo
+                          )}
+                        </p>
+
+                        {usuarioMundial &&
+                          exclusivaMundial && (
+                          <span className="text-xs font-semibold text-violet-600">
+                            Resposta restrita aos usuários da Mundial
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
               )}
             </div>
           </section>

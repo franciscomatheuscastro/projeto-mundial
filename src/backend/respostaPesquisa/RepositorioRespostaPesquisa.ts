@@ -366,8 +366,13 @@ export default class RepositorioRespostaPesquisa {
       status:
         pesquisa.status,
 
+      /*
+       * Campo legado da aplicação.
+       * O questionário não deve mais depender dele.
+       * O setor é informado opcionalmente pelo respondente.
+       */
       setor:
-        pesquisa.setor,
+        null,
 
       perguntas:
         normalizarPerguntas(
@@ -512,16 +517,19 @@ export default class RepositorioRespostaPesquisa {
       );
 
 
-    if (
-      !ehPesquisaClima
-    ) {
-      validarSetorSelecionado(
-        setorInformado,
-        normalizarSetores(
-          pesquisa.cliente.setores
-        )
-      );
-    }
+    /*
+     * O setor agora pertence à resposta, inclusive em CLIMA.
+     *
+     * Ele continua opcional. Porém, quando o cliente possui
+     * uma lista de setores cadastrados e o participante informa
+     * um setor, validamos para impedir valores fora da lista.
+     */
+    validarSetorSelecionado(
+      setorInformado,
+      normalizarSetores(
+        pesquisa.cliente.setores
+      )
+    );
 
     return prisma.respostaPesquisa.create({
       data: {
@@ -543,10 +551,17 @@ export default class RepositorioRespostaPesquisa {
             ? null
             : textoOuNull(resposta.unidade),
 
+        /*
+         * O setor é uma informação da RESPOSTA.
+         *
+         * Para CLIMA:
+         * - nome, e-mail, unidade e cargo permanecem anônimos;
+         * - setor é opcional e pode ser informado pelo respondente.
+         *
+         * Para os demais módulos, o comportamento continua o mesmo.
+         */
         setor:
-          ehPesquisaClima
-            ? pesquisa.setor
-            : setorInformado,
+          setorInformado,
 
         cargo:
           ehPesquisaClima

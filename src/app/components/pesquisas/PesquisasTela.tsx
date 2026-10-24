@@ -352,52 +352,6 @@ export default function PesquisasTela({
 
 
 
-  const [
-
-    setorPesquisa,
-
-    setSetorPesquisa,
-
-  ] =
-
-    useState("");
-
-
-
-
-
-  const clienteSelecionado =
-
-    useMemo(
-
-      () =>
-
-        dadosFormulario.clientes.find(
-
-          cliente =>
-
-            cliente.id === clienteId
-
-        ),
-
-      [
-
-        dadosFormulario.clientes,
-
-        clienteId,
-
-      ]
-
-    );
-
-
-
-  const setoresClienteSelecionado =
-
-    clienteSelecionado?.setores ?? [];
-
-
-
   const usuarioMundial =
 
     contexto ===
@@ -469,64 +423,6 @@ export default function PesquisasTela({
 
 
 
-
-
-
-
-
-  useEffect(() => {
-
-    if (
-
-      !setorPesquisa
-
-    ) {
-
-      return;
-
-    }
-
-
-
-
-
-    const aindaExiste =
-
-      setoresClienteSelecionado.some(
-
-        setor =>
-
-          setor ===
-
-          setorPesquisa
-
-      );
-
-
-
-
-
-    if (
-
-      !aindaExiste
-
-    ) {
-
-      setSetorPesquisa(
-
-        ""
-
-      );
-
-    }
-
-  }, [
-
-    setorPesquisa,
-
-    setoresClienteSelecionado,
-
-  ]);
 
 
 
@@ -672,9 +568,11 @@ export default function PesquisasTela({
 
 
 
+        /*
+         * O setor não é definido na criação da pesquisa.
+         * Quando informado, ele pertence à resposta do participante.
+         */
         setor:
-
-          setorPesquisa ||
 
           null,
 
@@ -1686,117 +1584,11 @@ export default function PesquisasTela({
 
 
 
-              <div className="mb-5">
-
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-
-                  Setor da pesquisa
-
-                </label>
-
-
-
-                <select
-
-                  value={
-
-                    setorPesquisa
-
-                  }
-
-                  onChange={event =>
-
-                    setSetorPesquisa(
-
-                      event.target.value
-
-                    )
-
-                  }
-
-                  disabled={
-
-                    !clienteId
-
-                  }
-
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-
-                >
-
-                  <option value="">
-
-                    Toda a empresa
-
-                  </option>
-
-
-
-                  {setoresClienteSelecionado.map(
-
-                    setor => (
-
-                      <option
-
-                        key={
-
-                          setor
-
-                        }
-
-                        value={
-
-                          setor
-
-                        }
-
-                      >
-
-                        {
-
-                          setor
-
-                        }
-
-                      </option>
-
-                    )
-
-                  )}
-
-                </select>
-
-
-
-                <p className="mt-2 text-xs leading-5 text-slate-500">
-
-                  A Mundial define o setor desta aplicação. O respondente não
-
-                  seleciona setor e não informa nome, e-mail ou cargo.
-
-                </p>
-
-
-
-                {clienteId &&
-
-                  setoresClienteSelecionado.length ===
-
-                    0 && (
-
-                    <p className="mt-2 text-xs font-bold text-amber-700">
-
-                      Este cliente ainda não possui setores cadastrados. A
-
-                      pesquisa será aplicada para toda a empresa.
-
-                    </p>
-
-                  )}
-
+              <div className="mb-5 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900">
+                <strong>Setor:</strong>{" "}
+                não é definido na criação da pesquisa. Cada participante poderá
+                informar seu setor opcionalmente ao responder o questionário.
               </div>
-
-
 
 
 
@@ -2175,17 +1967,8 @@ export default function PesquisasTela({
 
 
                   <Info
-
-                    titulo="Setor"
-
-                    valor={
-
-                      pesquisaSelecionada.setor ||
-
-                      "Toda a empresa"
-
-                    }
-
+                    titulo="Abrangência"
+                    valor="Toda a empresa"
                   />
 
                 </div>

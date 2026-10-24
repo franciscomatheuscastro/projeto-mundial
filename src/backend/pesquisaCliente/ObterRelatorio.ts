@@ -2,6 +2,11 @@
 
 import RepositorioPesquisaCliente from "./RepositorioPesquisaCliente";
 
-export default async function obterRelatorioPesquisaCliente(id: string) {
-  return RepositorioPesquisaCliente.obterRelatorio(id);
+
+export default async function obterRelatorioPesquisaCliente(
+  id: string
+) {
+  return RepositorioPesquisaCliente.obterRelatorio(
+    id
+  );
 }

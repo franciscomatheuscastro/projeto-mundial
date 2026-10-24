@@ -23,6 +23,12 @@ export type FiltrosRelatorioPesquisas = {
   dataInicio?: string;
   dataFim?: string;
   clienteId?: string;
+
+  /*
+   * Para Pesquisa de Clima, o setor passa a ser o setor
+   * informado opcionalmente em RespostaPesquisa.setor.
+   */
+  setor?: string;
 };
 
 
@@ -33,7 +39,9 @@ export default async function obterDadosRelatorio(
     await auth();
 
 
-  if (!session?.user) {
+  if (
+    !session?.user
+  ) {
     throw new Error(
       "Usuário não autenticado."
     );

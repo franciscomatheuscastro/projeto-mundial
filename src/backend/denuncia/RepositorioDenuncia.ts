@@ -296,6 +296,7 @@ type RespostaPersonalizadaValidada = {
     | "MULTIPLA_ESCOLHA";
   resposta: string | boolean;
   complemento?: string | null;
+  exclusivaMundial: boolean;
 };
 
 async function validarRespostasPersonalizadas(
@@ -333,6 +334,7 @@ async function validarRespostasPersonalizadas(
         obrigatoria: true,
         abrirComplementoSim: true,
         opcoes: true,
+        exclusivaMundial: true,
       },
     });
 
@@ -412,6 +414,8 @@ async function validarRespostasPersonalizadas(
         perguntaTipo: pergunta.tipo,
         resposta: resposta.trim(),
         complemento: null,
+        exclusivaMundial:
+          pergunta.exclusivaMundial,
       });
 
       continue;
@@ -433,6 +437,8 @@ async function validarRespostasPersonalizadas(
           resposta && pergunta.abrirComplementoSim
             ? complemento
             : null,
+        exclusivaMundial:
+          pergunta.exclusivaMundial,
       });
 
       continue;
@@ -456,6 +462,8 @@ async function validarRespostasPersonalizadas(
         perguntaTipo: pergunta.tipo,
         resposta,
         complemento: null,
+        exclusivaMundial:
+          pergunta.exclusivaMundial,
       });
 
       continue;
@@ -645,6 +653,8 @@ async function montarDetalhada(
                 resposta.perguntaTipo,
               resposta: resposta.resposta,
               complemento: resposta.complemento,
+              exclusivaMundial:
+                resposta.exclusivaMundial,
               criadoEm: resposta.criadoEm,
             })
           )
@@ -2189,6 +2199,27 @@ export default class RepositorioDenuncia {
         },
 
         respostasPerguntasCanal: {
+          where: {
+            exclusivaMundial:
+              false,
+
+            OR: [
+              {
+                perguntaId:
+                  null,
+              },
+
+              {
+                pergunta: {
+                  is: {
+                    exclusivaMundial:
+                      false,
+                  },
+                },
+              },
+            ],
+          },
+
           orderBy: {
             criadoEm: "asc",
           },

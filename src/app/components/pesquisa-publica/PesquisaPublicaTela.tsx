@@ -110,11 +110,9 @@ export default function PesquisaPublicaTela({
             ).trim() || null,
 
       setor:
-        ehPesquisaClima
-          ? null
-          : String(
-              formData.get("setor") ?? ""
-            ).trim() || null,
+        String(
+          formData.get("setor") ?? ""
+        ).trim() || null,
 
       cargo:
         ehPesquisaClima
@@ -175,7 +173,25 @@ export default function PesquisaPublicaTela({
             </div>
           )}
 
-          {!ehPesquisaClima && (
+          {ehPesquisaClima ? (
+            <Card
+              titulo="Setor"
+              descricao="Informação opcional. Você pode deixar em branco se preferir não informar."
+            >
+              <CampoSetor
+                setores={
+                  pesquisa.cliente.setores ??
+                  []
+                }
+              />
+
+              <p className="mt-3 text-xs leading-5 text-slate-500">
+                A Pesquisa de Clima continua anônima: não solicitamos nome,
+                e-mail ou cargo. O setor é opcional e será usado somente em
+                análises agrupadas.
+              </p>
+            </Card>
+          ) : (
             <Card
               titulo="Identificação"
               descricao="Essas informações são opcionais."
@@ -195,7 +211,10 @@ export default function PesquisaPublicaTela({
                 />
 
                 <CampoSetor
-                  setores={pesquisa.cliente.setores ?? []}
+                  setores={
+                    pesquisa.cliente.setores ??
+                    []
+                  }
                 />
 
                 <Campo
@@ -371,7 +390,7 @@ function CampoSetor({
     <Campo
       name="setor"
       label="Setor"
-      placeholder="Informe seu setor"
+      placeholder="Informe seu setor (opcional)"
       required={required}
     />
   );

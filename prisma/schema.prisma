@@ -350,6 +350,12 @@ model PerguntaCanalDenuncia {
   @@index([ativo, ordem])
 
   todosCanais Boolean @default(false)
+
+  // NOVO:
+  exclusivaMundial    Boolean                    @default(false)
+
+  @@index([todosCanais])
+  @@index([exclusivaMundial])
   
 }
 
@@ -376,6 +382,9 @@ model RespostaPerguntaCanalDenuncia {
 
   complemento       String?
 
+  // NOVO: snapshot de privacidade da resposta
+  exclusivaMundial  Boolean                    @default(false)
+
   criadoEm          DateTime                   @default(now())
 
   denuncia          Denuncia                   @relation(fields: [denunciaId], references: [id], onDelete: Cascade)
@@ -383,6 +392,8 @@ model RespostaPerguntaCanalDenuncia {
 
   @@index([denunciaId])
   @@index([perguntaId])
+
+  @@index([exclusivaMundial])
 }
 
 enum PerfilUsuario {

@@ -31,12 +31,17 @@ export type PerguntaCanalDenuncia = {
    * Quando true, a pergunta é global:
    * - aparece para todos os clientes atuais;
    * - continua válida para clientes criados futuramente.
-   *
-   * Mantido como opcional para compatibilidade com
-   * pontos antigos do sistema que ainda possam montar
-   * este objeto sem informar o campo.
    */
   todosCanais?: boolean;
+
+  /**
+   * Quando true, somente usuários da Mundial podem
+   * visualizar a resposta registrada para esta pergunta.
+   *
+   * A pergunta continua aparecendo normalmente no
+   * formulário público do canal.
+   */
+  exclusivaMundial?: boolean;
 
   clienteIds: string[];
 

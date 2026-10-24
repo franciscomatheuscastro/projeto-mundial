@@ -92,26 +92,26 @@ export default function RelatorioClimaImpressaoTela({
 
 
 
-  const minimoAnonimatoSetor =
-    5;
-
-
-  const setoresOriginais =
+  /*
+   * O backend já devolve:
+   * - setores individuais com 5 ou mais respostas;
+   * - o grupo "Geral", formado pela soma dos setores
+   *   com menos de 5 respostas.
+   *
+   * O grupo Geral não está sujeito ao mínimo de 5.
+   */
+  const setores =
     analise?.setores ||
     [];
 
 
-  const setores =
-    setoresOriginais.filter(
+  const possuiSetorGeral =
+    setores.some(
       setor =>
-        setor.totalRespostas >=
-        minimoAnonimatoSetor
+        Boolean(
+          setor.agrupado
+        )
     );
-
-
-  const setoresOcultados =
-    setoresOriginais.length -
-    setores.length;
 
 
 
@@ -389,13 +389,15 @@ export default function RelatorioClimaImpressaoTela({
 
             <InfoCapa
 
-              label="Setor"
+              label="Setor analisado"
 
               valor={
 
-                dados.filtros.setor ||
+                formatarSetorFiltro(
 
-                "Todos os setores"
+                  dados.filtros.setor
+
+                )
 
               }
 
@@ -617,7 +619,7 @@ export default function RelatorioClimaImpressaoTela({
 
               titulo="Análise por setor"
 
-              descricao="Comparativo do índice de clima e da favorabilidade das dimensões entre os setores vinculados às aplicações."
+              descricao="Setores com 5 ou mais respostas aparecem individualmente; setores menores são consolidados no grupo Geral."
 
             />
 
@@ -625,10 +627,9 @@ export default function RelatorioClimaImpressaoTela({
 
 
 
-            {setoresOcultados >
-              0 && (
+            {possuiSetorGeral && (
               <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-                Por proteção de anonimato, setor(es) com menos de {minimoAnonimatoSetor} respostas foram ocultados desta análise.
+                O grupo <strong>Geral</strong> reúne as respostas dos setores que tiveram menos de 5 respostas individualmente. Por regra deste relatório, o agrupamento Geral pode ser apresentado mesmo quando sua soma total for inferior a 5 respostas.
               </p>
             )}
 
@@ -1113,8 +1114,6 @@ export default function RelatorioClimaImpressaoTela({
 
                   <Th>Organização</Th>
 
-                  <Th>Setor</Th>
-
                   <Th>Status</Th>
 
                   <Th direita>Respostas</Th>
@@ -1184,16 +1183,6 @@ export default function RelatorioClimaImpressaoTela({
 
                       <Td>
 
-                        {pesquisa.setor ||
-
-                          "Toda a empresa"}
-
-                      </Td>
-
-
-
-                      <Td>
-
                         {formatarTipo(
 
                           pesquisa.status
@@ -1254,11 +1243,17 @@ export default function RelatorioClimaImpressaoTela({
 
             Sim/Não e múltipla escolha são apresentadas separadamente como
 
-            informações complementares. A análise por setor utiliza o setor
+            informações complementares. Na análise por setor, o setor é uma
 
-            definido pela Mundial em cada aplicação da Pesquisa de Clima; o
+            informação opcional fornecida pelo próprio respondente. Setores com
 
-            respondente não informa nem seleciona esse dado.
+            5 ou mais respostas são apresentados individualmente. Setores com
+
+            menos de 5 respostas são reunidos em um único grupo denominado
+
+            Geral. Esse agrupamento Geral é uma exceção à regra mínima e pode
+
+            ser apresentado mesmo quando sua soma total for inferior a 5 respostas.
 
           </p>
 
@@ -1870,15 +1865,31 @@ function SetorClimaImpressao({
 
         <div>
 
-          <h3 className="font-black">
+          <div className="flex flex-wrap items-center gap-2">
 
-            {
+            <h3 className="font-black">
 
-              setor.setor
+              {
 
-            }
+                setor.setor
 
-          </h3>
+              }
+
+            </h3>
+
+
+
+            {setor.agrupado && (
+
+              <span className="rounded-full bg-blue-100 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-blue-700">
+
+                Setores &lt; 5 respostas
+
+              </span>
+
+            )}
+
+          </div>
 
 
 
@@ -2696,6 +2707,27 @@ function limitarPercentual(
 
   );
 
+}
+
+
+
+
+
+function formatarSetorFiltro(
+  setor?: string | null
+) {
+  if (
+    setor ===
+    "__GERAL__"
+  ) {
+    return "Geral";
+  }
+
+
+  return (
+    setor ||
+    "Todos os setores informados"
+  );
 }
 
 

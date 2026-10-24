@@ -11,7 +11,10 @@ import {
 
 export type SetorRelatorioCliente = {
   nome: string;
+  valor: string;
   disponivel: boolean;
+  agrupado?: boolean;
+  totalRespostas?: number;
 };
 
 
@@ -95,6 +98,10 @@ export type AnaliseSetorClima = {
 
 
   dimensoes: DimensaoClima[];
+
+
+
+  agrupado?: boolean;
 
 };
 
@@ -270,10 +277,6 @@ export type DadosRelatorioClima = {
 
 
     status: string;
-
-
-
-    setor: string | null;
 
 
 
@@ -802,9 +805,9 @@ export default function RelatorioPesquisasClimaTela({
 
                   <p className="mt-1 text-sm text-slate-500">
 
-                    Resultado consolidado das aplicações vinculadas a cada setor
+                    Setores com 5 ou mais respostas aparecem individualmente.
 
-                    pela Mundial.
+                    Setores com menos de 5 respostas são reunidos no grupo Geral.
 
                   </p>
 
@@ -1528,15 +1531,31 @@ function SetorClimaCard({
 
         <div>
 
-          <h3 className="font-black text-slate-900">
+          <div className="flex flex-wrap items-center gap-2">
 
-            {
+            <h3 className="font-black text-slate-900">
 
-              setor.setor
+              {
 
-            }
+                setor.setor
 
-          </h3>
+              }
+
+            </h3>
+
+
+
+            {setor.agrupado && (
+
+              <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-700">
+
+                Setores &lt; 5 respostas
+
+              </span>
+
+            )}
+
+          </div>
 
 
 
@@ -2047,16 +2066,18 @@ function Filtros({
     );
 
 
-  const setoresBloqueados =
-    setoresRelatorio.filter(
-      item =>
-        !item.disponivel
-    );
-
-
   const minimoRespostas =
     dados.privacidadeSetor?.minimoRespostas ||
     5;
+
+
+  const possuiSetorGeral =
+    setoresRelatorio.some(
+      item =>
+        Boolean(
+          item.agrupado
+        )
+    );
 
 
   const semSetorDisponivel =
@@ -2211,7 +2232,7 @@ function Filtros({
 
           <label className="mb-2 block text-sm font-semibold text-slate-700">
 
-            Setor
+            Setor informado pelo respondente
 
           </label>
 
@@ -2244,7 +2265,7 @@ function Filtros({
             <option value="">
               {
                 clienteId
-                  ? "Todos os setores"
+                  ? "Todos os setores informados"
                   : "Selecione um cliente primeiro"
               }
             </option>
@@ -2255,19 +2276,19 @@ function Filtros({
               item => (
                 <option
                   key={
-                    item.nome
+                    item.valor
                   }
                   value={
-                    item.nome
+                    item.valor
                   }
                   disabled={
                     !item.disponivel
                   }
                 >
                   {
-                    item.disponivel
-                      ? item.nome
-                      : `${item.nome} — menos de ${minimoRespostas} respostas`
+                    item.agrupado
+                      ? `${item.nome} — setores com menos de ${minimoRespostas} respostas`
+                      : item.nome
                   }
                 </option>
               )
@@ -2281,20 +2302,20 @@ function Filtros({
 
 
       {clienteId &&
-        setoresBloqueados.length >
-          0 && (
+        possuiSetorGeral && (
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
           <strong>
-            Proteção de anonimato:
+            Agrupamento de setores:
           </strong>{" "}
-          o filtro por setor só é liberado quando o setor possui pelo menos{" "}
+          setores com menos de{" "}
           <strong>
             {minimoRespostas} respostas
           </strong>{" "}
-          no período selecionado.
-          {semSetorDisponivel
-            ? " Nenhum setor deste cliente atingiu o mínimo necessário."
-            : ` ${setoresBloqueados.length} setor(es) estão indisponíveis por não atingirem esse mínimo.`}
+          não aparecem individualmente. As respostas desses setores são somadas no filtro{" "}
+          <strong>
+            Geral
+          </strong>
+          . O grupo Geral é uma exceção à regra mínima e pode ser exibido mesmo com menos de {minimoRespostas} respostas.
         </div>
       )}
 
@@ -2392,7 +2413,7 @@ function TabelaPesquisas({
 
       <div className="overflow-x-auto">
 
-        <table className="w-full min-w-[900px]">
+        <table className="w-full min-w-[780px]">
 
           <thead className="bg-slate-50">
 
@@ -2409,14 +2430,6 @@ function TabelaPesquisas({
               <Th>
 
                 Cliente
-
-              </Th>
-
-
-
-              <Th>
-
-                Setor
 
               </Th>
 
@@ -2464,7 +2477,7 @@ function TabelaPesquisas({
 
                   colSpan={
 
-                    6
+                    5
 
                   }
 
@@ -2537,18 +2550,6 @@ function TabelaPesquisas({
                         pesquisa.cliente
 
                           .nome}
-
-                    </td>
-
-
-
-
-
-                    <td className="px-4 py-4 text-sm text-slate-700">
-
-                      {pesquisa.setor ||
-
-                        "Toda a empresa"}
 
                     </td>
 
