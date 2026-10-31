@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { PerfilUsuario } from "@prisma/client";
+
 import { prisma } from "@/src/lib/prisma";
 
 type UsuarioAutenticado = {
@@ -9,6 +10,14 @@ type UsuarioAutenticado = {
   perfil: PerfilUsuario;
   clienteId: string | null;
 };
+
+function perfilExigeCliente(perfil: PerfilUsuario) {
+  return (
+    perfil === PerfilUsuario.CLIENTE ||
+    perfil === PerfilUsuario.COMITE_CLIENTE ||
+    perfil === PerfilUsuario.GESTOR_CLIENTE
+  );
+}
 
 export const {
   handlers,
@@ -38,9 +47,7 @@ export const {
       },
 
       async authorize(credentials) {
-        const email = String(
-          credentials?.email ?? ""
-        )
+        const email = String(credentials?.email ?? "")
           .trim()
           .toLowerCase();
 
@@ -75,10 +82,7 @@ export const {
         }
 
         if (
-          (
-            usuario.perfil === PerfilUsuario.CLIENTE ||
-            usuario.perfil === PerfilUsuario.COMITE_CLIENTE
-          ) &&
+          perfilExigeCliente(usuario.perfil) &&
           (!usuario.clienteId || !usuario.cliente?.ativo)
         ) {
           return null;
@@ -107,8 +111,8 @@ export const {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        const usuario = user as typeof user &
-          UsuarioAutenticado;
+        const usuario =
+          user as typeof user & UsuarioAutenticado;
 
         token.id = usuario.id;
         token.perfil = usuario.perfil;
@@ -120,8 +124,9 @@ export const {
 
     async session({ session, token }) {
       if (session.user) {
-        const usuarioSessao = session.user as typeof session.user &
-          UsuarioAutenticado;
+        const usuarioSessao =
+          session.user as typeof session.user &
+            UsuarioAutenticado;
 
         usuarioSessao.id = String(token.id ?? "");
         usuarioSessao.perfil =

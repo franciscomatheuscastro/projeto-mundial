@@ -1,54 +1,42 @@
 import {
-  redirect,
-} from "next/navigation";
-
-import {
+  PerfilUsuario,
   TipoModuloPesquisa,
 } from "@prisma/client";
+import { redirect } from "next/navigation";
 
-import {
-  auth,
-} from "@/src/auth";
-
+import { auth } from "@/src/auth";
 import PesquisasModuloTela from "@/src/app/components/pesquisas/PesquisasModuloTela";
 
-
 export default async function MinhasAvaliacoesDesempenhoPage() {
-  const session =
-    await auth();
+  const session = await auth();
 
-
-  if (
-    !session?.user
-  ) {
-    redirect(
-      "/login"
-    );
+  if (!session?.user) {
+    redirect("/login");
   }
 
+  const usuario = session.user as {
+    perfil?: PerfilUsuario;
+    clienteId?: string | null;
+  };
 
-  const usuario =
-    session.user as any;
+  const podeAcessar =
+    usuario.perfil === PerfilUsuario.CLIENTE ||
+    usuario.perfil === PerfilUsuario.GESTOR_CLIENTE;
 
+  if (!podeAcessar) {
+    if (
+      usuario.perfil ===
+      PerfilUsuario.COMITE_CLIENTE
+    ) {
+      redirect("/painel-controle");
+    }
 
-  if (
-    usuario.perfil !==
-    "CLIENTE"
-  ) {
-    redirect(
-      "/dashboard"
-    );
+    redirect("/dashboard");
   }
 
-
-  if (
-    !usuario.clienteId
-  ) {
-    redirect(
-      "/login"
-    );
+  if (!usuario.clienteId) {
+    redirect("/login");
   }
-
 
   return (
     <PesquisasModuloTela

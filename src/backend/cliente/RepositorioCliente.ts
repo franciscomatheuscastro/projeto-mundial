@@ -16,6 +16,7 @@ import type {
   ClienteComResumo,
   ClienteDetalhado,
   ExcluirUsuarioMasterClienteInput,
+  FuncionarioEstruturaCliente,
   MinhaContaCliente,
   SalvarUsuarioMasterClienteInput,
   UsuarioMasterCliente,
@@ -43,6 +44,70 @@ function normalizarSetores(
   }
   return Array.from(mapa.values()).sort((a, b) =>
     a.localeCompare(b, "pt-BR")
+  );
+}
+
+function normalizarFuncionarios(
+  valor: unknown
+): FuncionarioEstruturaCliente[] {
+  if (!Array.isArray(valor)) {
+    return [];
+  }
+
+  const mapa =
+    new Map<string, FuncionarioEstruturaCliente>();
+
+  for (const item of valor) {
+    if (
+      !item ||
+      typeof item !== "object" ||
+      Array.isArray(item)
+    ) {
+      continue;
+    }
+
+    const dados =
+      item as Partial<FuncionarioEstruturaCliente>;
+
+    const id =
+      String(dados.id ?? "").trim();
+
+    const nome =
+      String(dados.nome ?? "").trim();
+
+    if (!id || !nome) {
+      continue;
+    }
+
+    const funcionario: FuncionarioEstruturaCliente = {
+      id,
+      nome,
+
+      setor:
+        String(dados.setor ?? "").trim() ||
+        null,
+
+      cargo:
+        String(dados.cargo ?? "").trim() ||
+        null,
+
+      ativo:
+        dados.ativo !== false,
+    };
+
+    mapa.set(
+      id,
+      funcionario
+    );
+  }
+
+  return Array.from(
+    mapa.values()
+  ).sort((a, b) =>
+    a.nome.localeCompare(
+      b.nome,
+      "pt-BR"
+    )
   );
 }
 
@@ -89,6 +154,16 @@ export default class RepositorioCliente {
       );
     }
 
+    const setores =
+      normalizarSetores(
+        cliente.setores
+      );
+
+    const funcionarios =
+      normalizarFuncionarios(
+        cliente.funcionarios
+      );
+
     const dados = {
       nome,
 
@@ -116,9 +191,10 @@ export default class RepositorioCliente {
         cliente.ativo ?? true,
 
       setores:
-        normalizarSetores(
-          cliente.setores
-        ) as unknown as Prisma.InputJsonValue,
+        setores as unknown as Prisma.InputJsonValue,
+
+      funcionarios:
+        funcionarios as unknown as Prisma.InputJsonValue,
     };
 
     const clienteSalvo =
@@ -195,6 +271,11 @@ export default class RepositorioCliente {
         normalizarSetores(
           clienteSalvo.setores
         ),
+
+      funcionarios:
+        normalizarFuncionarios(
+          clienteSalvo.funcionarios
+        ),
     };
   }
 
@@ -236,6 +317,7 @@ export default class RepositorioCliente {
           observacoes: true,
           ativo: true,
           setores: true,
+          funcionarios: true,
           criadoEm: true,
           atualizadoEm: true,
 
@@ -286,7 +368,16 @@ export default class RepositorioCliente {
     return {
       cliente: {
         ...dadosCliente,
-        setores: normalizarSetores(dadosCliente.setores),
+
+        setores:
+          normalizarSetores(
+            dadosCliente.setores
+          ),
+
+        funcionarios:
+          normalizarFuncionarios(
+            dadosCliente.funcionarios
+          ),
       },
       usuario,
     };
@@ -422,7 +513,16 @@ export default class RepositorioCliente {
         observacoes:
           cliente.observacoes,
         ativo: cliente.ativo,
-        setores: normalizarSetores(cliente.setores),
+        setores:
+          normalizarSetores(
+            cliente.setores
+          ),
+
+        funcionarios:
+          normalizarFuncionarios(
+            cliente.funcionarios
+          ),
+
         criadoEm: cliente.criadoEm,
         atualizadoEm:
           cliente.atualizadoEm,
@@ -498,7 +598,17 @@ export default class RepositorioCliente {
 
     return {
       ...dadosCliente,
-      setores: normalizarSetores(dadosCliente.setores),
+
+      setores:
+        normalizarSetores(
+          dadosCliente.setores
+        ),
+
+      funcionarios:
+        normalizarFuncionarios(
+          dadosCliente.funcionarios
+        ),
+
       usuarioMaster:
         usuarios[0] ?? null,
     };

@@ -261,17 +261,17 @@ export default function MeusColaboradoresTela() {
         <div className="mx-auto flex max-w-7xl flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">
-              Comitê de denúncias
+              Canal de Denúncias
             </p>
 
-            <h1 className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">
-              Colaboradores
+            <h1 className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl" >
+              Comitê de Ética
             </h1>
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 sm:text-base">
-              Gerencie os integrantes que poderão
-              receber denúncias direcionadas pela
-              Mundial.
+              Gerencie os integrantes do Comitê de Ética que poderão
+              acessar denúncias conforme o direcionamento
+              realizado pela Mundial.
             </p>
           </div>
 
@@ -281,7 +281,7 @@ export default function MeusColaboradoresTela() {
             disabled={processando}
             className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
-            Novo colaborador
+            Novo integrante
           </button>
         </div>
       </header>
@@ -293,7 +293,7 @@ export default function MeusColaboradoresTela() {
           </div>
         )}
 
-        <ResumoColaboradores
+        <ResumoComite
           total={colaboradores.length}
           ativos={
             colaboradores.filter(
@@ -405,7 +405,7 @@ export default function MeusColaboradoresTela() {
               <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-5 py-5 sm:px-6">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">
-                    Comitê de denúncias
+                    Canal de Denúncias
                   </p>
 
                   <h2
@@ -414,7 +414,7 @@ export default function MeusColaboradoresTela() {
                   >
                     {formulario.id
                       ? "Editar colaborador"
-                      : "Novo colaborador"}
+                      : "Novo integrante"}
                   </h2>
 
                   <p className="mt-1 text-sm text-slate-500">
@@ -443,7 +443,7 @@ export default function MeusColaboradoresTela() {
 
                 <section>
                   <h3 className="text-base font-black text-slate-900">
-                    Dados do colaborador
+                    Dados do integrante
                   </h3>
 
                   <div className="mt-4 grid gap-5 sm:grid-cols-2">
@@ -617,7 +617,7 @@ export default function MeusColaboradoresTela() {
   );
 }
 
-function ResumoColaboradores({
+function ResumoComite({
   total,
   ativos,
 }: {
@@ -665,7 +665,7 @@ function EstadoCarregando() {
       <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
 
       <p className="mt-4 text-sm font-medium text-slate-500">
-        Carregando colaboradores...
+        Carregando integrantes...
       </p>
     </div>
   );
@@ -683,7 +683,7 @@ function EstadoVazio({
       </div>
 
       <h2 className="mt-5 text-xl font-black text-slate-900">
-        Nenhum colaborador cadastrado
+        Nenhum integrante cadastrado
       </h2>
 
       <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">
@@ -697,7 +697,7 @@ function EstadoVazio({
         onClick={onClick}
         className="mt-6 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
       >
-        Cadastrar primeiro colaborador
+        Cadastrar primeiro integrante
       </button>
     </div>
   );

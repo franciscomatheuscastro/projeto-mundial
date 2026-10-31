@@ -18,7 +18,6 @@ import {
   PerguntaRespostaPesquisa,
 } from "@/src/core/model/RespostaPesquisa";
 
-
 /* =========================================================
  * UTILITÁRIOS
  * ======================================================= */
@@ -32,7 +31,6 @@ function numeroSeguro(
       valor
     );
 
-
   return Number.isFinite(
     numero
   )
@@ -40,18 +38,15 @@ function numeroSeguro(
     : padrao;
 }
 
-
 function textoOuNull(
   valor?: string | null
 ) {
   const texto =
     valor?.trim();
 
-
   return texto ||
     null;
 }
-
 
 function emailOuNull(
   valor?: string | null
@@ -61,9 +56,35 @@ function emailOuNull(
       ?.trim()
       .toLowerCase();
 
-
   return texto ||
     null;
+}
+
+function dataOuNull(
+  valor?: string | null
+) {
+  const texto =
+    valor?.trim();
+
+  if (
+    !texto ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(
+      texto
+    )
+  ) {
+    return null;
+  }
+
+  const data =
+    new Date(
+      `${texto}T00:00:00.000Z`
+    );
+
+  return Number.isNaN(
+    data.getTime()
+  )
+    ? null
+    : data;
 }
 
 function normalizarSetores(valor: unknown): string[] {
@@ -78,6 +99,47 @@ function normalizarSetores(valor: unknown): string[] {
   return Array.from(mapa.values()).sort((a, b) => a.localeCompare(b, "pt-BR"));
 }
 
+type FuncionarioEstrutura = {
+  id: string;
+  nome: string;
+  setor: string | null;
+  cargo: string | null;
+  ativo: boolean;
+};
+
+function normalizarFuncionarios(valor: unknown): FuncionarioEstrutura[] {
+  if (!Array.isArray(valor)) return [];
+
+  const ids = new Set<string>();
+
+  return valor
+    .map((item): FuncionarioEstrutura | null => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        return null;
+      }
+
+      const dados = item as Record<string, unknown>;
+      const id = String(dados.id ?? "").trim();
+      const nome = String(dados.nome ?? "").trim();
+
+      if (!id || !nome || ids.has(id)) {
+        return null;
+      }
+
+      ids.add(id);
+
+      return {
+        id,
+        nome,
+        setor: textoOuNull(String(dados.setor ?? "")),
+        cargo: textoOuNull(String(dados.cargo ?? "")),
+        ativo: dados.ativo !== false,
+      };
+    })
+    .filter((item): item is FuncionarioEstrutura => Boolean(item))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+}
+
 function validarSetorSelecionado(
   setor: string | null,
   setoresDisponiveis: string[]
@@ -88,7 +150,6 @@ function validarSetorSelecionado(
   }
 }
 
-
 /* =========================================================
  * CONFIGURAÇÃO DE ANÁLISE
  * ======================================================= */
@@ -98,7 +159,6 @@ type ConfiguracaoAnaliseBasica = {
 
   escalaMaxima: number;
 };
-
 
 function normalizarConfiguracaoAnalise(
   valor: unknown
@@ -111,7 +171,6 @@ function normalizarConfiguracaoAnalise(
       5,
   };
 
-
   if (
     !valor ||
     typeof valor !==
@@ -123,7 +182,6 @@ function normalizarConfiguracaoAnalise(
     return padrao;
   }
 
-
   const item =
     valor as {
       escalaMinima?: unknown;
@@ -131,20 +189,17 @@ function normalizarConfiguracaoAnalise(
       escalaMaxima?: unknown;
     };
 
-
   const escalaMinima =
     numeroSeguro(
       item.escalaMinima,
       1
     );
 
-
   const escalaMaxima =
     numeroSeguro(
       item.escalaMaxima,
       5
     );
-
 
   if (
     escalaMaxima <=
@@ -153,14 +208,12 @@ function normalizarConfiguracaoAnalise(
     return padrao;
   }
 
-
   return {
     escalaMinima,
 
     escalaMaxima,
   };
 }
-
 
 /* =========================================================
  * PERGUNTAS
@@ -177,7 +230,6 @@ function normalizarPerguntas(
     return [];
   }
 
-
   return perguntas
     .map(
       (
@@ -187,11 +239,9 @@ function normalizarPerguntas(
         const item =
           pergunta as Partial<PerguntaRespostaPesquisa>;
 
-
         const tipo =
           item.tipo ||
           TipoPergunta.NOTA;
-
 
         const sentidoPontuacao:
           PerguntaRespostaPesquisa["sentidoPontuacao"] =
@@ -199,7 +249,6 @@ function normalizarPerguntas(
             "NEGATIVO"
               ? "NEGATIVO"
               : "POSITIVO";
-
 
         return {
           id:
@@ -275,7 +324,6 @@ function normalizarPerguntas(
     );
 }
 
-
 /* =========================================================
  * REPOSITÓRIO
  * ======================================================= */
@@ -292,13 +340,11 @@ export default class RepositorioRespostaPesquisa {
     const tokenNormalizado =
       token?.trim();
 
-
     if (
       !tokenNormalizado
     ) {
       return null;
     }
-
 
     const pesquisa =
       await prisma.pesquisaCliente.findUnique({
@@ -321,6 +367,9 @@ export default class RepositorioRespostaPesquisa {
 
               setores:
                 true,
+
+              funcionarios:
+                true,
             },
           },
 
@@ -336,16 +385,30 @@ export default class RepositorioRespostaPesquisa {
                 true,
             },
           },
+
+          gestorUsuario: {
+            select: {
+              id:
+                true,
+
+              nome:
+                true,
+
+              email:
+                true,
+
+              ativo:
+                true,
+            },
+          },
         },
       });
-
 
     if (
       !pesquisa
     ) {
       return null;
     }
-
 
     return {
       id:
@@ -367,12 +430,25 @@ export default class RepositorioRespostaPesquisa {
         pesquisa.status,
 
       /*
-       * Campo legado da aplicação.
-       * O questionário não deve mais depender dele.
-       * O setor é informado opcionalmente pelo respondente.
+       * Campo legado da aplicação. O setor da Avaliação de
+       * Desempenho pertence à resposta/funcionário selecionado.
        */
       setor:
         null,
+
+      gestor:
+        pesquisa.gestorUsuario
+          ? {
+              id:
+                pesquisa.gestorUsuario.id,
+
+              nome:
+                pesquisa.gestorUsuario.nome,
+
+              email:
+                pesquisa.gestorUsuario.email,
+            }
+          : null,
 
       perguntas:
         normalizarPerguntas(
@@ -385,6 +461,14 @@ export default class RepositorioRespostaPesquisa {
         setores:
           normalizarSetores(
             pesquisa.cliente.setores
+          ),
+
+        funcionarios:
+          normalizarFuncionarios(
+            pesquisa.cliente.funcionarios
+          ).filter(
+            funcionario =>
+              funcionario.ativo
           ),
       },
 
@@ -408,7 +492,6 @@ export default class RepositorioRespostaPesquisa {
       );
     }
 
-
     if (
       !resposta.token?.trim()
     ) {
@@ -416,7 +499,6 @@ export default class RepositorioRespostaPesquisa {
         "Token não informado."
       );
     }
-
 
     return this.salvarPorTokenPublico(
       resposta
@@ -430,6 +512,11 @@ export default class RepositorioRespostaPesquisa {
   private static async salvarPorTokenPublico(
     resposta: NovaRespostaPesquisa
   ) {
+    const respostaComFuncionario =
+      resposta as NovaRespostaPesquisa & {
+        funcionarioId?: string | null;
+      };
+
     const pesquisa =
       await prisma.pesquisaCliente.findUnique({
         where: {
@@ -440,12 +527,34 @@ export default class RepositorioRespostaPesquisa {
         include: {
           cliente: {
             select: {
-              setores: true,
+              setores:
+                true,
+
+              funcionarios:
+                true,
+            },
+          },
+
+          gestorUsuario: {
+            select: {
+              id:
+                true,
+
+              nome:
+                true,
+
+              perfil:
+                true,
+
+              ativo:
+                true,
+
+              clienteId:
+                true,
             },
           },
         },
       });
-
 
     if (
       !pesquisa
@@ -454,7 +563,6 @@ export default class RepositorioRespostaPesquisa {
         "Pesquisa não encontrada."
       );
     }
-
 
     if (
       pesquisa.token !==
@@ -465,7 +573,6 @@ export default class RepositorioRespostaPesquisa {
       );
     }
 
-
     if (
       pesquisa.status !==
       StatusPesquisaCliente.ABERTA
@@ -475,12 +582,10 @@ export default class RepositorioRespostaPesquisa {
       );
     }
 
-
     const perguntas =
       normalizarPerguntas(
         pesquisa.perguntas
       );
-
 
     if (
       perguntas.length ===
@@ -491,12 +596,10 @@ export default class RepositorioRespostaPesquisa {
       );
     }
 
-
     const configuracao =
       normalizarConfiguracaoAnalise(
         pesquisa.configuracaoAnalise
       );
-
 
     const respostasTratadas =
       this.validarRespostas(
@@ -505,31 +608,142 @@ export default class RepositorioRespostaPesquisa {
         configuracao
       );
 
-
     const ehPesquisaClima =
       pesquisa.tipo ===
       TipoModuloPesquisa.CLIMA;
 
-
-    const setorInformado =
-      textoOuNull(
-        resposta.setor
-      );
-
+    const ehAvaliacaoDesempenho =
+      pesquisa.tipo ===
+      TipoModuloPesquisa.AVALIACAO_DESEMPENHO;
 
     /*
-     * O setor agora pertence à resposta, inclusive em CLIMA.
+     * A Avaliação de Desempenho também é respondida pelo
+     * link público da aplicação.
      *
-     * Ele continua opcional. Porém, quando o cliente possui
-     * uma lista de setores cadastrados e o participante informa
-     * um setor, validamos para impedir valores fora da lista.
+     * O token é a credencial de acesso ao questionário:
+     * não exigimos sessão, login ou perfil do usuário.
+     *
+     * O gestor responsável continua vindo da própria
+     * aplicação apenas como dado de identificação e relatório.
      */
-    validarSetorSelecionado(
-      setorInformado,
-      normalizarSetores(
-        pesquisa.cliente.setores
+    if (
+      ehAvaliacaoDesempenho &&
+      !pesquisa.gestorUsuarioId
+    ) {
+      throw new Error(
+        "Esta avaliação não possui gestor responsável vinculado."
+      );
+    }
+
+    const nomeGestor =
+      ehAvaliacaoDesempenho
+        ? textoOuNull(
+            pesquisa.gestorUsuario?.nome
+          )
+        : null;
+
+    const dataAvaliacao =
+      ehAvaliacaoDesempenho
+        ? dataOuNull(
+            resposta.dataAvaliacao
+          )
+        : null;
+
+    const dataAdmissao =
+      ehAvaliacaoDesempenho
+        ? dataOuNull(
+            resposta.dataAdmissao
+          )
+        : null;
+
+    if (
+      ehAvaliacaoDesempenho &&
+      (
+        !nomeGestor ||
+        !dataAvaliacao ||
+        !dataAdmissao
       )
-    );
+    ) {
+      throw new Error(
+        "Informe a data da avaliação e a data de admissão. A avaliação deve possuir um gestor responsável vinculado."
+      );
+    }
+
+    if (
+      ehAvaliacaoDesempenho &&
+      dataAvaliacao &&
+      dataAdmissao &&
+      dataAdmissao.getTime() >
+        dataAvaliacao.getTime()
+    ) {
+      throw new Error(
+        "A data de admissão não pode ser posterior à data da avaliação."
+      );
+    }
+
+    const funcionariosCliente =
+      normalizarFuncionarios(
+        pesquisa.cliente.funcionarios
+      );
+
+    let funcionarioSelecionado:
+      | FuncionarioEstrutura
+      | null =
+        null;
+
+    if (
+      ehAvaliacaoDesempenho
+    ) {
+      const funcionarioId =
+        String(
+          respostaComFuncionario.funcionarioId ??
+          ""
+        ).trim();
+
+      if (
+        !funcionarioId
+      ) {
+        throw new Error(
+          "Selecione o funcionário avaliado."
+        );
+      }
+
+      funcionarioSelecionado =
+        funcionariosCliente.find(
+          funcionario =>
+            funcionario.id ===
+              funcionarioId &&
+            funcionario.ativo
+        ) ||
+        null;
+
+      if (
+        !funcionarioSelecionado
+      ) {
+        throw new Error(
+          "O funcionário selecionado não está ativo ou não pertence a esta organização."
+        );
+      }
+    }
+
+    const setorInformado =
+      ehAvaliacaoDesempenho
+        ? funcionarioSelecionado?.setor ||
+          null
+        : textoOuNull(
+            resposta.setor
+          );
+
+    if (
+      !ehAvaliacaoDesempenho
+    ) {
+      validarSetorSelecionado(
+        setorInformado,
+        normalizarSetores(
+          pesquisa.cliente.setores
+        )
+      );
+    }
 
     return prisma.respostaPesquisa.create({
       data: {
@@ -539,7 +753,10 @@ export default class RepositorioRespostaPesquisa {
         nome:
           ehPesquisaClima
             ? null
-            : textoOuNull(resposta.nome),
+            : ehAvaliacaoDesempenho
+              ? funcionarioSelecionado?.nome ||
+                null
+              : textoOuNull(resposta.nome),
 
         email:
           ehPesquisaClima
@@ -566,14 +783,31 @@ export default class RepositorioRespostaPesquisa {
         cargo:
           ehPesquisaClima
             ? null
-            : textoOuNull(resposta.cargo),
+            : ehAvaliacaoDesempenho
+              ? funcionarioSelecionado?.cargo ||
+                null
+              : textoOuNull(resposta.cargo),
+
+        funcionarioId:
+          ehAvaliacaoDesempenho
+            ? funcionarioSelecionado?.id ||
+              null
+            : null,
+
+        /*
+         * Metadados estruturados da Avaliação de Desempenho.
+         */
+        nomeGestor,
+
+        dataAvaliacao,
+
+        dataAdmissao,
 
         respostas:
           respostasTratadas as unknown as Prisma.InputJsonValue,
       },
     });
   }
-
 
   /* =======================================================
    * VALIDAÇÃO
@@ -592,14 +826,12 @@ export default class RepositorioRespostaPesquisa {
         )
       );
 
-
     /*
      * Impede duas respostas para a mesma
      * pergunta dentro da mesma requisição.
      */
     const idsRecebidos =
       new Set<string>();
-
 
     const respostasTratadas =
       resposta.respostas
@@ -634,7 +866,6 @@ export default class RepositorioRespostaPesquisa {
               return false;
             }
 
-
             if (
               idsRecebidos.has(
                 item.perguntaId
@@ -645,16 +876,13 @@ export default class RepositorioRespostaPesquisa {
               );
             }
 
-
             idsRecebidos.add(
               item.perguntaId
             );
 
-
             return true;
           }
         );
-
 
     for (
       const pergunta
@@ -666,7 +894,6 @@ export default class RepositorioRespostaPesquisa {
             item.perguntaId ===
             pergunta.id
         );
-
 
       /*
        * Pergunta obrigatória.
@@ -680,13 +907,11 @@ export default class RepositorioRespostaPesquisa {
         );
       }
 
-
       if (
         !respostaItem
       ) {
         continue;
       }
-
 
       /*
        * NOTA
@@ -700,7 +925,6 @@ export default class RepositorioRespostaPesquisa {
             respostaItem.valor
           );
 
-
         if (
           !Number.isFinite(
             valor
@@ -710,7 +934,6 @@ export default class RepositorioRespostaPesquisa {
             `A resposta da pergunta "${pergunta.titulo}" deve ser numérica.`
           );
         }
-
 
         if (
           valor <
@@ -723,7 +946,6 @@ export default class RepositorioRespostaPesquisa {
           );
         }
       }
-
 
       /*
        * MÚLTIPLA ESCOLHA
@@ -742,7 +964,6 @@ export default class RepositorioRespostaPesquisa {
         );
       }
 
-
       /*
        * SIM / NÃO
        */
@@ -756,7 +977,6 @@ export default class RepositorioRespostaPesquisa {
             "Não",
           ];
 
-
         if (
           !respostasValidas.includes(
             respostaItem.valor
@@ -768,7 +988,6 @@ export default class RepositorioRespostaPesquisa {
         }
       }
     }
-
 
     return respostasTratadas;
   }

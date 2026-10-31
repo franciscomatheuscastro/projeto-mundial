@@ -33,32 +33,107 @@ export type ContextoModuloPesquisa =
   | "cliente";
 
 
+type SalvarPesquisaModuloInput = {
+  titulo: string;
+
+  descricao?: string | null;
+
+  clienteId: string;
+
+  modeloId: string;
+
+  setor?: string | null;
+
+  gestorUsuarioId?: string | null;
+};
+
+
 export function useModuloPesquisa(
   tipo: TipoModuloPesquisa,
   carregarInicial = true,
   contexto: ContextoModuloPesquisa = "mundial"
 ) {
-  const [pesquisas, setPesquisas] = useState<any[]>([]);
-  const [pesquisaSelecionada, setPesquisaSelecionada] = useState<any | null>(null);
-  const [relatorio, setRelatorio] = useState<any | null>(null);
-  const [dadosFormulario, setDadosFormulario] = useState<any>({
-    clientes: [],
-    modelos: [],
-  });
-  const [carregando, setCarregando] = useState(carregarInicial);
-  const [processando, setProcessando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
+  const [
+    pesquisas,
+    setPesquisas,
+  ] =
+    useState<any[]>(
+      []
+    );
+
+
+  const [
+    pesquisaSelecionada,
+    setPesquisaSelecionada,
+  ] =
+    useState<any | null>(
+      null
+    );
+
+
+  const [
+    relatorio,
+    setRelatorio,
+  ] =
+    useState<any | null>(
+      null
+    );
+
+
+  const [
+    dadosFormulario,
+    setDadosFormulario,
+  ] =
+    useState<any>({
+      clientes: [],
+      modelos: [],
+    });
+
+
+  const [
+    carregando,
+    setCarregando,
+  ] =
+    useState(
+      carregarInicial
+    );
+
+
+  const [
+    processando,
+    setProcessando,
+  ] =
+    useState(
+      false
+    );
+
+
+  const [
+    erro,
+    setErro,
+  ] =
+    useState<string | null>(
+      null
+    );
 
 
   const tratarErro =
     useCallback(
-      (error: unknown, mensagem: string) => {
+      (
+        error: unknown,
+        mensagem: string
+      ) => {
         const texto =
           error instanceof Error
             ? error.message
             : mensagem;
 
-        setErro(texto);
+
+        setErro(
+          texto
+        );
+
+
         return texto;
       },
       []
@@ -69,163 +144,338 @@ export function useModuloPesquisa(
     useCallback(
       async () => {
         try {
-          setCarregando(true);
-          setErro(null);
+          setCarregando(
+            true
+          );
+
+
+          setErro(
+            null
+          );
+
 
           const resultado =
-            contexto === "cliente"
-              ? await obterMinhasAplicacoesModulo(tipo)
-              : await obterTodosModuloPesquisa(tipo);
+            contexto ===
+            "cliente"
+              ? await obterMinhasAplicacoesModulo(
+                  tipo
+                )
+              : await obterTodosModuloPesquisa(
+                  tipo
+                );
 
-          setPesquisas(resultado);
+
+          setPesquisas(
+            resultado
+          );
+
+
           return resultado;
         } catch (error) {
-          tratarErro(error, "Erro ao carregar aplicações.");
+          tratarErro(
+            error,
+            "Erro ao carregar aplicações."
+          );
+
+
           throw error;
         } finally {
-          setCarregando(false);
+          setCarregando(
+            false
+          );
         }
       },
-      [tipo, contexto, tratarErro]
+      [
+        tipo,
+        contexto,
+        tratarErro,
+      ]
     );
 
 
   const carregarDadosFormulario =
     useCallback(
       async () => {
-        if (contexto === "cliente") {
+        if (
+          contexto ===
+          "cliente"
+        ) {
           throw new Error(
             "O cliente não possui permissão para criar aplicações."
           );
         }
 
+
         try {
-          setCarregando(true);
-          setErro(null);
+          setCarregando(
+            true
+          );
+
+
+          setErro(
+            null
+          );
+
 
           const resultado =
-            await obterDadosFormularioModuloPesquisa(tipo);
+            await obterDadosFormularioModuloPesquisa(
+              tipo
+            );
 
-          setDadosFormulario(resultado);
+
+          setDadosFormulario(
+            resultado
+          );
+
+
           return resultado;
         } catch (error) {
-          tratarErro(error, "Erro ao carregar formulário.");
+          tratarErro(
+            error,
+            "Erro ao carregar formulário."
+          );
+
+
           throw error;
         } finally {
-          setCarregando(false);
+          setCarregando(
+            false
+          );
         }
       },
-      [tipo, contexto, tratarErro]
+      [
+        tipo,
+        contexto,
+        tratarErro,
+      ]
     );
 
 
   const carregarPesquisaPorId =
     useCallback(
-      async (id: string) => {
+      async (
+        id: string
+      ) => {
         try {
-          setCarregando(true);
-          setErro(null);
+          setCarregando(
+            true
+          );
+
+
+          setErro(
+            null
+          );
+
 
           const resultado =
-            contexto === "cliente"
-              ? await obterMinhaAplicacaoModuloPorId(id, tipo)
-              : await obterPesquisaModuloPorId(id, tipo);
+            contexto ===
+            "cliente"
+              ? await obterMinhaAplicacaoModuloPorId(
+                  id,
+                  tipo
+                )
+              : await obterPesquisaModuloPorId(
+                  id,
+                  tipo
+                );
 
-          setPesquisaSelecionada(resultado);
+
+          setPesquisaSelecionada(
+            resultado
+          );
+
+
           return resultado;
         } catch (error) {
-          tratarErro(error, "Erro ao carregar aplicação.");
+          tratarErro(
+            error,
+            "Erro ao carregar aplicação."
+          );
+
+
           throw error;
         } finally {
-          setCarregando(false);
+          setCarregando(
+            false
+          );
         }
       },
-      [tipo, contexto, tratarErro]
+      [
+        tipo,
+        contexto,
+        tratarErro,
+      ]
     );
 
 
   const carregarRelatorio =
     useCallback(
-      async (id: string) => {
+      async (
+        id: string
+      ) => {
         try {
-          setCarregando(true);
-          setErro(null);
+          setCarregando(
+            true
+          );
+
+
+          setErro(
+            null
+          );
+
 
           const resultado =
-            contexto === "cliente"
-              ? await obterMeuRelatorioModulo(id, tipo)
-              : await obterRelatorioModuloPesquisa(id, tipo);
+            contexto ===
+            "cliente"
+              ? await obterMeuRelatorioModulo(
+                  id,
+                  tipo
+                )
+              : await obterRelatorioModuloPesquisa(
+                  id,
+                  tipo
+                );
 
-          setRelatorio(resultado);
+
+          setRelatorio(
+            resultado
+          );
+
+
           return resultado;
         } catch (error) {
-          tratarErro(error, "Erro ao carregar relatório.");
+          tratarErro(
+            error,
+            "Erro ao carregar relatório."
+          );
+
+
           throw error;
         } finally {
-          setCarregando(false);
+          setCarregando(
+            false
+          );
         }
       },
-      [tipo, contexto, tratarErro]
+      [
+        tipo,
+        contexto,
+        tratarErro,
+      ]
     );
 
 
   const salvar =
     useCallback(
       async (
-        dados: {
-          titulo: string;
-          descricao?: string | null;
-          clienteId: string;
-          modeloId: string;
-        }
+        dados: SalvarPesquisaModuloInput
       ) => {
-        if (contexto === "cliente") {
+        if (
+          contexto ===
+          "cliente"
+        ) {
           throw new Error(
             "O cliente não possui permissão para criar aplicações."
           );
         }
 
+
         try {
-          setProcessando(true);
-          setErro(null);
-          return await salvarPesquisaModulo(dados, tipo);
+          setProcessando(
+            true
+          );
+
+
+          setErro(
+            null
+          );
+
+
+          return await salvarPesquisaModulo(
+            dados,
+            tipo
+          );
         } catch (error) {
-          tratarErro(error, "Erro ao salvar aplicação.");
+          tratarErro(
+            error,
+            "Erro ao salvar aplicação."
+          );
+
+
           throw error;
         } finally {
-          setProcessando(false);
+          setProcessando(
+            false
+          );
         }
       },
-      [tipo, contexto, tratarErro]
+      [
+        tipo,
+        contexto,
+        tratarErro,
+      ]
     );
 
 
   const excluir =
     useCallback(
-      async (id: string) => {
-        if (contexto === "cliente") {
+      async (
+        id: string
+      ) => {
+        if (
+          contexto ===
+          "cliente"
+        ) {
           throw new Error(
             "O cliente não possui permissão para excluir aplicações."
           );
         }
 
+
         try {
-          setProcessando(true);
-          setErro(null);
+          setProcessando(
+            true
+          );
 
-          await excluirPesquisaModulo(id, tipo);
 
-          setPesquisas(atual =>
-            atual.filter(item => item.id !== id)
+          setErro(
+            null
+          );
+
+
+          await excluirPesquisaModulo(
+            id,
+            tipo
+          );
+
+
+          setPesquisas(
+            atual =>
+              atual.filter(
+                item =>
+                  item.id !==
+                  id
+              )
           );
         } catch (error) {
-          tratarErro(error, "Erro ao excluir aplicação.");
+          tratarErro(
+            error,
+            "Erro ao excluir aplicação."
+          );
+
+
           throw error;
         } finally {
-          setProcessando(false);
+          setProcessando(
+            false
+          );
         }
       },
-      [tipo, contexto, tratarErro]
+      [
+        tipo,
+        contexto,
+        tratarErro,
+      ]
     );
 
 
@@ -235,15 +485,26 @@ export function useModuloPesquisa(
         id: string,
         status: StatusPesquisaCliente
       ) => {
-        if (contexto === "cliente") {
+        if (
+          contexto ===
+          "cliente"
+        ) {
           throw new Error(
             "O cliente não possui permissão para alterar o status da aplicação."
           );
         }
 
+
         try {
-          setProcessando(true);
-          setErro(null);
+          setProcessando(
+            true
+          );
+
+
+          setErro(
+            null
+          );
+
 
           const resultado =
             await alterarStatusPesquisaModulo(
@@ -252,41 +513,79 @@ export function useModuloPesquisa(
               tipo
             );
 
-          setPesquisaSelecionada(resultado);
+
+          setPesquisaSelecionada(
+            resultado
+          );
+
+
           return resultado;
         } catch (error) {
-          tratarErro(error, "Erro ao alterar status.");
+          tratarErro(
+            error,
+            "Erro ao alterar status."
+          );
+
+
           throw error;
         } finally {
-          setProcessando(false);
+          setProcessando(
+            false
+          );
         }
       },
-      [tipo, contexto, tratarErro]
+      [
+        tipo,
+        contexto,
+        tratarErro,
+      ]
     );
 
 
-  useEffect(() => {
-    if (carregarInicial) {
-      void carregarPesquisas();
-    }
-  }, [carregarInicial, carregarPesquisas]);
+  useEffect(
+    () => {
+      if (
+        carregarInicial
+      ) {
+        void carregarPesquisas();
+      }
+    },
+    [
+      carregarInicial,
+      carregarPesquisas,
+    ]
+  );
 
 
   return {
     pesquisas,
+
     pesquisaSelecionada,
+
     setPesquisaSelecionada,
+
     relatorio,
+
     dadosFormulario,
+
     carregando,
+
     processando,
+
     erro,
+
     carregarPesquisas,
+
     carregarDadosFormulario,
+
     carregarPesquisaPorId,
+
     carregarRelatorio,
+
     salvar,
+
     excluir,
+
     alterarStatus,
   };
 }

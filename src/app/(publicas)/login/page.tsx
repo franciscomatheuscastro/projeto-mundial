@@ -17,14 +17,12 @@ import {
 
 import LoginPainel from "@/src/app/components/login/LoginPainel";
 
-
 type LoginPageProps = {
   searchParams: Promise<{
     erro?: string;
     senhaRedefinida?: string;
   }>;
 };
-
 
 function obterRotaInicial(
   perfil?: PerfilUsuario | null
@@ -33,22 +31,21 @@ function obterRotaInicial(
     perfil ===
       PerfilUsuario.CLIENTE ||
     perfil ===
-      PerfilUsuario.COMITE_CLIENTE
+      PerfilUsuario.COMITE_CLIENTE ||
+    perfil ===
+      PerfilUsuario.GESTOR_CLIENTE
   ) {
     return "/painel-controle";
   }
 
-
   return "/dashboard";
 }
-
 
 export default async function LoginPage({
   searchParams,
 }: LoginPageProps) {
   const session =
     await auth();
-
 
   if (
     session?.user
@@ -59,7 +56,6 @@ export default async function LoginPage({
       }
     ).perfil;
 
-
     redirect(
       obterRotaInicial(
         perfil
@@ -67,26 +63,21 @@ export default async function LoginPage({
     );
   }
 
-
   const params =
     await searchParams;
-
 
   const temErro =
     params?.erro ===
     "1";
 
-
   const senhaRedefinida =
     params?.senhaRedefinida ===
     "1";
-
 
   async function entrar(
     formData: FormData
   ) {
     "use server";
-
 
     const email =
       String(
@@ -98,7 +89,6 @@ export default async function LoginPage({
         .trim()
         .toLowerCase();
 
-
     const senha =
       String(
         formData.get(
@@ -106,7 +96,6 @@ export default async function LoginPage({
         ) ??
         ""
       );
-
 
     if (
       !email ||
@@ -117,7 +106,6 @@ export default async function LoginPage({
       );
     }
 
-
     try {
       await signIn(
         "credentials",
@@ -125,7 +113,7 @@ export default async function LoginPage({
           email,
           senha,
           redirectTo:
-            "/",
+            "/login",
         }
       );
     } catch (error) {
@@ -138,11 +126,9 @@ export default async function LoginPage({
         );
       }
 
-
       throw error;
     }
   }
-
 
   return (
     <LoginPainel

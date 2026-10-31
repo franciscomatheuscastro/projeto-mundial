@@ -1,10 +1,6 @@
 "use client";
 
-
-
 import Link from "next/link";
-
-
 
 import {
 
@@ -20,25 +16,23 @@ import {
 
 } from "react";
 
-
-
 import {
 
   useRouter,
 
 } from "next/navigation";
 
-
-
-import type {
-
-  StatusPesquisaCliente,
+import {
 
   TipoModuloPesquisa,
 
 } from "@prisma/client";
 
+import type {
 
+  StatusPesquisaCliente,
+
+} from "@prisma/client";
 
 import {
 
@@ -46,15 +40,9 @@ import {
 
 } from "@/src/app/data/hooks/useModuloPesquisa";
 
-
-
 import RelatorioAplicacaoModuloTela from "./RelatorioAplicacaoModuloTela";
 
 import QrCodePublico from "./QrCodePublico";
-
-
-
-
 
 type Props = {
 
@@ -68,31 +56,21 @@ type Props = {
 
     | "relatorio";
 
-
-
   tipo:
 
     TipoModuloPesquisa;
-
-
 
   tituloModulo:
 
     string;
 
-
-
   baseHref:
 
     string;
 
-
-
   pesquisaId?:
 
     string;
-
-
 
   contexto?:
 
@@ -102,17 +80,11 @@ type Props = {
 
 };
 
-
-
-
-
 const STATUS = {
 
   ABERTA:
 
     "ABERTA",
-
-
 
   FECHADA:
 
@@ -120,17 +92,9 @@ const STATUS = {
 
 } as const;
 
-
-
-
-
 const inputClass =
 
   "min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
-
-
-
-
 
 function montarLink(
 
@@ -148,10 +112,6 @@ function montarLink(
 
   }
 
-
-
-
-
   if (
 
     typeof window ===
@@ -164,17 +124,9 @@ function montarLink(
 
   }
 
-
-
-
-
   return `${window.location.origin}/pesquisa/${token}`;
 
 }
-
-
-
-
 
 export default function PesquisasModuloTela({
 
@@ -196,73 +148,52 @@ export default function PesquisasModuloTela({
 
     useRouter();
 
-
-
-
-
   const mundial =
 
     contexto ===
 
     "mundial";
 
-
-
+  /*
+   * Garante a base correta para a Avaliação de Desempenho
+   * no painel da Mundial, mesmo se algum page.tsx legado
+   * ainda enviar baseHref="/pesquisas".
+   */
+  const baseHrefEfetivo =
+    mundial &&
+    tipo ===
+      TipoModuloPesquisa.AVALIACAO_DESEMPENHO
+      ? "/avaliacao-desempenho"
+      : baseHref;
 
 
   const {
 
     pesquisas,
 
-
-
     pesquisaSelecionada,
-
-
 
     relatorio,
 
-
-
     dadosFormulario,
-
-
 
     carregando,
 
-
-
     processando,
-
-
 
     erro,
 
-
-
     carregarDadosFormulario,
-
-
 
     carregarPesquisaPorId,
 
-
-
     carregarRelatorio,
-
-
 
     salvar,
 
-
-
     excluir,
 
-
-
     alterarStatus,
-
-
 
   } =
 
@@ -278,10 +209,6 @@ export default function PesquisasModuloTela({
 
     );
 
-
-
-
-
   const [
 
     titulo,
@@ -291,10 +218,6 @@ export default function PesquisasModuloTela({
   ] =
 
     useState("");
-
-
-
-
 
   const [
 
@@ -306,10 +229,6 @@ export default function PesquisasModuloTela({
 
     useState("");
 
-
-
-
-
   const [
 
     clienteId,
@@ -319,10 +238,6 @@ export default function PesquisasModuloTela({
   ] =
 
     useState("");
-
-
-
-
 
   const [
 
@@ -334,9 +249,69 @@ export default function PesquisasModuloTela({
 
     useState("");
 
+  const [
 
+    gestorUsuarioId,
 
+    setGestorUsuarioId,
 
+  ] =
+
+    useState("");
+
+  const ehAvaliacaoDesempenho =
+
+    tipo ===
+
+    TipoModuloPesquisa.AVALIACAO_DESEMPENHO;
+
+  const clienteSelecionado =
+
+    dadosFormulario.clientes.find(
+
+      (
+
+        cliente: any
+
+      ) =>
+
+        cliente.id ===
+
+        clienteId
+
+    );
+
+  const gestoresCliente =
+
+    Array.isArray(
+
+      clienteSelecionado?.gestores
+
+    )
+
+      ? clienteSelecionado.gestores
+
+      : [];
+
+  function alterarCliente(
+
+    valor: string
+
+  ) {
+
+    setClienteId(
+
+      valor
+
+    );
+
+    setGestorUsuarioId(
+
+      ""
+
+    );
+
+  }
 
   useEffect(() => {
 
@@ -353,10 +328,6 @@ export default function PesquisasModuloTela({
       void carregarDadosFormulario();
 
     }
-
-
-
-
 
     if (
 
@@ -375,10 +346,6 @@ export default function PesquisasModuloTela({
       );
 
     }
-
-
-
-
 
     if (
 
@@ -414,10 +381,6 @@ export default function PesquisasModuloTela({
 
   ]);
 
-
-
-
-
   const linkPublico =
 
     useMemo(
@@ -438,10 +401,6 @@ export default function PesquisasModuloTela({
 
     );
 
-
-
-
-
   async function enviar(
 
     event: FormEvent<HTMLFormElement>
@@ -449,10 +408,6 @@ export default function PesquisasModuloTela({
   ) {
 
     event.preventDefault();
-
-
-
-
 
     if (
 
@@ -464,17 +419,11 @@ export default function PesquisasModuloTela({
 
     }
 
-
-
-
-
     const resultado =
 
       await salvar({
 
         titulo,
-
-
 
         descricao:
 
@@ -482,37 +431,32 @@ export default function PesquisasModuloTela({
 
           null,
 
-
-
         clienteId,
-
-
 
         modeloId,
 
+        setor:
+          null,
+
+        gestorUsuarioId:
+
+          ehAvaliacaoDesempenho
+
+            ? gestorUsuarioId
+
+            : null,
+
       });
-
-
-
-
 
     router.push(
 
-      `${baseHref}/${resultado.id}`
+      `${baseHrefEfetivo}/${resultado.id}`
 
     );
-
-
-
-
 
     router.refresh();
 
   }
-
-
-
-
 
   async function excluirAtual(
 
@@ -530,10 +474,6 @@ export default function PesquisasModuloTela({
 
     }
 
-
-
-
-
     if (
 
       !confirm(
@@ -548,37 +488,19 @@ export default function PesquisasModuloTela({
 
     }
 
-
-
-
-
     await excluir(
 
       id
 
     );
 
-
-
-
-
     router.push(
-
-      baseHref
-
+      baseHrefEfetivo
     );
-
-
-
-
 
     router.refresh();
 
   }
-
-
-
-
 
   async function alternarStatus() {
 
@@ -594,10 +516,6 @@ export default function PesquisasModuloTela({
 
     }
 
-
-
-
-
     const novo =
 
       pesquisaSelecionada.status ===
@@ -607,10 +525,6 @@ export default function PesquisasModuloTela({
         ? STATUS.FECHADA
 
         : STATUS.ABERTA;
-
-
-
-
 
     await alterarStatus(
 
@@ -622,15 +536,11 @@ export default function PesquisasModuloTela({
 
   }
 
-
-
   /* =======================================================
 
    * LISTA
 
    * ===================================================== */
-
-
 
   if (
 
@@ -652,10 +562,6 @@ export default function PesquisasModuloTela({
 
       ).length;
 
-
-
-
-
     const fechadas =
 
       pesquisas.filter(
@@ -667,10 +573,6 @@ export default function PesquisasModuloTela({
           STATUS.FECHADA
 
       ).length;
-
-
-
-
 
     const respostas =
 
@@ -697,10 +599,6 @@ export default function PesquisasModuloTela({
         0
 
       );
-
-
-
-
 
     return (
 
@@ -742,7 +640,7 @@ export default function PesquisasModuloTela({
 
               <Link
 
-                href={`${baseHref}/relatorio`}
+                href={`${baseHrefEfetivo}/relatorio`}
 
                 className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
 
@@ -752,13 +650,9 @@ export default function PesquisasModuloTela({
 
               </Link>
 
-
-
-
-
               <Link
 
-                href={`${baseHref}/nova`}
+                href={`${baseHrefEfetivo}/nova`}
 
                 className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
 
@@ -774,10 +668,6 @@ export default function PesquisasModuloTela({
 
         </Header>
 
-
-
-
-
         <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
 
           <Erro
@@ -789,10 +679,6 @@ export default function PesquisasModuloTela({
             }
 
           />
-
-
-
-
 
           <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
@@ -808,10 +694,6 @@ export default function PesquisasModuloTela({
 
             />
 
-
-
-
-
             <Card
 
               titulo="Abertas"
@@ -824,10 +706,6 @@ export default function PesquisasModuloTela({
 
             />
 
-
-
-
-
             <Card
 
               titulo="Fechadas"
@@ -839,10 +717,6 @@ export default function PesquisasModuloTela({
               }
 
             />
-
-
-
-
 
             <Card
 
@@ -858,10 +732,6 @@ export default function PesquisasModuloTela({
 
           </div>
 
-
-
-
-
           <div className="overflow-x-auto rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
 
             <table className="w-full min-w-[850px]">
@@ -876,8 +746,6 @@ export default function PesquisasModuloTela({
 
                   </Th>
 
-
-
                   {mundial && (
 
                     <Th>
@@ -888,15 +756,11 @@ export default function PesquisasModuloTela({
 
                   )}
 
-
-
                   <Th>
 
                     Modelo
 
                   </Th>
-
-
 
                   <Th>
 
@@ -904,15 +768,11 @@ export default function PesquisasModuloTela({
 
                   </Th>
 
-
-
                   <Th>
 
                     Status
 
                   </Th>
-
-
 
                   <Th direita>
 
@@ -923,10 +783,6 @@ export default function PesquisasModuloTela({
                 </tr>
 
               </thead>
-
-
-
-
 
               <tbody>
 
@@ -996,10 +852,6 @@ export default function PesquisasModuloTela({
 
                         </td>
 
-
-
-
-
                         {mundial && (
 
                           <td className="px-4 py-4 text-sm text-slate-700">
@@ -1016,10 +868,6 @@ export default function PesquisasModuloTela({
 
                         )}
 
-
-
-
-
                         <td className="px-4 py-4 text-sm text-slate-700">
 
                           {
@@ -1032,10 +880,6 @@ export default function PesquisasModuloTela({
 
                         </td>
 
-
-
-
-
                         <td className="px-4 py-4 font-bold text-slate-700">
 
                           {
@@ -1045,10 +889,6 @@ export default function PesquisasModuloTela({
                           }
 
                         </td>
-
-
-
-
 
                         <td className="px-4 py-4">
 
@@ -1064,15 +904,11 @@ export default function PesquisasModuloTela({
 
                         </td>
 
-
-
-
-
                         <td className="px-4 py-4 text-right">
 
                           <Link
 
-                            href={`${baseHref}/${pesquisa.id}`}
+                            href={`${baseHrefEfetivo}/${pesquisa.id}`}
 
                             className="text-sm font-bold text-blue-600 hover:text-blue-700"
 
@@ -1082,13 +918,9 @@ export default function PesquisasModuloTela({
 
                           </Link>
 
-
-
-
-
                           <Link
 
-                            href={`${baseHref}/${pesquisa.id}/relatorio`}
+                            href={`${baseHrefEfetivo}/${pesquisa.id}/relatorio`}
 
                             className="ml-4 text-sm font-bold text-slate-700 hover:text-slate-900"
 
@@ -1097,10 +929,6 @@ export default function PesquisasModuloTela({
                             Relatório
 
                           </Link>
-
-
-
-
 
                           {mundial && (
 
@@ -1158,17 +986,11 @@ export default function PesquisasModuloTela({
 
   }
 
-
-
-
-
   /* =======================================================
 
    * NOVA
 
    * ===================================================== */
-
-
 
   if (
 
@@ -1205,9 +1027,7 @@ export default function PesquisasModuloTela({
             <Link
 
               href={
-
-                baseHref
-
+                baseHrefEfetivo
               }
 
               className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700"
@@ -1226,10 +1046,6 @@ export default function PesquisasModuloTela({
 
     }
 
-
-
-
-
     return (
 
       <main className="min-h-screen bg-slate-100">
@@ -1244,17 +1060,15 @@ export default function PesquisasModuloTela({
 
           titulo="Nova aplicação"
 
-          descricao="Selecione cliente e modelo de questionário."
+          descricao="Selecione cliente, gestor responsável e modelo de questionário."
 
         >
 
           <Link
 
             href={
-
-              baseHref
-
-            }
+                baseHrefEfetivo
+              }
 
             className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700"
 
@@ -1265,10 +1079,6 @@ export default function PesquisasModuloTela({
           </Link>
 
         </Header>
-
-
-
-
 
         <section className="mx-auto max-w-3xl px-4 py-6">
 
@@ -1294,10 +1104,6 @@ export default function PesquisasModuloTela({
 
             />
 
-
-
-
-
             <Campo
 
               label="Título"
@@ -1316,10 +1122,6 @@ export default function PesquisasModuloTela({
 
             />
 
-
-
-
-
             <Select
 
               label="Cliente"
@@ -1332,9 +1134,11 @@ export default function PesquisasModuloTela({
 
               onChange={
 
-                setClienteId
+                alterarCliente
 
               }
+
+              required
 
             >
 
@@ -1343,10 +1147,6 @@ export default function PesquisasModuloTela({
                 Selecione
 
               </option>
-
-
-
-
 
               {dadosFormulario.clientes.map(
 
@@ -1386,9 +1186,99 @@ export default function PesquisasModuloTela({
 
             </Select>
 
+            {ehAvaliacaoDesempenho && (
 
+              <>
 
+                <Select
 
+                  label="Gestor responsável"
+
+                  value={
+
+                    gestorUsuarioId
+
+                  }
+
+                  onChange={
+
+                    setGestorUsuarioId
+
+                  }
+
+                  required
+
+                  disabled={
+
+                    !clienteId
+
+                  }
+
+                >
+
+                  <option value="">
+
+                    Selecione o gestor
+
+                  </option>
+
+                  {gestoresCliente.map(
+
+                    (
+
+                      gestor: any
+
+                    ) => (
+
+                      <option
+
+                        key={
+
+                          gestor.id
+
+                        }
+
+                        value={
+
+                          gestor.id
+
+                        }
+
+                      >
+
+                        {gestor.nome}
+
+                        {gestor.email
+
+                          ? ` - ${gestor.email}`
+
+                          : ""}
+
+                      </option>
+
+                    )
+
+                  )}
+
+                </Select>
+
+                {clienteId &&
+
+                  gestoresCliente.length ===
+
+                    0 && (
+
+                    <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-800">
+
+                      Este cliente ainda não possui gestores ativos cadastrados. O cliente deve cadastrar o gestor na página “Gestores” do próprio painel antes da criação da avaliação.
+
+                    </div>
+
+                  )}
+
+              </>
+
+            )}
 
             <Select
 
@@ -1413,10 +1303,6 @@ export default function PesquisasModuloTela({
                 Selecione
 
               </option>
-
-
-
-
 
               {dadosFormulario.modelos.map(
 
@@ -1470,10 +1356,6 @@ export default function PesquisasModuloTela({
 
             </Select>
 
-
-
-
-
             <Area
 
               label="Descrição"
@@ -1492,10 +1374,6 @@ export default function PesquisasModuloTela({
 
             />
 
-
-
-
-
             {dadosFormulario.modelos.length ===
 
               0 &&
@@ -1512,10 +1390,6 @@ export default function PesquisasModuloTela({
 
               )}
 
-
-
-
-
             <button
 
               type="submit"
@@ -1528,7 +1402,15 @@ export default function PesquisasModuloTela({
 
                 !clienteId ||
 
-                !modeloId
+                !modeloId ||
+
+                (
+
+                  ehAvaliacaoDesempenho &&
+
+                  !gestorUsuarioId
+
+                )
 
               }
 
@@ -1554,17 +1436,11 @@ export default function PesquisasModuloTela({
 
   }
 
-
-
-
-
   /* =======================================================
 
    * DETALHE
 
    * ===================================================== */
-
-
 
   if (
 
@@ -1617,10 +1493,8 @@ export default function PesquisasModuloTela({
           <Link
 
             href={
-
-              baseHref
-
-            }
+                baseHrefEfetivo
+              }
 
             className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700"
 
@@ -1631,10 +1505,6 @@ export default function PesquisasModuloTela({
           </Link>
 
         </Header>
-
-
-
-
 
         <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[340px_minmax(0,1fr)]">
 
@@ -1647,10 +1517,6 @@ export default function PesquisasModuloTela({
             }
 
           />
-
-
-
-
 
           {!pesquisaSelecionada ? (
 
@@ -1680,10 +1546,6 @@ export default function PesquisasModuloTela({
 
                 </h2>
 
-
-
-
-
                 <>
 
                   <p className="mb-2 text-sm font-semibold text-slate-700">
@@ -1692,15 +1554,11 @@ export default function PesquisasModuloTela({
 
                   </p>
 
-
-
                   <div className="mb-4 break-all rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
 
                     {linkPublico || "Link público não disponível."}
 
                   </div>
-
-
 
                   {linkPublico && (
 
@@ -1724,13 +1582,9 @@ export default function PesquisasModuloTela({
 
                 </>
 
-
-
-
-
                 <Link
 
-                  href={`${baseHref}/${pesquisaSelecionada.id}/relatorio`}
+                  href={`${baseHrefEfetivo}/${pesquisaSelecionada.id}/relatorio`}
 
                   className="mb-5 block rounded-2xl bg-slate-900 px-4 py-3 text-center text-sm font-bold text-white"
 
@@ -1739,10 +1593,6 @@ export default function PesquisasModuloTela({
                   Ver relatório
 
                 </Link>
-
-
-
-
 
                 <div className="grid grid-cols-2 gap-3">
 
@@ -1760,10 +1610,6 @@ export default function PesquisasModuloTela({
 
                   />
 
-
-
-
-
                   <Info
 
                     titulo="Perguntas"
@@ -1780,9 +1626,27 @@ export default function PesquisasModuloTela({
 
                   />
 
+                  {ehAvaliacaoDesempenho && (
 
+                    <>
 
+                      <Info
 
+                        titulo="Gestor"
+
+                        valor={
+
+                          pesquisaSelecionada.gestor?.nome ||
+
+                          "Não informado"
+
+                        }
+
+                      />
+
+                    </>
+
+                  )}
 
                   {!mundial && (
 
@@ -1801,10 +1665,6 @@ export default function PesquisasModuloTela({
                   )}
 
                 </div>
-
-
-
-
 
                 {mundial && (
 
@@ -1842,10 +1702,6 @@ export default function PesquisasModuloTela({
 
               </aside>
 
-
-
-
-
               <div className="min-w-0 space-y-6">
 
                 <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
@@ -1858,15 +1714,11 @@ export default function PesquisasModuloTela({
 
                     </p>
 
-
-
                     <h2 className="mt-1 text-lg font-black text-slate-900">
 
                       Acesso público ao questionário
 
                     </h2>
-
-
 
                     <p className="mt-1 text-sm leading-6 text-slate-500">
 
@@ -1880,8 +1732,6 @@ export default function PesquisasModuloTela({
 
                   </div>
 
-
-
                   <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
 
                     <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
@@ -1890,8 +1740,6 @@ export default function PesquisasModuloTela({
 
                     </p>
 
-
-
                     <p className="mt-2 break-all text-sm font-semibold text-slate-700">
 
                       {linkPublico || "Link público não disponível."}
@@ -1899,8 +1747,6 @@ export default function PesquisasModuloTela({
                     </p>
 
                   </div>
-
-
 
                   {linkPublico && (
 
@@ -1918,10 +1764,6 @@ export default function PesquisasModuloTela({
 
                 </div>
 
-
-
-
-
                 <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
 
                   <h2 className="mb-4 text-lg font-black text-slate-900">
@@ -1929,10 +1771,6 @@ export default function PesquisasModuloTela({
                     Perguntas
 
                   </h2>
-
-
-
-
 
                   <div className="space-y-3">
 
@@ -1982,10 +1820,6 @@ export default function PesquisasModuloTela({
 
                             </p>
 
-
-
-
-
                             <p className="mt-1 font-bold text-slate-900">
 
                               {
@@ -1995,10 +1829,6 @@ export default function PesquisasModuloTela({
                               }
 
                             </p>
-
-
-
-
 
                             {pergunta.descricao && (
 
@@ -2048,20 +1878,51 @@ export default function PesquisasModuloTela({
 
   }
 
-
-
-
-
   /* =======================================================
 
    * RELATÓRIO INDIVIDUAL
 
    * ===================================================== */
 
-
+  /*
+   * Avaliação de Desempenho no painel do cliente/gestor:
+   * mostra o conteúdo individual de cada questionário.
+   *
+   * O backend já garante que CLIENTE veja apenas dados
+   * da própria organização e GESTOR_CLIENTE somente as
+   * aplicações atribuídas ao seu usuário.
+   */
+  if (
+    !mundial &&
+    tipo ===
+      TipoModuloPesquisa.AVALIACAO_DESEMPENHO
+  ) {
+    return (
+      <RelatorioDesempenhoIndividualCliente
+        relatorio={
+          relatorio
+        }
+        carregando={
+          carregando
+        }
+        erro={
+          erro
+        }
+        tituloModulo={
+          tituloModulo
+        }
+        baseHref={
+          baseHrefEfetivo
+        }
+        pesquisaId={
+          pesquisaId
+        }
+      />
+    );
+  }
 
   /*
-   * No painel do cliente, a Avaliação Psicossocial
+   * No painel do cliente, a Gestão de Riscos Psicossociais
    * não mostra o conteúdo das respostas.
    *
    * O cliente visualiza somente o percentual de
@@ -2089,7 +1950,7 @@ export default function PesquisasModuloTela({
           tituloModulo
         }
         baseHref={
-          baseHref
+          baseHrefEfetivo
         }
         pesquisaId={
           pesquisaId
@@ -2097,8 +1958,6 @@ export default function PesquisasModuloTela({
       />
     );
   }
-
-
 
   return (
 
@@ -2135,10 +1994,8 @@ export default function PesquisasModuloTela({
       }
 
       baseHref={
-
-        baseHref
-
-      }
+          baseHrefEfetivo
+        }
 
       pesquisaId={
 
@@ -2152,17 +2009,412 @@ export default function PesquisasModuloTela({
 
 }
 
-
-
-
-
 /* =========================================================
 
  * COMPONENTES AUXILIARES
 
  * ======================================================= */
 
+function RelatorioDesempenhoIndividualCliente({
+  relatorio,
+  carregando,
+  erro,
+  tituloModulo,
+  baseHref,
+  pesquisaId,
+}: {
+  relatorio: any;
+  carregando: boolean;
+  erro?: string | null;
+  tituloModulo: string;
+  baseHref: string;
+  pesquisaId?: string;
+}) {
+  const respostasIndividuais =
+    Array.isArray(
+      relatorio?.respostasIndividuais
+    )
+      ? relatorio.respostasIndividuais
+      : [];
 
+  return (
+    <main className="min-h-screen bg-slate-100">
+      <Header
+        modulo={
+          tituloModulo
+        }
+        titulo="Relatório individual"
+        descricao={
+          relatorio
+            ? `${relatorio.titulo} · respostas individuais da Avaliação de Desempenho`
+            : "Respostas individuais da Avaliação de Desempenho."
+        }
+      >
+        <Link
+          href={
+            pesquisaId
+              ? `${baseHref}/${pesquisaId}`
+              : baseHref
+          }
+          className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+        >
+          Voltar
+        </Link>
+      </Header>
+
+      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <Erro
+          mensagem={
+            erro
+          }
+        />
+
+        {carregando ? (
+          <div className="rounded-3xl bg-white p-10 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
+            Carregando relatório...
+          </div>
+        ) : !relatorio ? (
+          <div className="rounded-3xl bg-white p-10 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
+            Relatório não encontrado.
+          </div>
+        ) : respostasIndividuais.length === 0 ? (
+          <div className="rounded-3xl bg-white p-10 text-center shadow-sm ring-1 ring-slate-200">
+            <h2 className="text-lg font-black text-slate-900">
+              Nenhuma avaliação respondida
+            </h2>
+
+            <p className="mt-2 text-sm text-slate-500">
+              Assim que uma resposta for enviada, os dados do colaborador e as respostas do questionário aparecerão aqui.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Card
+                titulo="Avaliações respondidas"
+                valor={
+                  respostasIndividuais.length
+                }
+              />
+
+              <Card
+                titulo="Perguntas"
+                valor={
+                  Array.isArray(
+                    relatorio?.perguntas
+                  )
+                    ? relatorio.perguntas.length
+                    : 0
+                }
+              />
+            </div>
+
+            {respostasIndividuais.map(
+              (
+                avaliacao: any,
+                index: number
+              ) => (
+                <article
+                  key={
+                    avaliacao.id ||
+                    `avaliacao-${index}`
+                  }
+                  className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200"
+                >
+                  <div className="border-b border-slate-200 bg-slate-50 p-5 sm:p-6">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-600">
+                          Avaliação {index + 1}
+                        </p>
+
+                        <h2 className="mt-1 text-xl font-black text-slate-900">
+                          {
+                            avaliacao.nome ||
+                            "Colaborador não informado"
+                          }
+                        </h2>
+
+                        <p className="mt-1 text-sm text-slate-500">
+                          Respostas registradas no questionário de desempenho.
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl bg-white px-4 py-3 text-sm ring-1 ring-slate-200">
+                        <span className="font-semibold text-slate-500">
+                          Respondido em:
+                        </span>{" "}
+                        <strong className="text-slate-900">
+                          {
+                            formatarDataRelatorioDesempenho(
+                              avaliacao.criadoEm
+                            )
+                          }
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      <InfoAvaliacaoDesempenho
+                        label="Colaborador"
+                        valor={
+                          avaliacao.nome
+                        }
+                      />
+
+                      <InfoAvaliacaoDesempenho
+                        label="Setor"
+                        valor={
+                          avaliacao.setor
+                        }
+                      />
+
+                      <InfoAvaliacaoDesempenho
+                        label="Cargo"
+                        valor={
+                          avaliacao.cargo
+                        }
+                      />
+
+                      <InfoAvaliacaoDesempenho
+                        label="Gestor responsável"
+                        valor={
+                          avaliacao.nomeGestor
+                        }
+                      />
+
+                      <InfoAvaliacaoDesempenho
+                        label="Data da avaliação"
+                        valor={
+                          formatarDataRelatorioDesempenho(
+                            avaliacao.dataAvaliacao
+                          )
+                        }
+                      />
+
+                      <InfoAvaliacaoDesempenho
+                        label="Data de admissão"
+                        valor={
+                          formatarDataRelatorioDesempenho(
+                            avaliacao.dataAdmissao
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-5 sm:p-6">
+                    <div className="mb-5">
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-600">
+                        Questionário respondido
+                      </p>
+
+                      <h3 className="mt-1 text-lg font-black text-slate-900">
+                        Perguntas e respostas
+                      </h3>
+
+                      <p className="mt-1 text-sm text-slate-500">
+                        Conteúdo original informado nesta avaliação.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      {Array.isArray(
+                        avaliacao.respostas
+                      ) &&
+                      avaliacao.respostas.length >
+                        0 ? (
+                        avaliacao.respostas.map(
+                          (
+                            resposta: any,
+                            respostaIndex: number
+                          ) => (
+                            <div
+                              key={
+                                resposta.perguntaId ||
+                                `resposta-${respostaIndex}`
+                              }
+                              className="rounded-2xl border border-slate-200 p-4"
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-black uppercase tracking-wide text-slate-400">
+                                  Pergunta{" "}
+                                  {
+                                    resposta.ordem ??
+                                    respostaIndex + 1
+                                  }
+                                </span>
+
+                                {resposta.dimensao?.nome && (
+                                  <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700">
+                                    {
+                                      resposta.dimensao.nome
+                                    }
+                                  </span>
+                                )}
+                              </div>
+
+                              <h4 className="mt-2 font-black leading-6 text-slate-900">
+                                {
+                                  resposta.titulo ||
+                                  "Pergunta"
+                                }
+                              </h4>
+
+                              {resposta.descricao && (
+                                <p className="mt-1 text-sm leading-6 text-slate-500">
+                                  {
+                                    resposta.descricao
+                                  }
+                                </p>
+                              )}
+
+                              <div className="mt-3 rounded-xl bg-slate-50 px-4 py-3">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                                  Resposta
+                                </p>
+
+                                <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-800">
+                                  {
+                                    formatarRespostaDesempenho(
+                                      resposta.tipo,
+                                      resposta.valor
+                                    )
+                                  }
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        )
+                      ) : (
+                        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+                          Nenhuma resposta encontrada neste questionário.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              )
+            )}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
+
+function InfoAvaliacaoDesempenho({
+  label,
+  valor,
+}: {
+  label: string;
+  valor?: string | null;
+}) {
+  return (
+    <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+
+      <p className="mt-1 text-sm font-bold text-slate-900">
+        {valor || "—"}
+      </p>
+    </div>
+  );
+}
+
+function formatarDataRelatorioDesempenho(
+  valor?: string | Date | null
+) {
+  if (!valor) {
+    return "—";
+  }
+
+  if (
+    typeof valor ===
+    "string"
+  ) {
+    const dataBanco =
+      valor.match(
+        /^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00(?:\.000)?Z)?$/
+      );
+
+    if (dataBanco) {
+      const [
+        ,
+        ano,
+        mes,
+        dia,
+      ] =
+        dataBanco;
+
+      return `${dia}/${mes}/${ano}`;
+    }
+  }
+
+  const data =
+    valor instanceof Date
+      ? valor
+      : new Date(valor);
+
+  if (
+    Number.isNaN(
+      data.getTime()
+    )
+  ) {
+    return "—";
+  }
+
+  return data.toLocaleDateString(
+    "pt-BR"
+  );
+}
+
+function formatarRespostaDesempenho(
+  tipo?: string | null,
+  valor?: string | number | null
+) {
+  if (
+    valor ===
+      null ||
+    valor ===
+      undefined ||
+    String(valor).trim() ===
+      ""
+  ) {
+    return "Não respondido";
+  }
+
+  const texto =
+    String(valor).trim();
+
+  if (
+    tipo ===
+    "NOTA"
+  ) {
+    const rotulos: Record<
+      string,
+      string
+    > = {
+      "1":
+        "Muito abaixo do esperado",
+      "2":
+        "Abaixo do esperado",
+      "3":
+        "Dentro do esperado",
+      "4":
+        "Acima do esperado",
+      "5":
+        "Muito acima do esperado",
+    };
+
+    return rotulos[texto]
+      ? `${texto} — ${rotulos[texto]}`
+      : texto;
+  }
+
+  return texto;
+}
 
 function RelatorioClienteSomentePercentual({
   relatorio,
@@ -2188,7 +2440,6 @@ function RelatorioClienteSomentePercentual({
     ) ||
     0;
 
-
   const perguntasComResumo =
     Array.isArray(
       relatorio?.perguntasComResumo
@@ -2196,14 +2447,12 @@ function RelatorioClienteSomentePercentual({
       ? relatorio.perguntasComResumo
       : [];
 
-
   const perguntas =
     Array.isArray(
       relatorio?.perguntas
     )
       ? relatorio.perguntas
       : [];
-
 
   const percentuais =
     perguntasComResumo.map(
@@ -2219,7 +2468,6 @@ function RelatorioClienteSomentePercentual({
         )
     );
 
-
   const preenchimentoMedio =
     percentuais.length >
     0
@@ -2234,7 +2482,6 @@ function RelatorioClienteSomentePercentual({
         ) /
         percentuais.length
       : 0;
-
 
   return (
     <main className="min-h-screen bg-slate-100">
@@ -2257,14 +2504,12 @@ function RelatorioClienteSomentePercentual({
         </Link>
       </Header>
 
-
       <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <Erro
           mensagem={
             erro
           }
         />
-
 
         {carregando ? (
           <div className="rounded-3xl bg-white p-10 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
@@ -2284,7 +2529,6 @@ function RelatorioClienteSomentePercentual({
               As respostas dadas pelos participantes, médias, scores e
               distribuições das alternativas não são mostrados ao cliente.
             </div>
-
 
             <div className="mb-6 grid gap-4 sm:grid-cols-3">
               <Card
@@ -2312,7 +2556,6 @@ function RelatorioClienteSomentePercentual({
               />
             </div>
 
-
             <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
               <div className="mb-5">
                 <h2 className="text-lg font-black text-slate-900">
@@ -2325,7 +2568,6 @@ function RelatorioClienteSomentePercentual({
                   o questionário.
                 </p>
               </div>
-
 
               {perguntasComResumo.length ===
               0 ? (
@@ -2347,7 +2589,6 @@ function RelatorioClienteSomentePercentual({
                           ),
                           totalRespondentes
                         );
-
 
                       return (
                         <div
@@ -2385,7 +2626,6 @@ function RelatorioClienteSomentePercentual({
                             </strong>
                           </div>
 
-
                           <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-100">
                             <div
                               className="h-full rounded-full bg-blue-600"
@@ -2414,8 +2654,6 @@ function RelatorioClienteSomentePercentual({
   );
 }
 
-
-
 function calcularPercentualRespondentesCliente(
   totalPergunta: number,
   totalRespondentes: number
@@ -2427,7 +2665,6 @@ function calcularPercentualRespondentesCliente(
     return 0;
   }
 
-
   return limitarPercentualCliente(
     (
       totalPergunta /
@@ -2436,8 +2673,6 @@ function calcularPercentualRespondentesCliente(
       100
   );
 }
-
-
 
 function limitarPercentualCliente(
   valor: number
@@ -2450,7 +2685,6 @@ function limitarPercentualCliente(
     return 0;
   }
 
-
   return Math.min(
     100,
     Math.max(
@@ -2460,8 +2694,6 @@ function limitarPercentualCliente(
   );
 }
 
-
-
 function formatarPercentualCliente(
   valor: number
 ) {
@@ -2469,7 +2701,6 @@ function formatarPercentualCliente(
     limitarPercentualCliente(
       valor
     );
-
 
   return `${normalizado
     .toFixed(
@@ -2480,8 +2711,6 @@ function formatarPercentualCliente(
       ","
     )}%`;
 }
-
-
 
 function Header({
 
@@ -2497,15 +2726,9 @@ function Header({
 
   modulo: string;
 
-
-
   titulo: string;
 
-
-
   descricao: string;
-
-
 
   children?: ReactNode;
 
@@ -2529,10 +2752,6 @@ function Header({
 
           </p>
 
-
-
-
-
           <h1 className="mt-2 text-2xl font-black text-slate-900">
 
             {
@@ -2542,10 +2761,6 @@ function Header({
             }
 
           </h1>
-
-
-
-
 
           <p className="mt-1 text-sm text-slate-500">
 
@@ -2558,10 +2773,6 @@ function Header({
           </p>
 
         </div>
-
-
-
-
 
         {children && (
 
@@ -2585,10 +2796,6 @@ function Header({
 
 }
 
-
-
-
-
 function Card({
 
   titulo,
@@ -2598,8 +2805,6 @@ function Card({
 }: {
 
   titulo: string;
-
-
 
   valor:
 
@@ -2623,10 +2828,6 @@ function Card({
 
       </p>
 
-
-
-
-
       <p className="mt-2 text-3xl font-black text-slate-900">
 
         {
@@ -2643,12 +2844,6 @@ function Card({
 
 }
 
-
-
-
-
-
-
 function Info({
 
   titulo,
@@ -2658,8 +2853,6 @@ function Info({
 }: {
 
   titulo: string;
-
-
 
   valor: string;
 
@@ -2679,10 +2872,6 @@ function Info({
 
       </p>
 
-
-
-
-
       <p className="mt-1 break-words font-black text-slate-900">
 
         {
@@ -2698,10 +2887,6 @@ function Info({
   );
 
 }
-
-
-
-
 
 function Status({
 
@@ -2729,10 +2914,6 @@ function Status({
 
         : "bg-yellow-100 text-yellow-700";
 
-
-
-
-
   return (
 
     <span
@@ -2752,10 +2933,6 @@ function Status({
   );
 
 }
-
-
-
-
 
 function Erro({
 
@@ -2777,10 +2954,6 @@ function Erro({
 
   }
 
-
-
-
-
   return (
 
     <div className="mb-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
@@ -2797,10 +2970,6 @@ function Erro({
 
 }
 
-
-
-
-
 function Th({
 
   children,
@@ -2810,8 +2979,6 @@ function Th({
 }: {
 
   children: ReactNode;
-
-
 
   direita?: boolean;
 
@@ -2845,10 +3012,6 @@ function Th({
 
 }
 
-
-
-
-
 function Vazia({
 
   colSpan,
@@ -2858,8 +3021,6 @@ function Vazia({
 }: {
 
   colSpan: number;
-
-
 
   texto: string;
 
@@ -2895,10 +3056,6 @@ function Vazia({
 
 }
 
-
-
-
-
 function Campo({
 
   label,
@@ -2911,11 +3068,7 @@ function Campo({
 
   label: string;
 
-
-
   value: string;
-
-
 
   onChange: (
 
@@ -2938,10 +3091,6 @@ function Campo({
         }
 
       </span>
-
-
-
-
 
       <input
 
@@ -2979,10 +3128,6 @@ function Campo({
 
 }
 
-
-
-
-
 function Area({
 
   label,
@@ -2995,11 +3140,7 @@ function Area({
 
   label: string;
 
-
-
   value: string;
-
-
 
   onChange: (
 
@@ -3022,10 +3163,6 @@ function Area({
         }
 
       </span>
-
-
-
-
 
       <textarea
 
@@ -3069,10 +3206,6 @@ function Area({
 
 }
 
-
-
-
-
 function Select({
 
   label,
@@ -3083,15 +3216,15 @@ function Select({
 
   children,
 
+  required = false,
+
+  disabled = false,
+
 }: {
 
   label: string;
 
-
-
   value: string;
-
-
 
   onChange: (
 
@@ -3099,9 +3232,11 @@ function Select({
 
   ) => void;
 
-
-
   children: ReactNode;
+
+  required?: boolean;
+
+  disabled?: boolean;
 
 }) {
 
@@ -3119,15 +3254,23 @@ function Select({
 
       </span>
 
-
-
-
-
       <select
 
         value={
 
           value
+
+        }
+
+        required={
+
+          required
+
+        }
+
+        disabled={
+
+          disabled
 
         }
 
@@ -3145,11 +3288,7 @@ function Select({
 
         }
 
-        className={
-
-          inputClass
-
-        }
+        className={`${inputClass} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400`}
 
       >
 

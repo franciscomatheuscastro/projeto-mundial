@@ -1,7 +1,7 @@
 import { auth } from "@/src/auth";
+import { MenuCliente } from "@/src/app/components/menu-interno/cliente/MenuInterno";
 import { PerfilUsuario } from "@prisma/client";
 import { redirect } from "next/navigation";
-import { MenuCliente } from "@/src/app/components/menu-interno/cliente/MenuInterno";
 
 export default async function ClienteLayout({
   children,
@@ -21,7 +21,8 @@ export default async function ClienteLayout({
 
   const podeAcessarPainelCliente =
     usuario.perfil === PerfilUsuario.CLIENTE ||
-    usuario.perfil === PerfilUsuario.COMITE_CLIENTE;
+    usuario.perfil === PerfilUsuario.COMITE_CLIENTE ||
+    usuario.perfil === PerfilUsuario.GESTOR_CLIENTE;
 
   if (!podeAcessarPainelCliente) {
     redirect("/dashboard");

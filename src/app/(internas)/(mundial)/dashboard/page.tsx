@@ -1,13 +1,13 @@
 import type React from "react";
 
 import {
+  PerfilUsuario,
   TipoModuloPesquisa,
 } from "@prisma/client";
+import { redirect } from "next/navigation";
 
-import {
-  prisma,
-} from "@/src/lib/prisma";
-
+import { auth } from "@/src/auth";
+import { prisma } from "@/src/lib/prisma";
 
 type DashboardPageProps = {
   searchParams: Promise<{
@@ -15,23 +15,62 @@ type DashboardPageProps = {
   }>;
 };
 
-
 export default async function DashboardPage({
   searchParams,
 }: DashboardPageProps) {
-  const params =
-    await searchParams;
+  const session = await auth();
 
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const usuario = session.user as {
+    perfil?: PerfilUsuario;
+  };
+
+  /*
+   * Perfis externos possuem ambientes próprios e nunca
+   * devem visualizar o dashboard administrativo da Mundial.
+   */
+  if (usuario.perfil === PerfilUsuario.GESTOR_CLIENTE) {
+    redirect("/painel-controle");
+  }
+
+  if (
+    usuario.perfil === PerfilUsuario.CLIENTE ||
+    usuario.perfil === PerfilUsuario.COMITE_CLIENTE
+  ) {
+    redirect("/painel-controle");
+  }
+
+  /*
+   * Somente perfis internos conhecidos da Mundial podem
+   * permanecer nesta página.
+   */
+  const perfisMundial: PerfilUsuario[] = [
+    PerfilUsuario.ADMIN,
+    PerfilUsuario.GESTOR,
+    PerfilUsuario.PSICOLOGO,
+    PerfilUsuario.ASSISTENTE_SOCIAL,
+    PerfilUsuario.RECEPCAO,
+  ];
+
+  if (
+    !usuario.perfil ||
+    !perfisMundial.includes(usuario.perfil)
+  ) {
+    redirect("/login");
+  }
+
+  const params = await searchParams;
 
   const clienteId =
     params?.clienteId ||
     "todos";
 
-
   const temFiltroCliente =
     clienteId !==
     "todos";
-
 
   const clientesLista =
     await prisma.cliente.findMany({
@@ -52,14 +91,12 @@ export default async function DashboardPage({
       },
     });
 
-
   const wherePesquisaCliente =
     temFiltroCliente
       ? {
           clienteId,
         }
       : undefined;
-
 
   const whereRespostaPesquisa =
     temFiltroCliente
@@ -69,7 +106,6 @@ export default async function DashboardPage({
           },
         }
       : undefined;
-
 
   const wherePlanoAcao =
     temFiltroCliente
@@ -88,7 +124,6 @@ export default async function DashboardPage({
           ],
         }
       : undefined;
-
 
   const whereAgendamento =
     temFiltroCliente
@@ -110,14 +145,12 @@ export default async function DashboardPage({
         }
       : undefined;
 
-
   const whereDenuncia =
     temFiltroCliente
       ? {
           clienteId,
         }
       : undefined;
-
 
   const [
     clientes,
@@ -205,7 +238,6 @@ export default async function DashboardPage({
         },
       }),
 
-
       /* ===============================================
        * MÉTRICAS GERAIS POR MODALIDADE
        * ============================================= */
@@ -236,7 +268,6 @@ export default async function DashboardPage({
         },
       }),
 
-
       prisma.pesquisaCliente.count({
         where: {
           tipo:
@@ -263,7 +294,6 @@ export default async function DashboardPage({
         },
       }),
 
-
       prisma.pesquisaCliente.count({
         where: {
           tipo:
@@ -289,7 +319,6 @@ export default async function DashboardPage({
           },
         },
       }),
-
 
       /* ===============================================
        * MÉTRICAS DO CLIENTE SELECIONADO
@@ -333,7 +362,6 @@ export default async function DashboardPage({
           whereAgendamento,
       }),
 
-
       /* ===============================================
        * CLIENTE — PESQUISA DE CLIMA
        * ============================================= */
@@ -373,7 +401,6 @@ export default async function DashboardPage({
           },
         },
       }),
-
 
       /* ===============================================
        * CLIENTE — AVALIAÇÃO DE DESEMPENHO
@@ -415,7 +442,6 @@ export default async function DashboardPage({
         },
       }),
 
-
       /* ===============================================
        * CLIENTE — AVALIAÇÃO PSICOSSOCIAL
        * ============================================= */
@@ -455,7 +481,6 @@ export default async function DashboardPage({
           },
         },
       }),
-
 
       /* ===============================================
        * DENÚNCIAS
@@ -512,7 +537,6 @@ export default async function DashboardPage({
       }),
     ]);
 
-
   const clienteSelecionado =
     clienteId ===
     "todos"
@@ -529,7 +553,6 @@ export default async function DashboardPage({
         )?.nome ||
         "Cliente selecionado";
 
-
   return (
     <main className="min-h-screen bg-slate-100">
       <header className="bg-white px-4 py-6 shadow-sm sm:px-6 lg:px-8">
@@ -538,13 +561,11 @@ export default async function DashboardPage({
             Dashboard
           </p>
 
-
           <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">
                 Painel Mundial
               </h1>
-
 
               <p className="mt-1 max-w-3xl text-sm text-slate-500 sm:text-base">
                 Visão executiva de Pesquisa de Clima, Avaliação de Desempenho,
@@ -554,7 +575,6 @@ export default async function DashboardPage({
           </div>
         </div>
       </header>
-
 
       <section className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 lg:px-8">
         {/* =================================================
@@ -637,7 +657,6 @@ export default async function DashboardPage({
           />
         </Bloco>
 
-
         {/* =================================================
          * MODALIDADES
          * =============================================== */}
@@ -647,7 +666,6 @@ export default async function DashboardPage({
             titulo="Modalidades de avaliação"
             descricao="Acompanhamento das três linhas de pesquisa da plataforma."
           />
-
 
           <div className="grid gap-5 lg:grid-cols-3">
             <CardModulo
@@ -665,7 +683,6 @@ export default async function DashboardPage({
               variante="clima"
             />
 
-
             <CardModulo
               titulo="Avaliação de Desempenho"
               descricao="Competências, pontos fortes, pontos de atenção e prioridades de desenvolvimento."
@@ -680,7 +697,6 @@ export default async function DashboardPage({
               }
               variante="desempenho"
             />
-
 
             <CardModulo
               titulo="Avaliação Psicossocial"
@@ -699,7 +715,6 @@ export default async function DashboardPage({
           </div>
         </section>
 
-
         {/* =================================================
          * FILTRO CLIENTE
          * =============================================== */}
@@ -711,25 +726,21 @@ export default async function DashboardPage({
                 Indicadores por cliente
               </p>
 
-
               <h2 className="mt-2 text-xl font-black text-slate-900">
                 {
                   clienteSelecionado
                 }
               </h2>
 
-
               <p className="mt-1 text-sm text-slate-500">
                 Análise operacional da organização selecionada em todos os módulos.
               </p>
             </div>
 
-
             <form className="w-full lg:w-96">
               <label className="mb-1 block text-sm font-semibold text-slate-700">
                 Cliente
               </label>
-
 
               <div className="flex flex-col gap-3 sm:flex-row">
                 <select
@@ -742,7 +753,6 @@ export default async function DashboardPage({
                   <option value="todos">
                     Todos os clientes
                   </option>
-
 
                   {clientesLista.map(
                     cliente => (
@@ -761,7 +771,6 @@ export default async function DashboardPage({
                   )}
                 </select>
 
-
                 <button
                   type="submit"
                   className="min-h-12 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
@@ -772,7 +781,6 @@ export default async function DashboardPage({
             </form>
           </div>
         </div>
-
 
         {/* =================================================
          * CLIENTE — VISÃO GERAL
@@ -825,7 +833,6 @@ export default async function DashboardPage({
           />
         </Bloco>
 
-
         {/* =================================================
          * CLIENTE — MODALIDADES
          * =============================================== */}
@@ -835,7 +842,6 @@ export default async function DashboardPage({
             titulo="Avaliações do cliente"
             descricao="Distribuição das aplicações e respostas por modalidade."
           />
-
 
           <div className="grid gap-5 lg:grid-cols-3">
             <CardModulo
@@ -853,7 +859,6 @@ export default async function DashboardPage({
               variante="clima"
             />
 
-
             <CardModulo
               titulo="Avaliação de Desempenho"
               descricao="Aplicações e respostas da modalidade."
@@ -868,7 +873,6 @@ export default async function DashboardPage({
               }
               variante="desempenho"
             />
-
 
             <CardModulo
               titulo="Avaliação Psicossocial"
@@ -886,7 +890,6 @@ export default async function DashboardPage({
             />
           </div>
         </section>
-
 
         {/* =================================================
          * DENÚNCIAS
@@ -944,7 +947,6 @@ export default async function DashboardPage({
   );
 }
 
-
 /* =========================================================
  * COMPONENTES
  * ======================================================= */
@@ -965,7 +967,6 @@ function CabecalhoBloco({
         }
       </h2>
 
-
       {descricao && (
         <p className="mt-1 text-sm text-slate-500">
           {
@@ -976,7 +977,6 @@ function CabecalhoBloco({
     </div>
   );
 }
-
 
 function Bloco({
   titulo,
@@ -1000,7 +1000,6 @@ function Bloco({
         }
       />
 
-
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {
           children
@@ -1009,7 +1008,6 @@ function Bloco({
     </section>
   );
 }
-
 
 function CardModulo({
   titulo,
@@ -1061,7 +1059,6 @@ function CardModulo({
               "text-blue-700",
           };
 
-
   return (
     <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
       <span
@@ -1070,20 +1067,17 @@ function CardModulo({
         Modalidade
       </span>
 
-
       <h3 className="mt-3 text-lg font-black text-slate-900">
         {
           titulo
         }
       </h3>
 
-
       <p className="mt-1 min-h-10 text-sm leading-5 text-slate-500">
         {
           descricao
         }
       </p>
-
 
       <div className="mt-5 grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">
         <MiniMetrica
@@ -1096,7 +1090,6 @@ function CardModulo({
           }
         />
 
-
         <MiniMetrica
           titulo="Abertas"
           valor={
@@ -1106,7 +1099,6 @@ function CardModulo({
             classes.numero
           }
         />
-
 
         <MiniMetrica
           titulo="Respostas"
@@ -1121,7 +1113,6 @@ function CardModulo({
     </article>
   );
 }
-
 
 function MiniMetrica({
   titulo,
@@ -1142,7 +1133,6 @@ function MiniMetrica({
         }
       </p>
 
-
       <strong
         className={`mt-1 block text-xl font-black ${classe}`}
       >
@@ -1153,7 +1143,6 @@ function MiniMetrica({
     </div>
   );
 }
-
 
 function Card({
   titulo,
@@ -1179,7 +1168,6 @@ function Card({
           titulo
         }
       </p>
-
 
       <strong
         className={`mt-2 block text-3xl font-black sm:text-4xl ${

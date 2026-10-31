@@ -795,7 +795,7 @@ export default function RelatorioAvaliacaoPsicossocialImpressaoTela({
 
           <span>
 
-            MundialRH · Avaliação Psicossocial
+            MundialRH · Gestão de Riscos Psicossociais
 
           </span>
 
@@ -841,7 +841,7 @@ export default function RelatorioAvaliacaoPsicossocialImpressaoTela({
 
             <h1 className="mt-4 max-w-[155mm] text-[32px] font-black leading-[1.05] text-slate-950">
 
-              Relatório Consolidado de Avaliação Psicossocial
+              Relatório Consolidado de Gestão de Riscos Psicossociais
 
             </h1>
 
@@ -904,7 +904,7 @@ export default function RelatorioAvaliacaoPsicossocialImpressaoTela({
 
               <BlocoCapa
 
-                titulo="Avaliações consideradas"
+                titulo="Aplicações consideradas"
 
                 valor={String(
 
@@ -982,7 +982,7 @@ export default function RelatorioAvaliacaoPsicossocialImpressaoTela({
 
             titulo="Resumo executivo"
 
-            descricao="Síntese dos resultados consolidados da avaliação."
+            descricao="Síntese dos resultados consolidados das aplicações analisadas."
 
           />
 
@@ -994,7 +994,7 @@ export default function RelatorioAvaliacaoPsicossocialImpressaoTela({
 
             <MetricaPrint
 
-              titulo="Avaliações"
+              titulo="Aplicações"
 
               valor={String(
 
@@ -1403,7 +1403,7 @@ export default function RelatorioAvaliacaoPsicossocialImpressaoTela({
         <section className="pagina-print">
           <TituloPrint
             numero="2"
-            titulo="Distribuição setorial e avaliações incluídas"
+            titulo="Distribuição setorial e aplicações incluídas"
             descricao="Distribuição das respostas por setor e aplicações consideradas na consolidação."
           />
 
@@ -1480,14 +1480,14 @@ export default function RelatorioAvaliacaoPsicossocialImpressaoTela({
 
 
           <h3 className="mt-7 text-[13px] font-black">
-            Avaliações incluídas
+            Aplicações incluídas
           </h3>
 
 
           <table className="tabela-print mt-3">
             <thead>
               <tr>
-                <th className="text-left">Avaliação</th>
+                <th className="text-left">Aplicação</th>
                 <th className="text-left">Organização</th>
                 <th>Respondentes</th>
               </tr>
@@ -4213,7 +4213,7 @@ function textoResumoExecutivo(
     )[0];
 
 
-  return `Foram consolidadas ${dados.resumo.totalPesquisas} avaliação(ões), com ${dados.resumo.totalRespostas} respondente(s) e ${fatores.length} fator(es) com score calculado. O maior score de exposição foi observado em “${principal.fatorRisco || principal.nome}”, com ${formatarScore(
+  return `Foram consolidadas ${dados.resumo.totalPesquisas} aplicação(ões), com ${dados.resumo.totalRespostas} respondente(s) e ${fatores.length} fator(es) com score calculado. O maior score de exposição foi observado em “${principal.fatorRisco || principal.nome}”, com ${formatarScore(
     principal.score
   )}. O consolidado apresenta ${intoleraveis} fator(es) em nível intolerável e ${substanciais} em nível substancial, conforme as faixas configuradas no instrumento.`;
 }
@@ -4280,7 +4280,7 @@ function textoConclusao(
         : "Não foram identificados fatores em nível substancial ou intolerável no consolidado atual; ainda assim, os resultados devem ser acompanhados periodicamente e interpretados em conjunto com o contexto de trabalho.";
 
 
-  return `A avaliação consolidou ${dados.resumo.totalRespostas} respondente(s). Os maiores níveis de exposição observados foram: ${principais}. ${prioridade} Recomenda-se utilizar o ranking, o mapa de calor por setor e as informações adicionais para orientar a investigação das causas organizacionais e apoiar a definição de ações compatíveis com a realidade da empresa.`;
+  return `A análise consolidou ${dados.resumo.totalRespostas} respondente(s). Os maiores níveis de exposição observados foram: ${principais}. ${prioridade} Recomenda-se utilizar o ranking, o mapa de calor por setor e as informações adicionais para orientar a investigação das causas organizacionais e apoiar a definição de ações compatíveis com a realidade da empresa.`;
 }
 
 

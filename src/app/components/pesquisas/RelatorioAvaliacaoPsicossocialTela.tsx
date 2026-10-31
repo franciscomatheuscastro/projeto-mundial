@@ -472,7 +472,7 @@ export default function RelatorioAvaliacaoPsicossocialTela({
 
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-600">
 
-              Avaliação Psicossocial
+              Gestão de Riscos Psicossociais
 
             </p>
 
@@ -576,7 +576,7 @@ export default function RelatorioAvaliacaoPsicossocialTela({
 
           <Card
 
-            titulo="Avaliações"
+            titulo="Aplicações"
 
             valor={
 
@@ -1700,7 +1700,7 @@ function TabelaAvaliacoes({
 
         <h2 className="text-lg font-black text-slate-900">
 
-          Avaliações consideradas
+          Aplicações consideradas
 
         </h2>
 
@@ -1730,7 +1730,7 @@ function TabelaAvaliacoes({
 
               <Th>
 
-                Avaliação
+                Aplicação
 
               </Th>
 
@@ -1794,7 +1794,7 @@ function TabelaAvaliacoes({
 
                 >
 
-                  Nenhuma avaliação encontrada.
+                  Nenhuma aplicação encontrada.
 
                 </td>
 
@@ -1904,7 +1904,7 @@ function TabelaAvaliacoes({
 
                       >
 
-                        Ver avaliação
+                        Ver aplicação
 
                       </Link>
 

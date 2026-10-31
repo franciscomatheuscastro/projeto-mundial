@@ -10,7 +10,7 @@ type PageProps = {
   }>;
 };
 
-export default async function RelatorioAvaliacaoPsicossocialPage({
+export default async function RelatorioGestaoRiscosPsicossociaisPage({
   params,
 }: PageProps) {
   const {
@@ -27,8 +27,9 @@ export default async function RelatorioAvaliacaoPsicossocialPage({
       tipo={
         TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
       }
-      tituloModulo="Avaliação Psicossocial"
+      tituloModulo="Gestão de Riscos Psicossociais"
       baseHref="/avaliacao-psicossocial"
+      contexto="mundial"
     />
   );
 }

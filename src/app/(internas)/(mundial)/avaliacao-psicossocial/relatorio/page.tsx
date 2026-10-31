@@ -31,7 +31,7 @@ type Props = {
 };
 
 
-export default async function RelatorioAvaliacaoPsicossocialPage({
+export default async function RelatorioGestaoRiscosPsicossociaisPage({
   searchParams,
 }: Props) {
   const session =
@@ -96,7 +96,7 @@ export default async function RelatorioAvaliacaoPsicossocialPage({
     )
   ) {
     throw new Error(
-      "Dados da análise psicossocial inválidos."
+      "Dados da gestão de riscos psicossociais inválidos."
     );
   }
 

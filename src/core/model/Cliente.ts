@@ -3,6 +3,14 @@ import {
   StatusPesquisaCliente,
 } from "@prisma/client";
 
+export type FuncionarioEstruturaCliente = {
+  id: string;
+  nome: string;
+  setor: string | null;
+  cargo: string | null;
+  ativo: boolean;
+};
+
 export type Cliente = {
   id?: string;
   nome: string;
@@ -13,6 +21,7 @@ export type Cliente = {
   observacoes?: string | null;
   ativo?: boolean;
   setores?: string[];
+  funcionarios?: FuncionarioEstruturaCliente[];
   criadoEm?: Date;
   atualizadoEm?: Date;
 };
@@ -36,6 +45,7 @@ export type ClienteComResumo = {
   observacoes: string | null;
   ativo: boolean;
   setores: string[];
+  funcionarios: FuncionarioEstruturaCliente[];
   criadoEm: Date;
   atualizadoEm: Date;
   totalPesquisas: number;
@@ -51,6 +61,7 @@ export type ClienteDetalhado = {
   observacoes: string | null;
   ativo: boolean;
   setores: string[];
+  funcionarios: FuncionarioEstruturaCliente[];
   criadoEm: Date;
   atualizadoEm: Date;
   usuarioMaster: UsuarioMasterCliente | null;
@@ -59,7 +70,10 @@ export type ClienteDetalhado = {
     titulo: string;
     status: StatusPesquisaCliente;
     criadoEm: Date;
-    modelo: { id: string; titulo: string };
+    modelo: {
+      id: string;
+      titulo: string;
+    };
   }[];
 };
 
@@ -74,9 +88,11 @@ export type MinhaContaCliente = {
     observacoes: string | null;
     ativo: boolean;
     setores: string[];
+    funcionarios: FuncionarioEstruturaCliente[];
     criadoEm: Date;
     atualizadoEm: Date;
   };
+
   usuario: {
     id: string;
     nome: string;

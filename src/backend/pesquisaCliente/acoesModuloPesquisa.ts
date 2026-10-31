@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  PerfilUsuario,
   StatusPesquisaCliente,
   TipoModuloPesquisa,
 } from "@prisma/client";
@@ -19,28 +20,26 @@ import type {
 
 import RepositorioPesquisaCliente from "./RepositorioPesquisaCliente";
 
-
 type UsuarioSessao = {
-  perfil?: string;
+  id?: string;
+  perfil?: PerfilUsuario;
   clienteId?: string | null;
 };
-
 
 export type FiltrosRelatorioModuloPesquisa = {
   dataInicio?: string;
   dataFim?: string;
   clienteId?: string;
   setor?: string;
+  funcionarioId?: string;
 };
 
-
-const PERFIS_MUNDIAL = [
-  "ADMIN",
-  "GESTOR",
-  "PSICOLOGO",
-  "ASSISTENTE_SOCIAL",
+const PERFIS_MUNDIAL: PerfilUsuario[] = [
+  PerfilUsuario.ADMIN,
+  PerfilUsuario.GESTOR,
+  PerfilUsuario.PSICOLOGO,
+  PerfilUsuario.ASSISTENTE_SOCIAL,
 ];
-
 
 function obterBaseHref(
   tipo: TipoModuloPesquisa
@@ -52,7 +51,6 @@ function obterBaseHref(
     return "/avaliacao-desempenho";
   }
 
-
   if (
     tipo ===
     TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
@@ -60,10 +58,8 @@ function obterBaseHref(
     return "/avaliacao-psicossocial";
   }
 
-
   return "/pesquisas";
 }
-
 
 function revalidarModulo(
   tipo: TipoModuloPesquisa,
@@ -73,23 +69,35 @@ function revalidarModulo(
     obterBaseHref(tipo);
 
   revalidatePath(baseHref);
-  revalidatePath(`${baseHref}/relatorio`);
+  revalidatePath(
+    `${baseHref}/relatorio`
+  );
 
   if (id) {
-    revalidatePath(`${baseHref}/${id}`);
-    revalidatePath(`${baseHref}/${id}/relatorio`);
+    revalidatePath(
+      `${baseHref}/${id}`
+    );
+
+    revalidatePath(
+      `${baseHref}/${id}/relatorio`
+    );
   }
 
   revalidatePath("/dashboard");
+  revalidatePath("/painel-controle");
+  revalidatePath(
+    "/minhas-avaliacoes-desempenho"
+  );
 }
-
 
 async function validarMundial() {
   const session =
     await auth();
 
   if (!session?.user) {
-    throw new Error("Usuário não autenticado.");
+    throw new Error(
+      "Usuário não autenticado."
+    );
   }
 
   const usuario =
@@ -97,49 +105,95 @@ async function validarMundial() {
 
   if (
     !usuario.perfil ||
-    !PERFIS_MUNDIAL.includes(usuario.perfil)
+    !PERFIS_MUNDIAL.includes(
+      usuario.perfil
+    )
   ) {
-    throw new Error("Usuário sem permissão.");
+    throw new Error(
+      "Usuário sem permissão."
+    );
   }
 
   return usuario;
 }
 
-
-async function validarCliente() {
+async function validarAcessoClienteModulo(
+  tipo: TipoModuloPesquisa
+) {
   const session =
     await auth();
 
   if (!session?.user) {
-    throw new Error("Usuário não autenticado.");
+    throw new Error(
+      "Usuário não autenticado."
+    );
   }
 
   const usuario =
     session.user as UsuarioSessao;
 
-  if (usuario.perfil !== "CLIENTE") {
-    throw new Error("Usuário sem permissão.");
+  const administradorCliente =
+    usuario.perfil ===
+    PerfilUsuario.CLIENTE;
+
+  const gestorCliente =
+    usuario.perfil ===
+    PerfilUsuario.GESTOR_CLIENTE;
+
+  if (
+    !administradorCliente &&
+    !gestorCliente
+  ) {
+    throw new Error(
+      "Usuário sem permissão."
+    );
+  }
+
+  /*
+   * GESTOR_CLIENTE acessa exclusivamente
+   * Avaliação de Desempenho.
+   */
+  if (
+    gestorCliente &&
+    tipo !==
+      TipoModuloPesquisa.AVALIACAO_DESEMPENHO
+  ) {
+    throw new Error(
+      "O gestor possui acesso somente à Avaliação de Desempenho."
+    );
   }
 
   if (!usuario.clienteId) {
-    throw new Error("Cliente não identificado.");
+    throw new Error(
+      "Cliente não identificado."
+    );
+  }
+
+  if (
+    gestorCliente &&
+    !usuario.id
+  ) {
+    throw new Error(
+      "Gestor não identificado."
+    );
   }
 
   return {
     usuario,
-    clienteId: usuario.clienteId,
+    clienteId:
+      usuario.clienteId,
   };
 }
-
 
 export async function obterTodosModuloPesquisa(
   tipo: TipoModuloPesquisa
 ) {
   await validarMundial();
 
-  return RepositorioPesquisaCliente.obterTodos(tipo);
+  return RepositorioPesquisaCliente.obterTodos(
+    tipo
+  );
 }
-
 
 export async function obterPesquisaModuloPorId(
   id: string,
@@ -148,21 +202,26 @@ export async function obterPesquisaModuloPorId(
   await validarMundial();
 
   if (!id?.trim()) {
-    throw new Error("Aplicação não informada.");
+    throw new Error(
+      "Aplicação não informada."
+    );
   }
 
-  return RepositorioPesquisaCliente.obterPorId(id, tipo);
+  return RepositorioPesquisaCliente.obterPorId(
+    id,
+    tipo
+  );
 }
-
 
 export async function obterDadosFormularioModuloPesquisa(
   tipo: TipoModuloPesquisa
 ) {
   await validarMundial();
 
-  return RepositorioPesquisaCliente.obterDadosFormulario(tipo);
+  return RepositorioPesquisaCliente.obterDadosFormulario(
+    tipo
+  );
 }
-
 
 export async function salvarPesquisaModulo(
   pesquisa: PesquisaCliente,
@@ -179,11 +238,13 @@ export async function salvarPesquisaModulo(
       tipo
     );
 
-  revalidarModulo(tipo, resultado.id);
+  revalidarModulo(
+    tipo,
+    resultado.id
+  );
 
   return resultado;
 }
-
 
 export async function excluirPesquisaModulo(
   id: string,
@@ -192,7 +253,9 @@ export async function excluirPesquisaModulo(
   await validarMundial();
 
   if (!id?.trim()) {
-    throw new Error("Aplicação não informada.");
+    throw new Error(
+      "Aplicação não informada."
+    );
   }
 
   const resultado =
@@ -201,11 +264,12 @@ export async function excluirPesquisaModulo(
       tipo
     );
 
-  revalidarModulo(tipo);
+  revalidarModulo(
+    tipo
+  );
 
   return resultado;
 }
-
 
 export async function alterarStatusPesquisaModulo(
   id: string,
@@ -215,7 +279,9 @@ export async function alterarStatusPesquisaModulo(
   await validarMundial();
 
   if (!id?.trim()) {
-    throw new Error("Aplicação não informada.");
+    throw new Error(
+      "Aplicação não informada."
+    );
   }
 
   const resultado =
@@ -225,11 +291,13 @@ export async function alterarStatusPesquisaModulo(
       tipo
     );
 
-  revalidarModulo(tipo, id);
+  revalidarModulo(
+    tipo,
+    id
+  );
 
   return resultado;
 }
-
 
 export async function obterRelatorioModuloPesquisa(
   id: string,
@@ -238,7 +306,9 @@ export async function obterRelatorioModuloPesquisa(
   await validarMundial();
 
   if (!id?.trim()) {
-    throw new Error("Aplicação não informada.");
+    throw new Error(
+      "Aplicação não informada."
+    );
   }
 
   return RepositorioPesquisaCliente.obterRelatorio(
@@ -246,7 +316,6 @@ export async function obterRelatorioModuloPesquisa(
     tipo
   );
 }
-
 
 export async function obterDadosRelatorioModuloPesquisa(
   tipo: TipoModuloPesquisa,
@@ -268,10 +337,12 @@ export async function obterDadosRelatorioModuloPesquisa(
 
       setor:
         filtros.setor,
+
+      funcionarioId:
+        filtros.funcionarioId,
     }
   );
 }
-
 
 export async function obterMinhasAplicacoesModulo(
   tipo: TipoModuloPesquisa
@@ -279,14 +350,15 @@ export async function obterMinhasAplicacoesModulo(
   const {
     clienteId,
   } =
-    await validarCliente();
+    await validarAcessoClienteModulo(
+      tipo
+    );
 
   return RepositorioPesquisaCliente.obterMinhas(
     clienteId,
     tipo
   );
 }
-
 
 export async function obterMinhaAplicacaoModuloPorId(
   id: string,
@@ -295,10 +367,14 @@ export async function obterMinhaAplicacaoModuloPorId(
   const {
     clienteId,
   } =
-    await validarCliente();
+    await validarAcessoClienteModulo(
+      tipo
+    );
 
   if (!id?.trim()) {
-    throw new Error("Aplicação não informada.");
+    throw new Error(
+      "Aplicação não informada."
+    );
   }
 
   return RepositorioPesquisaCliente.obterPorIdECliente(
@@ -308,7 +384,6 @@ export async function obterMinhaAplicacaoModuloPorId(
   );
 }
 
-
 export async function obterMeuRelatorioModulo(
   id: string,
   tipo: TipoModuloPesquisa
@@ -316,10 +391,14 @@ export async function obterMeuRelatorioModulo(
   const {
     clienteId,
   } =
-    await validarCliente();
+    await validarAcessoClienteModulo(
+      tipo
+    );
 
   if (!id?.trim()) {
-    throw new Error("Aplicação não informada.");
+    throw new Error(
+      "Aplicação não informada."
+    );
   }
 
   return RepositorioPesquisaCliente.obterRelatorioPorCliente(

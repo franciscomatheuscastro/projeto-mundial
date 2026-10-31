@@ -1,2129 +1,542 @@
 "use client";
 
-
-
-import type {
-
-  DadosRelatorioDesempenho,
-
-  DimensaoDesempenho,
-
-} from "./RelatorioAvaliacaoDesempenhoTela";
-
-
-
-
-
+import type { DadosRelatorioDesempenho, DimensaoDesempenho } from "./RelatorioAvaliacaoDesempenhoTela";
 type Props = {
-
-  dados: DadosRelatorioDesempenho;
-
+    dados: DadosRelatorioDesempenho;
 };
-
-
-
-
-
-const CAMINHO_LOGO =
-
-  "/logo-pessoas.png";
-
-
-
-
-
-export default function RelatorioAvaliacaoDesempenhoImpressaoTela({
-
-  dados,
-
-}: Props) {
-
-  const analise =
-
-    dados.analise;
-
-
-
-
-
-  const organizacao =
-
-    obterOrganizacao(
-
-      dados
-
-    );
-
-
-
-
-
-  const ranking =
-
-    [
-
-      ...(
-
-        analise?.dimensoes ||
-
-        []
-
-      ),
-
-    ].sort(
-
-      (
-
-        a,
-
-        b
-
-      ) =>
-
-        b.score -
-
-        a.score
-
-    );
-
-
-  const top5Dimensoes =
-    ranking.slice(
-      0,
-      5
-    );
-
-
-  const piores5Dimensoes =
-    [
-      ...ranking,
+const CAMINHO_LOGO = "/logo-pessoas.png";
+export default function RelatorioAvaliacaoDesempenhoImpressaoTela({ dados, }: Props) {
+    const analise = dados.analise;
+    const organizacao = obterOrganizacao(dados);
+    const setorSelecionado = obterSetorSelecionado(dados);
+    const funcionarioSelecionado = obterFuncionarioSelecionado(dados);
+    const ranking = [
+        ...(analise?.dimensoes ||
+            []),
+    ].sort((a, b) => b.score -
+        a.score);
+    const top5Dimensoes = ranking.slice(0, 5);
+    const piores5Dimensoes = [
+        ...ranking,
     ]
-      .reverse()
-      .slice(
-        0,
-        5
-      );
-
-return (
-
-    <main className="min-h-screen bg-white p-6 text-slate-900 print:min-h-0 print:p-0">
-
+        .reverse()
+        .slice(0, 5);
+    return (<main className="min-h-screen bg-white p-6 text-slate-900 print:min-h-0 print:p-0">
       <style jsx global>{`
-
         @page {
-
           size: A4 portrait;
-
           margin: 12mm;
-
         }
-
-
-
         @media print {
-
           html,
-
           body {
-
             background: #ffffff !important;
-
           }
-
-
-
           body {
-
             margin: 0 !important;
-
             padding: 0 !important;
-
             -webkit-print-color-adjust: exact;
-
             print-color-adjust: exact;
-
           }
-
-
-
           .relatorio-desempenho {
-
             width: 100% !important;
-
             max-width: none !important;
-
           }
-
-
-
           .quebra-pagina {
-
             break-before: page;
-
             page-break-before: always;
-
           }
-
-
-
           .evitar-quebra {
-
             break-inside: avoid;
-
             page-break-inside: avoid;
-
           }
-
-
-
           .relatorio-desempenho table {
-
             page-break-inside: auto;
-
           }
-
-
-
           .relatorio-desempenho thead {
-
             display: table-header-group;
-
           }
-
-
-
           .relatorio-desempenho tr {
-
             break-inside: avoid;
-
             page-break-inside: avoid;
-
           }
-
         }
-
       `}</style>
-
-
-
-
-
       <div className="relatorio-desempenho mx-auto max-w-[1050px]">
-
         <div className="mb-6 flex justify-end gap-3 print:hidden">
-
-          <button
-
-            type="button"
-
-            onClick={() =>
-
-              window.close()
-
-            }
-
-            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-
-          >
-
+          <button type="button" onClick={() => window.close()} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
             Fechar
-
           </button>
-
-
-
-
-
-          <button
-
-            type="button"
-
-            onClick={() =>
-
-              window.print()
-
-            }
-
-            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
-
-          >
-
+          <button type="button" onClick={() => window.print()} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">
             Imprimir / salvar PDF
-
           </button>
-
         </div>
-
-
-
-
-
         <header className="evitar-quebra border-b-2 border-slate-900 pb-5">
-
-          <img
-
-            src={
-
-              CAMINHO_LOGO
-
-            }
-
-            alt="Grupo Mundial RH"
-
-            className="h-auto w-[150px] object-contain print:w-[135px]"
-
-          />
-
-
-
-
-
+          <img src={CAMINHO_LOGO} alt="Grupo Mundial RH" className="h-auto w-[150px] object-contain print:w-[135px]"/>
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.24em] text-indigo-600">
-
             Avaliação de Desempenho
-
           </p>
-
-
-
-
-
           <h1 className="mt-2 text-3xl font-black leading-tight">
-
             Relatório de Avaliação de Desempenho
-
           </h1>
-
-
-
-
-
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-
             Consolidação das dimensões de desempenho, forças, pontos de
-
             atenção e prioridades identificadas nas aplicações consideradas.
-
           </p>
-
-
-
-
-
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
-
-            <InfoCapa
-
-              label="Organização"
-
-              valor={
-
-                organizacao
-
-              }
-
-            />
-
-
-
-            <InfoCapa
-
-              label="Período analisado"
-
-              valor={
-
-                formatarPeriodo(
-
-                  dados.filtros.dataInicio,
-
-                  dados.filtros.dataFim
-
-                )
-
-              }
-
-            />
-
-
-
-            <InfoCapa
-
-              label="Setor"
-
-              valor={
-
-                dados.filtros.setor ||
-
-                "Todos os setores"
-
-              }
-
-            />
-
-
-
-            <InfoCapa
-
-              label="Avaliações consideradas"
-
-              valor={
-
-                String(
-
-                  dados.resumo.totalPesquisas
-
-                )
-
-              }
-
-            />
-
-
-
-            <InfoCapa
-
-              label="Respostas"
-
-              valor={
-
-                String(
-
-                  dados.resumo.totalRespostas
-
-                )
-
-              }
-
-            />
-
+            <InfoCapa label="Organização" valor={organizacao}/>
+            <InfoCapa label="Período analisado" valor={formatarPeriodo(dados.filtros.dataInicio, dados.filtros.dataFim)}/>
+            <InfoCapa label="Setor" valor={setorSelecionado}/>
+            <InfoCapa label="Funcionário" valor={funcionarioSelecionado}/>
+            <InfoCapa label="Avaliações consideradas" valor={String(dados.resumo.totalPesquisas)}/>
+            <InfoCapa label="Respostas" valor={String(dados.resumo.totalRespostas)}/>
           </div>
-
         </header>
-
-
-
-
-
+        {(dados.avaliacoesRespondidas?.length ?? 0) > 0 && (<section className="mt-8">
+            <div className="mb-4">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">
+                Dados da avaliação
+              </p>
+              <h2 className="mt-1 text-xl font-black">
+                Identificação das avaliações respondidas
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Colaborador, setor, cargo, gestor responsável e datas registradas na avaliação.
+              </p>
+            </div>
+            <div className="overflow-hidden rounded-2xl border border-slate-200">
+              <table className="w-full border-collapse text-[10px]">
+                <thead className="bg-slate-100">
+                  <tr>
+                    <Th>Colaborador</Th>
+                    <Th>Setor</Th>
+                    <Th>Cargo</Th>
+                    <Th>Gestor</Th>
+                    <Th>Data da avaliação</Th>
+                    <Th>Data de admissão</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(dados.avaliacoesRespondidas || []).map(avaliacao => (<tr key={avaliacao.id} className="border-t border-slate-200">
+                    <Td>{avaliacao.nome || "Não informado"}</Td>
+                    <Td>{avaliacao.setor || "—"}</Td>
+                    <Td>{avaliacao.cargo || "—"}</Td>
+                    <Td>{avaliacao.nomeGestor || "—"}</Td>
+                    <Td>{formatarDataCampo(avaliacao.dataAvaliacao)}</Td>
+                    <Td>{formatarDataCampo(avaliacao.dataAdmissao)}</Td>
+                  </tr>))}
+                </tbody>
+              </table>
+            </div>
+          </section>)}
         <section className="mt-8 evitar-quebra">
-
-          <TituloSecao
-
-            indice="1"
-
-            titulo="Resumo executivo"
-
-            descricao="Visão consolidada dos principais indicadores de desempenho."
-
-          />
-
-
-
-
-
+          <TituloSecao indice="1" titulo="Resumo executivo" descricao="Visão consolidada dos principais indicadores de desempenho."/>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-
-            <Indicador
-
-              label="Avaliações"
-
-              valor={
-
-                dados.resumo.totalPesquisas
-
-              }
-
-            />
-
-
-
-            <Indicador
-
-              label="Respostas"
-
-              valor={
-
-                dados.resumo.totalRespostas
-
-              }
-
-            />
-
-
-
-            <Indicador
-
-              label="Score de desempenho"
-
-              valor={
-
-                analise?.scoreDesempenho ==
-
-                null
-
-                  ? "—"
-
-                  : `${formatarScore(
-
-                      analise.scoreDesempenho
-
-                    )}/100`
-
-              }
-
-              destaque
-
-            />
-
+            <Indicador label="Avaliações" valor={dados.resumo.totalPesquisas}/>
+            <Indicador label="Respostas" valor={dados.resumo.totalRespostas}/>
+            <Indicador label="Score de desempenho" valor={analise?.scoreDesempenho ==
+            null
+            ? "—"
+            : `${formatarScore(analise.scoreDesempenho)}/100`} destaque/>
           </div>
-
-
-
-
-
-          {analise && (
-
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
-
-              {textoResumoExecutivo(
-
-                analise
-
-              )}
-
-            </div>
-
-          )}
-
+          {analise && (<div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+              {textoResumoExecutivo(analise)}
+            </div>)}
         </section>
-
-
-
-
-
         <section className="mt-8">
-
-          <TituloSecao
-
-            indice="2"
-
-            titulo="Resultado por dimensão"
-
-            descricao="Scores consolidados em escala de 0 a 100, conforme a configuração do instrumento."
-
-          />
-
-
-
-
-
+          <TituloSecao indice="2" titulo="Resultado por dimensão" descricao="Scores consolidados em escala de 0 a 100, conforme a configuração do instrumento."/>
           {!analise ||
-
-          analise.dimensoes.length ===
-
-            0 ? (
-
-            <Aviso>
-
+            analise.dimensoes.length ===
+                0 ? (<Aviso>
               Nenhuma dimensão possui dados suficientes para apresentação.
-
-            </Aviso>
-
-          ) : (
-
-            <div className="mt-4 space-y-3">
-
-              {analise.dimensoes.map(
-
-                dimensao => (
-
-                  <DimensaoDesempenhoCardImpressao
-
-                    key={`${dimensao.id}-${dimensao.nome}`}
-
-                    dimensao={
-
-                      dimensao
-
-                    }
-
-                  />
-
-                )
-
-              )}
-
-            </div>
-
-          )}
-
+            </Aviso>) : (<div className="mt-4 space-y-3">
+              {analise.dimensoes.map(dimensao => (<DimensaoDesempenhoCardImpressao key={`${dimensao.id}-${dimensao.nome}`} dimensao={dimensao}/>))}
+            </div>)}
         </section>
-
-
-
-
-
-        {analise && (
-
-          <section className="mt-8 evitar-quebra">
-
-            <TituloSecao
-
-              indice="3"
-
-              titulo="Leitura executiva"
-
-              descricao="Síntese das dimensões organizadas pela lógica analítica da avaliação."
-
-            />
-
-
-
-
-
+        {analise && (<section className="mt-8 evitar-quebra">
+            <TituloSecao indice="3" titulo="Leitura executiva" descricao="Síntese das dimensões organizadas pela lógica analítica da avaliação."/>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
-
-              <ListaExecutiva
-
-                titulo="Forças"
-
-                itens={
-
-                  analise.forcas
-
-                }
-
-                vazio="Nenhuma força classificada."
-
-              />
-
-
-
-              <ListaExecutiva
-
-                titulo="Pontos de atenção"
-
-                itens={
-
-                  analise.pontosAtencao
-
-                }
-
-                vazio="Nenhum ponto de atenção identificado."
-
-              />
-
-
-
-              <ListaExecutiva
-
-                titulo="Prioridades"
-
-                itens={
-
-                  analise.prioridades
-
-                }
-
-                vazio="Nenhuma prioridade classificada."
-
-                destaque
-
-              />
-
+              <ListaExecutiva titulo="Forças" itens={analise.forcas} vazio="Nenhuma força classificada."/>
+              <ListaExecutiva titulo="Pontos de atenção" itens={analise.pontosAtencao} vazio="Nenhum ponto de atenção identificado."/>
+              <ListaExecutiva titulo="Prioridades" itens={analise.prioridades} vazio="Nenhuma prioridade classificada." destaque/>
             </div>
-
-          </section>
-
-        )}
-
-
-
-
-
+          </section>)}
         {ranking.length >
-          0 && (
-          <section className="mt-8">
-            <TituloSecao
-              indice="4"
-              titulo="Ranking das dimensões"
-              descricao="Comparativo das cinco dimensões com maior score e das cinco com menor score de desempenho."
-            />
-
-
+            0 && (<section className="mt-8">
+            <TituloSecao indice="4" titulo="Ranking das dimensões" descricao="Comparativo das cinco dimensões com maior score e das cinco com menor score de desempenho."/>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <RankingDesempenhoPrint
-                titulo="Top 5 dimensões"
-                itens={
-                  top5Dimensoes
-                }
-              />
-
-              <RankingDesempenhoPrint
-                titulo="5 piores dimensões"
-                itens={
-                  piores5Dimensoes
-                }
-                atencao
-              />
+              <RankingDesempenhoPrint titulo="Top 5 dimensões" itens={top5Dimensoes}/>
+              <RankingDesempenhoPrint titulo="5 piores dimensões" itens={piores5Dimensoes} atencao/>
             </div>
-          </section>
-        )}
-
-
-
-
-
+          </section>)}
         {dados.informacoesAdicionais.length >
-
-          0 && (
-
-          <section className="mt-8 quebra-pagina">
-
-            <TituloSecao
-
-              indice="5"
-
-              titulo="Informações adicionais"
-
-              descricao="Perguntas complementares que não compõem o score quantitativo da avaliação."
-
-            />
-
-
-
-
-
+            0 && (<section className="mt-8 quebra-pagina">
+            <TituloSecao indice="5" titulo="Informações adicionais" descricao="Perguntas complementares que não compõem o score quantitativo da avaliação."/>
             <div className="mt-4 space-y-4">
-
-              {dados.informacoesAdicionais.map(
-
-                (
-
-                  item,
-
-                  index
-
-                ) => (
-
-                  <div
-
-                    key={`${item.id}-${index}`}
-
-                    className="evitar-quebra rounded-2xl border border-slate-200 p-4"
-
-                  >
-
+              {dados.informacoesAdicionais.map((item, index) => (<div key={`${item.id}-${index}`} className="evitar-quebra rounded-2xl border border-slate-200 p-4">
                     <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">
-
-                      {formatarTipo(
-
-                        item.tipo
-
-                      )}
-
+                      {formatarTipo(item.tipo)}
                     </p>
-
-
-
-
-
                     <h3 className="mt-1 font-black">
-
-                      {
-
-                        item.titulo
-
-                      }
-
+                      {item.titulo}
                     </h3>
-
-
-
-
-
-                    {item.dimensao && (
-
-                      <p className="mt-1 text-xs text-slate-500">
-
+                    {item.dimensao && (<p className="mt-1 text-xs text-slate-500">
                         Dimensão:{" "}
-
-                        {
-
-                          item.dimensao.nome
-
-                        }
-
-                      </p>
-
-                    )}
-
-
-
-
-
+                        {item.dimensao.nome}
+                      </p>)}
                     {item.distribuicao.length >
-
-                      0 && (
-
-                      <div className="mt-3 space-y-2">
-
-                        {item.distribuicao.map(
-
-                          opcao => (
-
-                            <div
-
-                              key={`${item.id}-${opcao.valor}`}
-
-                              className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm"
-
-                            >
-
+                    0 && (<div className="mt-3 space-y-2">
+                        {item.distribuicao.map(opcao => (<div key={`${item.id}-${opcao.valor}`} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm">
                               <span>
-
-                                {
-
-                                  opcao.valor
-
-                                }
-
+                                {opcao.valor}
                               </span>
-
-
-
                               <strong>
-
-                                {
-
-                                  opcao.quantidade
-
-                                }{" "}
-
+                                {opcao.quantidade}{" "}
                                 ·{" "}
-
-                                {percentual(
-
-                                  opcao.percentual
-
-                                )}
-
+                                {percentual(opcao.percentual)}
                               </strong>
-
-                            </div>
-
-                          )
-
-                        )}
-
-                      </div>
-
-                    )}
-
-
-
-
-
+                            </div>))}
+                      </div>)}
                     {item.respostasTexto.length >
-
-                      0 && (
-
-                      <div className="mt-3 space-y-2">
-
-                        {item.respostasTexto.map(
-
-                          (
-
-                            resposta,
-
-                            respostaIndex
-
-                          ) => (
-
-                            <p
-
-                              key={`${item.id}-texto-${respostaIndex}`}
-
-                              className="rounded-xl bg-slate-50 px-3 py-2 text-sm leading-6 text-slate-700"
-
-                            >
-
-                              {
-
-                                resposta
-
-                              }
-
-                            </p>
-
-                          )
-
-                        )}
-
-                      </div>
-
-                    )}
-
-                  </div>
-
-                )
-
-              )}
-
+                    0 && (<div className="mt-3 space-y-2">
+                        {item.respostasTexto.map((resposta, respostaIndex) => (<p key={`${item.id}-texto-${respostaIndex}`} className="rounded-xl bg-slate-50 px-3 py-2 text-sm leading-6 text-slate-700">
+                              {resposta}
+                            </p>))}
+                      </div>)}
+                  </div>))}
             </div>
-
-          </section>
-
-        )}
-
-
-
-
-
+          </section>)}
         <section className="mt-8">
-
-          <TituloSecao
-
-            indice="6"
-
-            titulo="Avaliações consideradas"
-
-            descricao="Aplicações utilizadas na consolidação deste documento."
-
-          />
-
-
-
-
-
+          <TituloSecao indice="6" titulo="Avaliações consideradas" descricao="Aplicações utilizadas na consolidação deste documento."/>
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-
             <table className="w-full border-collapse text-xs">
-
               <thead className="bg-slate-100">
-
                 <tr>
-
                   <Th>Avaliação</Th>
-
                   <Th>Organização</Th>
-
                   <Th>Status</Th>
-
                   <Th direita>Respostas</Th>
-
-
                 </tr>
-
               </thead>
-
-
-
               <tbody>
-
-                {dados.pesquisas.map(
-
-                  pesquisa => (
-
-                    <tr
-
-                      key={
-
-                        pesquisa.id
-
-                      }
-
-                      className="border-t border-slate-200"
-
-                    >
-
+                {dados.pesquisas.map(pesquisa => (<tr key={pesquisa.id} className="border-t border-slate-200">
                       <Td>
-
                         <strong>
-
-                          {
-
-                            pesquisa.titulo
-
-                          }
-
+                          {pesquisa.titulo}
                         </strong>
-
-
-
                         <div className="mt-1 text-slate-500">
-
-                          {
-
-                            pesquisa.modelo.titulo
-
-                          }
-
+                          {pesquisa.modelo.titulo}
                         </div>
-
                       </Td>
-
-
-
                       <Td>
-
                         {pesquisa.cliente.empresa ||
-
-                          pesquisa.cliente.nome}
-
+                pesquisa.cliente.nome}
                       </Td>
-
-
-
                       <Td>
-
-                        {formatarClassificacao(
-
-                          pesquisa.status
-
-                        )}
-
+                        {formatarClassificacao(pesquisa.status)}
                       </Td>
-
-
-
                       <Td direita>
-
-                        {
-
-                          pesquisa.totalRespostas
-
-                        }
-
+                        {pesquisa.totalRespostas}
                       </Td>
-
-                    </tr>
-
-                  )
-
-                )}
-
+                    </tr>))}
               </tbody>
-
             </table>
-
           </div>
-
         </section>
-
-
-
-
-
         <section className="mt-8 evitar-quebra rounded-2xl border border-slate-200 bg-slate-50 p-5">
-
           <h2 className="text-base font-black">
-
             Nota metodológica
-
           </h2>
-
-
-
-
-
           <p className="mt-2 text-sm leading-6 text-slate-600">
-
             Os resultados apresentados são consolidados a partir das perguntas
-
             quantitativas vinculadas às dimensões do instrumento. As
-
             classificações seguem as faixas configuradas no modelo utilizado.
-
             As listas de forças, pontos de atenção e prioridades respeitam a
-
             lógica analítica atualmente adotada pelo sistema.
-
           </p>
-
         </section>
-
-
-
-
-
         <footer className="mt-8 border-t border-slate-300 pt-4 text-xs leading-5 text-slate-500">
-
           Documento gerencial para apresentação dos resultados consolidados.
-
           Recomenda-se que a interpretação e a definição de ações considerem o
-
           contexto organizacional e a metodologia adotada.
-
         </footer>
-
       </div>
-
-    </main>
-
-  );
-
+    </main>);
 }
-
-
-
-
-
-function InfoCapa({
-
-  label,
-
-  valor,
-
-}: {
-
-  label: string;
-
-  valor: string;
-
+function InfoCapa({ label, valor, }: {
+    label: string;
+    valor: string;
 }) {
-
-  return (
-
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-
+    return (<div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
-
-        {
-
-          label
-
-        }
-
+        {label}
       </p>
-
-
-
       <strong className="mt-1 block text-sm text-slate-900">
-
-        {
-
-          valor
-
-        }
-
+        {valor}
       </strong>
-
-    </div>
-
-  );
-
+    </div>);
 }
-
-
-
-
-
-function TituloSecao({
-
-  indice,
-
-  titulo,
-
-  descricao,
-
-}: {
-
-  indice: string;
-
-  titulo: string;
-
-  descricao: string;
-
+function TituloSecao({ indice, titulo, descricao, }: {
+    indice: string;
+    titulo: string;
+    descricao: string;
 }) {
-
-  return (
-
-    <div>
-
+    return (<div>
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">
-
-        {
-
-          indice
-
-        }
-
+        {indice}
       </p>
-
-
-
       <h2 className="mt-1 text-xl font-black">
-
-        {
-
-          titulo
-
-        }
-
+        {titulo}
       </h2>
-
-
-
       <p className="mt-1 text-sm leading-6 text-slate-500">
-
-        {
-
-          descricao
-
-        }
-
+        {descricao}
       </p>
-
-    </div>
-
-  );
-
+    </div>);
 }
-
-
-
-
-
-function Indicador({
-
-  label,
-
-  valor,
-
-  destaque = false,
-
-}: {
-
-  label: string;
-
-  valor: string | number;
-
-  destaque?: boolean;
-
+function Indicador({ label, valor, destaque = false, }: {
+    label: string;
+    valor: string | number;
+    destaque?: boolean;
 }) {
-
-  return (
-
-    <div
-
-      className={`rounded-2xl border p-4 ${
-
-        destaque
-
-          ? "border-indigo-600 bg-indigo-600 text-white"
-
-          : "border-slate-200 bg-white"
-
-      }`}
-
-    >
-
-      <p
-
-        className={`text-xs font-semibold ${
-
-          destaque
-
+    return (<div className={`rounded-2xl border p-4 ${destaque
+            ? "border-indigo-600 bg-indigo-600 text-white"
+            : "border-slate-200 bg-white"}`}>
+      <p className={`text-xs font-semibold ${destaque
             ? "text-indigo-100"
-
-            : "text-slate-500"
-
-        }`}
-
-      >
-
-        {
-
-          label
-
-        }
-
+            : "text-slate-500"}`}>
+        {label}
       </p>
-
-
-
       <strong className="mt-1 block text-xl">
-
-        {
-
-          valor
-
-        }
-
+        {valor}
       </strong>
-
-    </div>
-
-  );
-
+    </div>);
 }
-
-
-
-
-
-function DimensaoDesempenhoCardImpressao({
-
-  dimensao,
-
-}: {
-
-  dimensao: DimensaoDesempenho;
-
+function DimensaoDesempenhoCardImpressao({ dimensao, }: {
+    dimensao: DimensaoDesempenho;
 }) {
-
-  const score =
-
-    Math.min(
-
-      100,
-
-      Math.max(
-
-        0,
-
-        dimensao.score
-
-      )
-
-    );
-
-
-
-
-
-  return (
-
-    <div className="evitar-quebra rounded-2xl border border-slate-200 p-4">
-
+    const score = Math.min(100, Math.max(0, dimensao.score));
+    return (<div className="evitar-quebra rounded-2xl border border-slate-200 p-4">
       <div className="flex items-center justify-between gap-4">
-
         <div>
-
           <h3 className="font-black">
-
-            {
-
-              dimensao.nome
-
-            }
-
+            {dimensao.nome}
           </h3>
-
-
-
           <p className="mt-1 text-xs text-slate-500">
-
-            {
-
-              dimensao.totalRespostas
-
-            }{" "}
-
+            {dimensao.totalRespostas}{" "}
             resposta(s)
-
           </p>
-
         </div>
-
-
-
         <div className="text-right">
-
           <strong className="text-lg text-indigo-700">
-
-            {formatarScore(
-
-              score
-
-            )}
-
+            {formatarScore(score)}
             /100
-
           </strong>
-
-
-
           <p className="mt-1 text-xs font-bold uppercase text-slate-500">
-
-            {formatarClassificacao(
-
-              dimensao.classificacao
-
-            )}
-
+            {formatarClassificacao(dimensao.classificacao)}
           </p>
-
         </div>
-
       </div>
-
-
-
-
-
       <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
-
-        <div
-
-          className="h-full rounded-full bg-indigo-600"
-
-          style={{
-
+        <div className="h-full rounded-full bg-indigo-600" style={{
             width: `${score}%`,
-
-          }}
-
-        />
-
+        }}/>
       </div>
-
-    </div>
-
-  );
-
+    </div>);
 }
-
-
-
-
-
-function RankingDesempenhoPrint({
-  titulo,
-  itens,
-  atencao = false,
-}: {
-  titulo: string;
-  itens: DimensaoDesempenho[];
-  atencao?: boolean;
+function RankingDesempenhoPrint({ titulo, itens, atencao = false, }: {
+    titulo: string;
+    itens: DimensaoDesempenho[];
+    atencao?: boolean;
 }) {
-  return (
-    <div className="evitar-quebra rounded-2xl border border-slate-200 p-4">
+    return (<div className="evitar-quebra rounded-2xl border border-slate-200 p-4">
       <h3 className="font-black">
         {titulo}
       </h3>
-
       <div className="mt-3 space-y-2">
-        {itens.map(
-          (
-            item,
-            index
-          ) => (
-            <div
-              key={`${item.id}-${index}`}
-              className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm ${
-                atencao
-                  ? "bg-amber-50"
-                  : "bg-green-50"
-              }`}
-            >
+        {itens.map((item, index) => (<div key={`${item.id}-${index}`} className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm ${atencao
+                ? "bg-amber-50"
+                : "bg-green-50"}`}>
               <div className="min-w-0">
                 <span className="mr-2 font-black">
                   #{index + 1}
                 </span>
-
                 <strong>{item.nome}</strong>
-
                 <div className="mt-0.5 text-xs text-slate-500">
-                  {formatarClassificacao(
-                    item.classificacao
-                  )}
+                  {formatarClassificacao(item.classificacao)}
                 </div>
               </div>
-
               <strong className="shrink-0">
-                {formatarScore(
-                  item.score
-                )}/100
+                {formatarScore(item.score)}/100
               </strong>
-            </div>
-          )
-        )}
+            </div>))}
       </div>
-    </div>
-  );
+    </div>);
 }
-
-
-
-function ListaExecutiva({
-
-  titulo,
-
-  itens,
-
-  vazio,
-
-  destaque = false,
-
-}: {
-
-  titulo: string;
-
-  itens: string[];
-
-  vazio: string;
-
-  destaque?: boolean;
-
+function ListaExecutiva({ titulo, itens, vazio, destaque = false, }: {
+    titulo: string;
+    itens: string[];
+    vazio: string;
+    destaque?: boolean;
 }) {
-
-  return (
-
-    <div
-
-      className={`evitar-quebra rounded-2xl border p-4 ${
-
-        destaque
-
-          ? "border-indigo-950 bg-indigo-950 text-white"
-
-          : "border-slate-200 bg-white"
-
-      }`}
-
-    >
-
+    return (<div className={`evitar-quebra rounded-2xl border p-4 ${destaque
+            ? "border-indigo-950 bg-indigo-950 text-white"
+            : "border-slate-200 bg-white"}`}>
       <h3 className="font-black">
-
-        {
-
-          titulo
-
-        }
-
+        {titulo}
       </h3>
-
-
-
       {itens.length ===
-
-      0 ? (
-
-        <p
-
-          className={`mt-3 text-sm ${
-
-            destaque
-
-              ? "text-indigo-200"
-
-              : "text-slate-500"
-
-          }`}
-
-        >
-
-          {
-
-            vazio
-
-          }
-
-        </p>
-
-      ) : (
-
-        <div className="mt-3 space-y-2">
-
-          {itens.map(
-
-            (
-
-              item,
-
-              index
-
-            ) => (
-
-              <div
-
-                key={`${item}-${index}`}
-
-                className={`rounded-xl px-3 py-2 text-sm font-semibold ${
-
-                  destaque
-
+            0 ? (<p className={`mt-3 text-sm ${destaque
+                ? "text-indigo-200"
+                : "text-slate-500"}`}>
+          {vazio}
+        </p>) : (<div className="mt-3 space-y-2">
+          {itens.map((item, index) => (<div key={`${item}-${index}`} className={`rounded-xl px-3 py-2 text-sm font-semibold ${destaque
                     ? "bg-white/10"
-
-                    : "bg-slate-50"
-
-                }`}
-
-              >
-
-                {
-
-                  item
-
-                }
-
-              </div>
-
-            )
-
-          )}
-
-        </div>
-
-      )}
-
-    </div>
-
-  );
-
+                    : "bg-slate-50"}`}>
+                {item}
+              </div>))}
+        </div>)}
+    </div>);
 }
-
-
-
-
-
-function Aviso({
-
-  children,
-
-}: {
-
-  children: React.ReactNode;
-
+function Aviso({ children, }: {
+    children: React.ReactNode;
 }) {
-
-  return (
-
-    <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
-
-      {
-
-        children
-
-      }
-
-    </div>
-
-  );
-
+    return (<div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
+      {children}
+    </div>);
 }
-
-
-
-
-
-function Th({
-
-  children,
-
-  direita = false,
-
-}: {
-
-  children: React.ReactNode;
-
-  direita?: boolean;
-
+function Th({ children, direita = false, }: {
+    children: React.ReactNode;
+    direita?: boolean;
 }) {
-
-  return (
-
-    <th
-
-      className={`border border-slate-200 px-3 py-2 font-bold ${
-
-        direita
-
-          ? "text-right"
-
-          : "text-left"
-
-      }`}
-
-    >
-
-      {
-
-        children
-
-      }
-
-    </th>
-
-  );
-
+    return (<th className={`border border-slate-200 px-3 py-2 font-bold ${direita
+            ? "text-right"
+            : "text-left"}`}>
+      {children}
+    </th>);
 }
-
-
-
-
-
-function Td({
-
-  children,
-
-  direita = false,
-
-}: {
-
-  children: React.ReactNode;
-
-  direita?: boolean;
-
+function Td({ children, direita = false, }: {
+    children: React.ReactNode;
+    direita?: boolean;
 }) {
-
-  return (
-
-    <td
-
-      className={`border border-slate-200 px-3 py-2 align-top ${
-
-        direita
-
-          ? "text-right"
-
-          : "text-left"
-
-      }`}
-
-    >
-
-      {
-
-        children
-
-      }
-
-    </td>
-
-  );
-
+    return (<td className={`border border-slate-200 px-3 py-2 align-top ${direita
+            ? "text-right"
+            : "text-left"}`}>
+      {children}
+    </td>);
 }
-
-
-
-
-
-function obterOrganizacao(
-
-  dados: DadosRelatorioDesempenho
-
-) {
-
-  if (
-
-    dados.filtros.clienteId
-
-  ) {
-
-    const cliente =
-
-      dados.clientes.find(
-
-        item =>
-
-          item.id ===
-
-          dados.filtros.clienteId
-
-      );
-
-
-
-
-
-    return (
-
-      cliente?.empresa ||
-
-      cliente?.nome ||
-
-      "Organização selecionada"
-
+function obterOrganizacao(dados: DadosRelatorioDesempenho) {
+    if (dados.filtros.clienteId) {
+        const cliente = dados.clientes.find(item => item.id ===
+            dados.filtros.clienteId);
+        return (cliente?.empresa ||
+            cliente?.nome ||
+            "Organização selecionada");
+    }
+    if (dados.porCliente.length ===
+        1) {
+        return (dados.porCliente[0].empresa ||
+            dados.porCliente[0].clienteNome);
+    }
+    return "Consolidado de organizações";
+}
+function obterSetorSelecionado(dados: DadosRelatorioDesempenho) {
+    if (!dados.filtros.setor) {
+        return "Todos os setores";
+    }
+    const cliente = dados.filtros.clienteId
+        ? dados.clientes.find(item => item.id === dados.filtros.clienteId)
+        : null;
+    const setor = cliente?.setoresRelatorio.find(item => item.valor === dados.filtros.setor || item.nome === dados.filtros.setor);
+    return setor?.nome || dados.filtros.setor;
+}
+function obterFuncionarioSelecionado(dados: DadosRelatorioDesempenho) {
+    if (!dados.filtros.funcionarioId) {
+        return "Todos os funcionários";
+    }
+    const cliente = dados.filtros.clienteId
+        ? dados.clientes.find(item => item.id === dados.filtros.clienteId)
+        : null;
+    const funcionario = (cliente?.funcionarios ?? []).find(
+        item => item.id === dados.filtros.funcionarioId
     );
-
-  }
-
-
-
-
-
-  if (
-
-    dados.porCliente.length ===
-
-    1
-
-  ) {
-
-    return (
-
-      dados.porCliente[0].empresa ||
-
-      dados.porCliente[0].clienteNome
-
-    );
-
-  }
-
-
-
-
-
-  return "Consolidado de organizações";
-
+    return funcionario?.nome || "Funcionário selecionado";
 }
-
-
-
-
-
-function textoResumoExecutivo(
-
-  analise: NonNullable<
-
-    DadosRelatorioDesempenho["analise"]
-
-  >
-
-) {
-
-  const score =
-
-    analise.scoreDesempenho;
-
-
-
-
-
-  const inicio =
-
-    score == null
-
-      ? "O consolidado ainda não possui score de desempenho calculado."
-
-      : `O score de desempenho consolidado é ${formatarScore(
-
-          score
-
-        )}/100.`;
-
-
-
-
-
-  const partes =
-
-    [
-
-      analise.forcas.length >
-
-        0
-
-        ? `Forças identificadas: ${analise.forcas.join(
-
-            ", "
-
-          )}.`
-
-        : null,
-
-
-
-      analise.pontosAtencao.length >
-
-        0
-
-        ? `Pontos de atenção: ${analise.pontosAtencao.join(
-
-            ", "
-
-          )}.`
-
-        : null,
-
-
-
-      analise.prioridades.length >
-
-        0
-
-        ? `Prioridades: ${analise.prioridades.join(
-
-            ", "
-
-          )}.`
-
-        : null,
-
-    ].filter(
-
-      Boolean
-
-    );
-
-
-
-
-
-  return [
-
-    inicio,
-
-    ...partes,
-
-  ].join(
-
-    " "
-
-  );
-
+function textoResumoExecutivo(analise: NonNullable<DadosRelatorioDesempenho["analise"]>) {
+    const score = analise.scoreDesempenho;
+    const inicio = score == null
+        ? "O consolidado ainda não possui score de desempenho calculado."
+        : `O score de desempenho consolidado é ${formatarScore(score)}/100.`;
+    const partes = [
+        analise.forcas.length >
+            0
+            ? `Forças identificadas: ${analise.forcas.join(", ")}.`
+            : null,
+        analise.pontosAtencao.length >
+            0
+            ? `Pontos de atenção: ${analise.pontosAtencao.join(", ")}.`
+            : null,
+        analise.prioridades.length >
+            0
+            ? `Prioridades: ${analise.prioridades.join(", ")}.`
+            : null,
+    ].filter(Boolean);
+    return [
+        inicio,
+        ...partes,
+    ].join(" ");
 }
-
-
-
-
-
-function formatarTipo(
-
-  valor: string
-
-) {
-
-  return valor
-
-    .replaceAll(
-
-      "_",
-
-      " "
-
-    )
-
-    .toLocaleLowerCase(
-
-      "pt-BR"
-
-    )
-
-    .replace(
-
-      /^./,
-
-      letra =>
-
-        letra.toLocaleUpperCase(
-
-          "pt-BR"
-
-        )
-
-    );
-
+function formatarTipo(valor: string) {
+    return valor
+        .replaceAll("_", " ")
+        .toLocaleLowerCase("pt-BR")
+        .replace(/^./, letra => letra.toLocaleUpperCase("pt-BR"));
 }
-
-
-
-
-
-function formatarClassificacao(
-
-  valor: string
-
-) {
-
-  return valor
-
-    .replaceAll(
-
-      "_",
-
-      " "
-
-    )
-
-    .toLocaleLowerCase(
-
-      "pt-BR"
-
-    )
-
-    .replace(
-
-      /^./,
-
-      letra =>
-
-        letra.toLocaleUpperCase(
-
-          "pt-BR"
-
-        )
-
-    );
-
+function formatarClassificacao(valor: string) {
+    return valor
+        .replaceAll("_", " ")
+        .toLocaleLowerCase("pt-BR")
+        .replace(/^./, letra => letra.toLocaleUpperCase("pt-BR"));
 }
-
-
-
-
-
-function formatarScore(
-
-  valor: number
-
-) {
-
-  return valor
-
-    .toFixed(
-
-      1
-
-    )
-
-    .replace(
-
-      ".",
-
-      ","
-
-    );
-
+function formatarScore(valor: number) {
+    return valor
+        .toFixed(1)
+        .replace(".", ",");
 }
-
-
-
-
-
-function percentual(
-
-  valor: number
-
-) {
-
-  return `${valor
-
-    .toFixed(
-
-      1
-
-    )
-
-    .replace(
-
-      ".",
-
-      ","
-
-    )}%`;
-
+function percentual(valor: number) {
+    return `${valor
+        .toFixed(1)
+        .replace(".", ",")}%`;
 }
-
-
-
-
-
-function formatarPeriodo(
-
-  inicio: string | null,
-
-  fim: string | null
-
-) {
-
-  if (
-
-    !inicio &&
-
-    !fim
-
-  ) {
-
-    return "Todos os períodos";
-
-  }
-
-
-
-
-
-  if (
-
-    inicio &&
-
-    fim
-
-  ) {
-
-    return `${formatarData(
-
-      inicio
-
-    )} até ${formatarData(
-
-      fim
-
-    )}`;
-
-  }
-
-
-
-
-
-  if (
-
-    inicio
-
-  ) {
-
-    return `A partir de ${formatarData(
-
-      inicio
-
-    )}`;
-
-  }
-
-
-
-
-
-  return `Até ${formatarData(
-
-    fim!
-
-  )}`;
-
+function formatarDataCampo(valor: Date | string | null | undefined) {
+    if (!valor) {
+        return "—";
+    }
+    const data = valor instanceof Date
+        ? valor
+        : new Date(valor);
+    if (Number.isNaN(data.getTime())) {
+        return "—";
+    }
+    return new Intl.DateTimeFormat("pt-BR", {
+        timeZone: "UTC",
+    }).format(data);
 }
-
-
-
-
-
-function formatarData(
-
-  data: string
-
-) {
-
-  const [
-
-    ano,
-
-    mes,
-
-    dia,
-
-  ] =
-
-    data.split(
-
-      "-"
-
-    );
-
-
-
-
-
-  return `${dia}/${mes}/${ano}`;
-
+function formatarPeriodo(inicio: string | null, fim: string | null) {
+    if (!inicio &&
+        !fim) {
+        return "Todos os períodos";
+    }
+    if (inicio &&
+        fim) {
+        return `${formatarData(inicio)} até ${formatarData(fim)}`;
+    }
+    if (inicio) {
+        return `A partir de ${formatarData(inicio)}`;
+    }
+    return `Até ${formatarData(fim!)}`;
+}
+function formatarData(data: string) {
+    const [ano, mes, dia,] = data.split("-");
+    return `${dia}/${mes}/${ano}`;
 }

@@ -20,24 +20,20 @@ import {
   useRespostaPesquisaPublica,
 } from "@/src/app/data/hooks/useRespostaPesquisaPublica";
 
-
 type Props = {
   pesquisa: PesquisaPublica;
 };
-
 
 type OpcaoEscala = {
   valor: number;
   rotulo: string;
 };
 
-
 export default function PesquisaPublicaTela({
   pesquisa,
 }: Props) {
   const router =
     useRouter();
-
 
   const {
     erro,
@@ -46,25 +42,29 @@ export default function PesquisaPublicaTela({
   } =
     useRespostaPesquisaPublica();
 
-
   const ehPesquisaClima =
     pesquisa.tipo ===
     TipoModuloPesquisa.CLIMA;
 
+  const ehAvaliacaoDesempenho =
+    pesquisa.tipo ===
+    TipoModuloPesquisa.AVALIACAO_DESEMPENHO;
 
+  const funcionariosCliente =
+    (((pesquisa.cliente as unknown as {
+      funcionarios?: FuncionarioOpcao[];
+    }).funcionarios) ??
+      []);
 
   async function enviarResposta(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-
-
     const formData =
       new FormData(
         event.currentTarget
       );
-
 
     const respostas =
       pesquisa.perguntas.map(
@@ -87,13 +87,21 @@ export default function PesquisaPublicaTela({
         })
       );
 
-
     await salvarResposta({
       pesquisaId:
         pesquisa.id,
 
       token:
         pesquisa.token,
+
+      funcionarioId:
+        ehAvaliacaoDesempenho
+          ? String(
+              formData.get("funcionarioId") ??
+              ""
+            ).trim() ||
+            null
+          : null,
 
       nome:
         ehPesquisaClima
@@ -110,9 +118,16 @@ export default function PesquisaPublicaTela({
             ).trim() || null,
 
       setor:
-        String(
-          formData.get("setor") ?? ""
-        ).trim() || null,
+
+        ehAvaliacaoDesempenho
+
+          ? null
+
+          : String(
+
+              formData.get("setor") ?? ""
+
+            ).trim() || null,
 
       cargo:
         ehPesquisaClima
@@ -121,15 +136,35 @@ export default function PesquisaPublicaTela({
               formData.get("cargo") ?? ""
             ).trim() || null,
 
-      respostas,
-    });
+      /*
+       * O gestor é definido pela Mundial na criação da aplicação.
+       * O backend usa o vínculo da aplicação como fonte oficial.
+       */
+      nomeGestor:
 
+        null,
+
+      dataAvaliacao:
+        ehAvaliacaoDesempenho
+          ? String(
+              formData.get("dataAvaliacao") ?? ""
+            ).trim() || null
+          : null,
+
+      dataAdmissao:
+        ehAvaliacaoDesempenho
+          ? String(
+              formData.get("dataAdmissao") ?? ""
+            ).trim() || null
+          : null,
+
+      respostas,
+    } as any);
 
     router.push(
       "/pesquisa/obrigado"
     );
   }
-
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
@@ -141,12 +176,10 @@ export default function PesquisaPublicaTela({
             )}
           </p>
 
-
           <p className="mt-2 text-sm font-semibold text-slate-600">
             {pesquisa.cliente.empresa ||
               pesquisa.cliente.nome}
           </p>
-
 
           <h1 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">
             {
@@ -154,14 +187,12 @@ export default function PesquisaPublicaTela({
             }
           </h1>
 
-
           <p className="mt-3 text-sm leading-6 text-slate-500">
             {pesquisa.descricao ||
               pesquisa.modelo.descricao ||
               "Responda com sinceridade. Suas respostas ajudarão na construção de melhorias."}
           </p>
         </div>
-
 
         <form
           onSubmit={enviarResposta}
@@ -178,12 +209,21 @@ export default function PesquisaPublicaTela({
               titulo="Setor"
               descricao="Informação opcional. Você pode deixar em branco se preferir não informar."
             >
-              <CampoSetor
-                setores={
-                  pesquisa.cliente.setores ??
-                  []
-                }
-              />
+              {!ehAvaliacaoDesempenho && (
+
+                  <CampoSetor
+
+                    setores={
+
+                      pesquisa.cliente.setores ??
+
+                      []
+
+                    }
+
+                  />
+
+                )}
 
               <p className="mt-3 text-xs leading-5 text-slate-500">
                 A Pesquisa de Clima continua anônima: não solicitamos nome,
@@ -194,34 +234,78 @@ export default function PesquisaPublicaTela({
           ) : (
             <Card
               titulo="Identificação"
-              descricao="Essas informações são opcionais."
+              descricao={
+                ehAvaliacaoDesempenho
+                  ? "Selecione o funcionário avaliado e informe as datas da avaliação. O setor e o cargo são obtidos da estrutura organizacional cadastrada pelo cliente."
+                  : "Essas informações são opcionais."
+              }
             >
+
+              {ehAvaliacaoDesempenho && (
+                <div className="mb-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                  <InfoFixa
+                    titulo="Gestor responsável"
+                    valor={
+                      pesquisa.gestor?.nome ||
+                      "Não informado"
+                    }
+                  />
+                </div>
+              )}
+
               <div className="grid gap-4 md:grid-cols-2">
-                <Campo
-                  name="nome"
-                  label="Nome"
-                  placeholder="Opcional"
-                />
+                {ehAvaliacaoDesempenho ? (
+                  <>
+                    <CampoFuncionario
+                      funcionarios={
+                        funcionariosCliente
+                      }
+                      required
+                    />
 
-                <Campo
-                  name="email"
-                  label="E-mail"
-                  placeholder="Opcional"
-                  type="email"
-                />
+                    <Campo
+                      name="dataAvaliacao"
+                      label="Data da avaliação"
+                      type="date"
+                      required
+                    />
 
-                <CampoSetor
-                  setores={
-                    pesquisa.cliente.setores ??
-                    []
-                  }
-                />
+                    <Campo
+                      name="dataAdmissao"
+                      label="Data de admissão"
+                      type="date"
+                      required
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Campo
+                      name="nome"
+                      label="Nome do colaborador"
+                      placeholder="Opcional"
+                    />
 
-                <Campo
-                  name="cargo"
-                  label="Cargo"
-                  placeholder="Ex: Motorista"
-                />
+                    <Campo
+                      name="email"
+                      label="E-mail"
+                      placeholder="Opcional"
+                      type="email"
+                    />
+
+                    <CampoSetor
+                      setores={
+                        pesquisa.cliente.setores ??
+                        []
+                      }
+                    />
+
+                    <Campo
+                      name="cargo"
+                      label="Cargo"
+                      placeholder="Ex: Motorista"
+                    />
+                  </>
+                )}
               </div>
             </Card>
           )}
@@ -271,7 +355,6 @@ export default function PesquisaPublicaTela({
   );
 }
 
-
 function Card({
   titulo,
   descricao,
@@ -291,7 +374,6 @@ function Card({
             }
           </h2>
 
-
           {descricao && (
             <p className="mt-1 text-sm leading-6 text-slate-500">
               {
@@ -302,12 +384,47 @@ function Card({
         </div>
       )}
 
-
       {
         children
       }
     </div>
   );
+}
+
+function InfoFixa({
+
+  titulo,
+
+  valor,
+
+}: {
+
+  titulo: string;
+
+  valor: string;
+
+}) {
+
+  return (
+
+    <div>
+
+      <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
+
+        {titulo}
+
+      </p>
+
+      <p className="mt-1 font-semibold text-slate-900">
+
+        {valor}
+
+      </p>
+
+    </div>
+
+  );
+
 }
 
 
@@ -332,7 +449,6 @@ function Campo({
         }
       </label>
 
-
       <input
         name={
           name
@@ -350,6 +466,70 @@ function Campo({
   );
 }
 
+type FuncionarioOpcao = {
+  id: string;
+  nome: string;
+  setor?: string | null;
+  cargo?: string | null;
+  ativo?: boolean;
+};
+
+function CampoFuncionario({
+  funcionarios,
+  required = false,
+}: {
+  funcionarios: FuncionarioOpcao[];
+  required?: boolean;
+}) {
+  const ativos =
+    funcionarios.filter(
+      funcionario =>
+        funcionario.ativo !== false
+    );
+
+  return (
+    <div className="md:col-span-2">
+      <label className="mb-2 block text-sm font-semibold text-slate-700">
+        Funcionário avaliado
+        {required && (
+          <span className="ml-1 text-red-500">*</span>
+        )}
+      </label>
+
+      <select
+        name="funcionarioId"
+        defaultValue=""
+        required={required}
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+      >
+        <option value="">Selecione o funcionário</option>
+
+        {ativos.map(
+          funcionario => (
+            <option
+              key={funcionario.id}
+              value={funcionario.id}
+            >
+              {funcionario.nome}
+              {funcionario.setor
+                ? ` · ${funcionario.setor}`
+                : ""}
+              {funcionario.cargo
+                ? ` · ${funcionario.cargo}`
+                : ""}
+            </option>
+          )
+        )}
+      </select>
+
+      {ativos.length === 0 && (
+        <p className="mt-2 text-xs font-semibold leading-5 text-amber-700">
+          Nenhum funcionário ativo foi cadastrado na estrutura organizacional deste cliente.
+        </p>
+      )}
+    </div>
+  );
+}
 
 function CampoSetor({
   setores,
@@ -396,7 +576,6 @@ function CampoSetor({
   );
 }
 
-
 function CampoResposta({
   pergunta,
   tipoModulo,
@@ -407,7 +586,6 @@ function CampoResposta({
   const name =
     `pergunta_${pergunta.id}`;
 
-
   if (
     pergunta.tipo ===
     "NOTA"
@@ -416,7 +594,6 @@ function CampoResposta({
       obterEscala(
         tipoModulo
       );
-
 
     return (
       <div className="grid gap-2 sm:grid-cols-5">
@@ -442,13 +619,11 @@ function CampoResposta({
                 className="mb-2"
               />
 
-
               <span className="text-xs font-bold text-blue-600">
                 {
                   opcao.valor
                 }
               </span>
-
 
               <span className="mt-1 text-xs font-semibold leading-4 text-slate-700">
                 {
@@ -461,7 +636,6 @@ function CampoResposta({
       </div>
     );
   }
-
 
   if (
     pergunta.tipo ===
@@ -504,7 +678,6 @@ function CampoResposta({
     );
   }
 
-
   if (
     pergunta.tipo ===
     "MULTIPLA_ESCOLHA"
@@ -546,7 +719,6 @@ function CampoResposta({
     );
   }
 
-
   if (
     pergunta.tipo ===
     "TEXTO_LONGO"
@@ -567,7 +739,6 @@ function CampoResposta({
     );
   }
 
-
   return (
     <input
       name={
@@ -580,7 +751,6 @@ function CampoResposta({
     />
   );
 }
-
 
 function obterEscala(
   tipo: TipoModuloPesquisa
@@ -618,7 +788,6 @@ function obterEscala(
     ];
   }
 
-
   if (
     tipo ===
     TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
@@ -651,7 +820,6 @@ function obterEscala(
       },
     ];
   }
-
 
   if (
     tipo ===
@@ -686,7 +854,6 @@ function obterEscala(
     ];
   }
 
-
   return [
     {
       valor: 1,
@@ -716,7 +883,6 @@ function obterEscala(
   ];
 }
 
-
 function obterNomeModulo(
   tipo: TipoModuloPesquisa
 ) {
@@ -727,7 +893,6 @@ function obterNomeModulo(
     return "Pesquisa de Clima";
   }
 
-
   if (
     tipo ===
     TipoModuloPesquisa.AVALIACAO_DESEMPENHO
@@ -735,6 +900,5 @@ function obterNomeModulo(
     return "Avaliação de Desempenho";
   }
 
-
-  return "Avaliação Psicossocial";
+  return "Gestão de Riscos Psicossociais";
 }

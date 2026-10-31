@@ -1,10 +1,11 @@
 import {
-  redirect,
-} from "next/navigation";
-
-import {
+  PerfilUsuario,
   TipoModuloPesquisa,
 } from "@prisma/client";
+
+import {
+  redirect,
+} from "next/navigation";
 
 import {
   auth,
@@ -12,15 +13,13 @@ import {
 
 import PesquisasModuloTela from "@/src/app/components/pesquisas/PesquisasModuloTela";
 
-
 type PageProps = {
   params: Promise<{
     id: string;
   }>;
 };
 
-
-export default async function MinhaAvaliacaoPsicossocialRelatorioPage({
+export default async function MinhaGestaoRiscosPsicossociaisRelatorioPage({
   params,
 }: PageProps) {
   const session =
@@ -33,11 +32,14 @@ export default async function MinhaAvaliacaoPsicossocialRelatorioPage({
   }
 
   const usuario =
-    session.user as any;
+    session.user as {
+      perfil?: PerfilUsuario;
+      clienteId?: string | null;
+    };
 
   if (
     usuario.perfil !==
-    "CLIENTE"
+    PerfilUsuario.CLIENTE
   ) {
     redirect(
       "/dashboard"
@@ -63,7 +65,7 @@ export default async function MinhaAvaliacaoPsicossocialRelatorioPage({
       tipo={
         TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
       }
-      tituloModulo="Avaliação Psicossocial"
+      tituloModulo="Gestão de Riscos Psicossociais"
       baseHref="/minhas-avaliacoes-psicossociais"
       pesquisaId={
         id

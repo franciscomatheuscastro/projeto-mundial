@@ -24,6 +24,7 @@ import {
 import Backend from "@/src/backend";
 
 import {
+  obterPesquisaModuloPorId,
   obterTodosModuloPesquisa,
 } from "@/src/backend/pesquisaCliente/acoesModuloPesquisa";
 
@@ -67,12 +68,63 @@ type DenunciaOpcao = {
   };
 };
 
-function criarAcaoVazia(): AcaoPlanoAcao {
+type AcaoPDI = AcaoPlanoAcao & {
+  perguntaId?: string | null;
+  perguntaTitulo?: string | null;
+  perguntaOrdem?: number | null;
+  respostaOriginal?: string | null;
+  respostaPesquisaId?: string | null;
+  funcionarioId?: string | null;
+  funcionarioNome?: string | null;
+  setorFuncionario?: string | null;
+  cargoFuncionario?: string | null;
+  dimensaoNome?: string | null;
+};
+
+type RespostaAvaliacaoPDI = {
+  id: string;
+  funcionarioId?: string | null;
+  nome?: string | null;
+  setor?: string | null;
+  cargo?: string | null;
+  nomeGestor?: string | null;
+  dataAvaliacao?: Date | string | null;
+  dataAdmissao?: Date | string | null;
+  criadoEm?: Date | string;
+  respostas?: {
+    id?: string;
+    perguntaId: string;
+    valor: string;
+  }[];
+};
+
+type PesquisaDetalhadaPDI = {
+  id: string;
+  titulo: string;
+  perguntas?: {
+    id: string;
+    ordem?: number;
+    titulo: string;
+    descricao?: string | null;
+    dimensaoId?: string | null;
+  }[];
+  dimensoes?: {
+    id: string;
+    nome: string;
+  }[];
+  respostas?: RespostaAvaliacaoPDI[];
+};
+
+function gerarIdAcao() {
+  return `acao-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+}
+
+function criarAcaoVazia(): AcaoPDI {
   return {
     id:
-      `acao-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 8)}`,
+      gerarIdAcao(),
 
     titulo: "",
     descricao: "",
@@ -81,6 +133,125 @@ function criarAcaoVazia(): AcaoPlanoAcao {
     prazo: "",
     status: "PENDENTE",
   };
+}
+
+function criarAcoesPDI(
+  pesquisa: PesquisaDetalhadaPDI,
+  resposta: RespostaAvaliacaoPDI
+): AcaoPDI[] {
+  const perguntas =
+    Array.isArray(
+      pesquisa.perguntas
+    )
+      ? pesquisa.perguntas
+      : [];
+
+  const dimensoes =
+    Array.isArray(
+      pesquisa.dimensoes
+    )
+      ? pesquisa.dimensoes
+      : [];
+
+  const respostas =
+    Array.isArray(
+      resposta.respostas
+    )
+      ? resposta.respostas
+      : [];
+
+  return respostas
+    .filter(
+      item =>
+        String(
+          item.valor ??
+          ""
+        ).trim()
+    )
+    .map(
+      (
+        item,
+        index
+      ) => {
+        const pergunta =
+          perguntas.find(
+            atual =>
+              atual.id ===
+              item.perguntaId
+          );
+
+        const dimensao =
+          pergunta?.dimensaoId
+            ? dimensoes.find(
+                atual =>
+                  atual.id ===
+                  pergunta.dimensaoId
+              )
+            : null;
+
+        return {
+          id:
+            gerarIdAcao(),
+
+          titulo:
+            "",
+
+          descricao:
+            "",
+
+          responsavel:
+            "",
+
+          prioridade:
+            "MEDIA",
+
+          prazo:
+            "",
+
+          status:
+            "PENDENTE",
+
+          perguntaId:
+            item.perguntaId,
+
+          perguntaTitulo:
+            pergunta?.titulo ||
+            `Pergunta ${index + 1}`,
+
+          perguntaOrdem:
+            pergunta?.ordem ||
+            index + 1,
+
+          respostaOriginal:
+            String(
+              item.valor
+            ),
+
+          respostaPesquisaId:
+            resposta.id,
+
+          funcionarioId:
+            resposta.funcionarioId ||
+            null,
+
+          funcionarioNome:
+            resposta.nome ||
+            null,
+
+          setorFuncionario:
+            resposta.setor ||
+            null,
+
+          cargoFuncionario:
+            resposta.cargo ||
+            null,
+
+          dimensaoNome:
+            dimensao?.nome ||
+            null,
+        };
+      }
+    );
 }
 
 function tipoModuloDaOrigem(
@@ -256,15 +427,42 @@ export default function PlanoAcaoFormularioTela({
     setAcoes,
   ] =
     useState<
-      AcaoPlanoAcao[]
+      AcaoPDI[]
     >(
       planoInicial?.acoes
         ?.length
-        ? planoInicial.acoes
+        ? planoInicial.acoes as AcaoPDI[]
         : [
             criarAcaoVazia(),
           ]
     );
+
+  const [
+    avaliacaoDetalhada,
+    setAvaliacaoDetalhada,
+  ] =
+    useState<
+      PesquisaDetalhadaPDI | null
+    >(null);
+
+  const [
+    respostaPesquisaId,
+    setRespostaPesquisaId,
+  ] =
+    useState(
+      (
+        planoInicial?.acoes?.[0] as
+          | AcaoPDI
+          | undefined
+      )?.respostaPesquisaId ||
+        ""
+    );
+
+  const [
+    carregandoAvaliacao,
+    setCarregandoAvaliacao,
+  ] =
+    useState(false);
 
   useEffect(() => {
     let ativo =
@@ -353,6 +551,149 @@ export default function PlanoAcaoFormularioTela({
     };
   }, []);
 
+  useEffect(() => {
+    let ativo =
+      true;
+
+    async function carregarAvaliacaoDesempenho() {
+      if (
+        tipoOrigem !==
+          "AVALIACAO_DESEMPENHO" ||
+        !pesquisaId
+      ) {
+        setAvaliacaoDetalhada(
+          null
+        );
+
+        if (
+          !planoInicial
+        ) {
+          setRespostaPesquisaId(
+            ""
+          );
+        }
+
+        return;
+      }
+
+      try {
+        setCarregandoAvaliacao(
+          true
+        );
+
+        const resultado =
+          await obterPesquisaModuloPorId(
+            pesquisaId,
+            TipoModuloPesquisa.AVALIACAO_DESEMPENHO
+          ) as unknown as PesquisaDetalhadaPDI;
+
+        if (
+          !ativo
+        ) {
+          return;
+        }
+
+        setAvaliacaoDetalhada(
+          resultado
+        );
+
+        const respostas =
+          Array.isArray(
+            resultado.respostas
+          )
+            ? resultado.respostas
+            : [];
+
+        const respostaInicialId =
+          respostaPesquisaId ||
+          (
+            planoInicial?.acoes?.[0] as
+              | AcaoPDI
+              | undefined
+          )?.respostaPesquisaId ||
+          (
+            respostas.length ===
+            1
+              ? respostas[0].id
+              : ""
+          );
+
+        if (
+          respostaInicialId
+        ) {
+          setRespostaPesquisaId(
+            respostaInicialId
+          );
+
+          if (
+            !planoInicial
+          ) {
+            const resposta =
+              respostas.find(
+                item =>
+                  item.id ===
+                  respostaInicialId
+              );
+
+            if (
+              resposta
+            ) {
+              setAcoes(
+                criarAcoesPDI(
+                  resultado,
+                  resposta
+                )
+              );
+
+              if (
+                !titulo.trim()
+              ) {
+                setTitulo(
+                  `PDI - ${
+                    resposta.nome ||
+                    resultado.titulo
+                  }`
+                );
+              }
+            }
+          }
+        }
+      } catch (
+        error
+      ) {
+        if (
+          ativo
+        ) {
+          setErroOrigens(
+            error instanceof
+              Error
+              ? error.message
+              : "Erro ao carregar as respostas da avaliação."
+          );
+        }
+      } finally {
+        if (
+          ativo
+        ) {
+          setCarregandoAvaliacao(
+            false
+          );
+        }
+      }
+    }
+
+    void carregarAvaliacaoDesempenho();
+
+    return () => {
+      ativo =
+        false;
+    };
+  }, [
+    tipoOrigem,
+    pesquisaId,
+    planoInicial,
+  ]);
+
   const tipoModuloSelecionado =
     useMemo(
       () =>
@@ -407,6 +748,69 @@ export default function PlanoAcaoFormularioTela({
     setDenunciaId(
       ""
     );
+
+    setAvaliacaoDetalhada(
+      null
+    );
+
+    setRespostaPesquisaId(
+      ""
+    );
+
+    setAcoes(
+      [
+        criarAcaoVazia(),
+      ]
+    );
+  }
+
+  function selecionarRespostaPDI(
+    id: string
+  ) {
+    setRespostaPesquisaId(
+      id
+    );
+
+    if (
+      !avaliacaoDetalhada
+    ) {
+      return;
+    }
+
+    const resposta =
+      avaliacaoDetalhada.respostas?.find(
+        item =>
+          item.id ===
+          id
+      );
+
+    if (
+      !resposta
+    ) {
+      setAcoes(
+        []
+      );
+
+      return;
+    }
+
+    setAcoes(
+      criarAcoesPDI(
+        avaliacaoDetalhada,
+        resposta
+      )
+    );
+
+    if (
+      !titulo.trim()
+    ) {
+      setTitulo(
+        `PDI - ${
+          resposta.nome ||
+          avaliacaoDetalhada.titulo
+        }`
+      );
+    }
   }
 
   async function salvar(
@@ -443,6 +847,48 @@ export default function PlanoAcaoFormularioTela({
       return;
     }
 
+    if (
+      tipoOrigem ===
+      "AVALIACAO_DESEMPENHO"
+    ) {
+      if (
+        !respostaPesquisaId
+      ) {
+        alert(
+          "Selecione a avaliação respondida do colaborador para montar o PDI."
+        );
+
+        return;
+      }
+
+      if (
+        acoes.length ===
+        0
+      ) {
+        alert(
+          "A avaliação selecionada não possui respostas para gerar o PDI."
+        );
+
+        return;
+      }
+
+      const acaoSemDefinicao =
+        acoes.find(
+          acao =>
+            !acao.titulo.trim()
+        );
+
+      if (
+        acaoSemDefinicao
+      ) {
+        alert(
+          "Defina uma ação de desenvolvimento para cada resposta da avaliação."
+        );
+
+        return;
+      }
+    }
+
     const resultado =
       await salvarPlano({
         id:
@@ -472,12 +918,13 @@ export default function PlanoAcaoFormularioTela({
         status,
 
         acoes:
-          acoes.filter(
-            (
-              acao
-            ) =>
-              acao.titulo.trim()
-          ),
+          tipoOrigem ===
+          "AVALIACAO_DESEMPENHO"
+            ? acoes
+            : acoes.filter(
+                acao =>
+                  acao.titulo.trim()
+              ),
       });
 
     router.push(
@@ -498,7 +945,7 @@ export default function PlanoAcaoFormularioTela({
 
   function atualizarAcao(
     index: number,
-    campo: keyof AcaoPlanoAcao,
+    campo: keyof AcaoPDI,
     valor: string
   ) {
     setAcoes(
@@ -540,6 +987,25 @@ export default function PlanoAcaoFormularioTela({
     );
   }
 
+  const respostasAvaliacao =
+    Array.isArray(
+      avaliacaoDetalhada?.respostas
+    )
+      ? avaliacaoDetalhada.respostas
+      : [];
+
+  const respostaPDISelecionada =
+    respostasAvaliacao.find(
+      resposta =>
+        resposta.id ===
+        respostaPesquisaId
+    ) ||
+    null;
+
+  const ehPDI =
+    tipoOrigem ===
+    "AVALIACAO_DESEMPENHO";
+
   const textoOrigem =
     nomeTipoOrigem(
       tipoOrigem
@@ -555,14 +1021,19 @@ export default function PlanoAcaoFormularioTela({
             </p>
 
             <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
-              {planoInicial
+              {ehPDI
+                ? planoInicial
+                  ? "Editar PDI"
+                  : "Novo PDI"
+                : planoInicial
                 ? "Editar plano de ação"
                 : "Novo plano de ação"}
             </h1>
 
             <p className="mt-1 max-w-3xl text-sm text-slate-500">
-              Estruture contexto, objetivos e ações relacionadas a pesquisas de clima,
-              avaliações de desempenho, avaliações psicossociais ou denúncias.
+              {ehPDI
+                ? "Estruture o Plano de Desenvolvimento Individual a partir das respostas da avaliação de desempenho."
+                : "Estruture contexto, objetivos e ações relacionadas a pesquisas de clima, avaliações psicossociais ou denúncias."}
             </p>
           </div>
         </div>
@@ -716,9 +1187,30 @@ export default function PlanoAcaoFormularioTela({
                     value={
                       pesquisaId
                     }
-                    onChange={
-                      setPesquisaId
-                    }
+                    onChange={(
+                      valor
+                    ) => {
+                      setPesquisaId(
+                        valor
+                      );
+
+                      if (
+                        tipoOrigem ===
+                        "AVALIACAO_DESEMPENHO"
+                      ) {
+                        setRespostaPesquisaId(
+                          ""
+                        );
+
+                        setAvaliacaoDetalhada(
+                          null
+                        );
+
+                        setAcoes(
+                          []
+                        );
+                      }
+                    }}
                     required
                     disabled={
                       !!planoInicial ||
@@ -759,9 +1251,82 @@ export default function PlanoAcaoFormularioTela({
                 </div>
               )}
 
+              {ehPDI && (
+                <div className="lg:col-span-2">
+                  <CampoSelect
+                    label="Colaborador / avaliação respondida"
+                    value={
+                      respostaPesquisaId
+                    }
+                    onChange={
+                      selecionarRespostaPDI
+                    }
+                    required
+                    disabled={
+                      !!planoInicial ||
+                      !pesquisaId ||
+                      carregandoAvaliacao
+                    }
+                  >
+                    <option value="">
+                      {carregandoAvaliacao
+                        ? "Carregando respostas..."
+                        : !pesquisaId
+                        ? "Selecione primeiro a avaliação"
+                        : respostasAvaliacao.length ===
+                          0
+                        ? "Nenhuma resposta recebida"
+                        : "Selecione o colaborador"}
+                    </option>
+
+                    {respostasAvaliacao.map(
+                      (
+                        resposta
+                      ) => (
+                        <option
+                          key={
+                            resposta.id
+                          }
+                          value={
+                            resposta.id
+                          }
+                        >
+                          {resposta.nome ||
+                            "Colaborador não informado"}
+                          {resposta.setor
+                            ? ` - ${resposta.setor}`
+                            : ""}
+                          {resposta.cargo
+                            ? ` - ${resposta.cargo}`
+                            : ""}
+                        </option>
+                      )
+                    )}
+                  </CampoSelect>
+
+                  {respostaPDISelecionada && (
+                    <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900">
+                      <strong>
+                        PDI de{" "}
+                        {respostaPDISelecionada.nome ||
+                          "colaborador não informado"}
+                      </strong>
+
+                      <p className="mt-1 text-indigo-700">
+                        Cada resposta do questionário abaixo exige uma ação de desenvolvimento.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="lg:col-span-2">
                 <Campo
-                  label="Título"
+                  label={
+                    ehPDI
+                      ? "Título do PDI"
+                      : "Título"
+                  }
                   value={
                     titulo
                   }
@@ -769,7 +1334,11 @@ export default function PlanoAcaoFormularioTela({
                     setTitulo
                   }
                   required
-                  placeholder={`Ex: Plano de ação - ${textoOrigem}`}
+                  placeholder={
+                    ehPDI
+                      ? "Ex: PDI - João da Silva"
+                      : `Ex: Plano de ação - ${textoOrigem}`
+                  }
                 />
               </div>
             </div>
@@ -777,12 +1346,18 @@ export default function PlanoAcaoFormularioTela({
 
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="text-lg font-bold text-slate-900">
-              Contexto e direcionamento
+              {ehPDI
+                ? "Contexto do desenvolvimento"
+                : "Contexto e direcionamento"}
             </h2>
 
             <div className="mt-5 space-y-4">
               <CampoTexto
-                label="Análise / contexto"
+                label={
+                  ehPDI
+                    ? "Síntese da avaliação"
+                    : "Análise / contexto"
+                }
                 value={
                   diagnostico
                 }
@@ -801,14 +1376,22 @@ export default function PlanoAcaoFormularioTela({
               />
 
               <CampoTexto
-                label="Objetivo"
+                label={
+                  ehPDI
+                    ? "Objetivo do desenvolvimento"
+                    : "Objetivo"
+                }
                 value={
                   objetivo
                 }
                 onChange={
                   setObjetivo
                 }
-                placeholder="O que este plano busca corrigir ou melhorar."
+                placeholder={
+                  ehPDI
+                    ? "Qual evolução profissional este PDI busca alcançar."
+                    : "O que este plano busca corrigir ou melhorar."
+                }
               />
 
               <CampoTexto
@@ -828,24 +1411,29 @@ export default function PlanoAcaoFormularioTela({
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
-                  Ações recomendadas
+                  {ehPDI
+                    ? "Plano de desenvolvimento por resposta"
+                    : "Ações recomendadas"}
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Liste as iniciativas, responsáveis e prazos para execução do
-                  plano.
+                  {ehPDI
+                    ? "Para cada resposta da avaliação, defina uma ação de desenvolvimento, responsável, prazo e prioridade."
+                    : "Liste as iniciativas, responsáveis e prazos para execução do plano."}
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={
-                  adicionarAcao
-                }
-                className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:w-auto"
-              >
-                Adicionar ação
-              </button>
+              {!ehPDI && (
+                <button
+                  type="button"
+                  onClick={
+                    adicionarAcao
+                  }
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:w-auto"
+                >
+                  Adicionar ação
+                </button>
+              )}
             </div>
 
             <div className="mt-5 space-y-4">
@@ -860,14 +1448,48 @@ export default function PlanoAcaoFormularioTela({
                     }
                     className="rounded-3xl border border-slate-200 bg-slate-50/50 p-4"
                   >
+                    {ehPDI && (
+                      <div className="mb-4 rounded-2xl border border-indigo-100 bg-white p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-indigo-700">
+                            Item avaliado {acao.perguntaOrdem || index + 1}
+                          </span>
+
+                          {acao.dimensaoNome && (
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                              {acao.dimensaoNome}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-3 text-sm font-bold leading-6 text-slate-900">
+                          {acao.perguntaTitulo ||
+                            "Pergunta da avaliação"}
+                        </p>
+
+                        <div className="mt-3 rounded-xl bg-slate-50 px-4 py-3">
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                            Resposta registrada
+                          </p>
+
+                          <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-slate-700">
+                            {formatarRespostaPDI(
+                              acao.respostaOriginal
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="mb-4 flex items-center justify-between gap-4">
                       <strong className="text-sm font-bold text-slate-700">
-                        Ação{" "}
-                        {index +
-                          1}
+                        {ehPDI
+                          ? `Ação de desenvolvimento ${index + 1}`
+                          : `Ação ${index + 1}`}
                       </strong>
 
-                      {acoes.length >
+                      {!ehPDI &&
+                        acoes.length >
                         1 && (
                         <button
                           type="button"
@@ -885,7 +1507,9 @@ export default function PlanoAcaoFormularioTela({
 
                     <div className="grid gap-4 lg:grid-cols-2">
                       <Campo
-                        label="Título da ação"
+                        label={
+                          "Título da ação" 
+                        }
                         value={
                           acao.titulo
                         }
@@ -898,7 +1522,14 @@ export default function PlanoAcaoFormularioTela({
                             valor
                           )
                         }
-                        placeholder="Ex: Realizar reunião de alinhamento"
+                        placeholder={
+                          ehPDI
+                            ? "Ex: Participar de treinamento, realizar mentoria, estabelecer rotina de feedback..."
+                            : "Ex: Realizar reunião de alinhamento"
+                        }
+                        required={
+                          ehPDI
+                        }
                       />
 
                       <Campo
@@ -1041,6 +1672,8 @@ export default function PlanoAcaoFormularioTela({
             >
               {processando
                 ? "Salvando..."
+                : ehPDI
+                ? "Salvar PDI"
                 : "Salvar plano"}
             </button>
           </div>
@@ -1048,6 +1681,37 @@ export default function PlanoAcaoFormularioTela({
       </section>
     </main>
   );
+}
+
+function formatarRespostaPDI(
+  valor?: string | null
+) {
+  const texto =
+    String(
+      valor ??
+      ""
+    ).trim();
+
+  const escala: Record<
+    string,
+    string
+  > = {
+    "1":
+      "Muito abaixo do esperado",
+    "2":
+      "Abaixo do esperado",
+    "3":
+      "Dentro do esperado",
+    "4":
+      "Acima do esperado",
+    "5":
+      "Muito acima do esperado",
+  };
+
+  return escala[texto]
+    ? `${texto} — ${escala[texto]}`
+    : texto ||
+        "Não informado";
 }
 
 function Campo({

@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  PerfilUsuario,
   TipoModuloPesquisa,
 } from "@prisma/client";
 
@@ -10,8 +11,15 @@ import {
 
 import RepositorioPesquisaCliente from "./RepositorioPesquisaCliente";
 
+type UsuarioSessao = {
+  id?: string;
+  perfil?: PerfilUsuario;
+  clienteId?: string | null;
+};
 
-async function validarCliente() {
+async function validarAcessoClienteModulo(
+  tipo: TipoModuloPesquisa
+) {
   const session =
     await auth();
 
@@ -22,32 +30,60 @@ async function validarCliente() {
   }
 
   const usuario =
-    session.user as any;
+    session.user as UsuarioSessao;
+
+  const administradorCliente =
+    usuario.perfil ===
+    PerfilUsuario.CLIENTE;
+
+  const gestorCliente =
+    usuario.perfil ===
+    PerfilUsuario.GESTOR_CLIENTE;
 
   if (
-    usuario.perfil !==
-    "CLIENTE"
+    !administradorCliente &&
+    !gestorCliente
   ) {
     throw new Error(
       "Usuário sem permissão."
     );
   }
 
+  /*
+   * O gestor possui acesso somente ao módulo
+   * de Avaliação de Desempenho.
+   */
   if (
-    !usuario.clienteId
+    gestorCliente &&
+    tipo !==
+      TipoModuloPesquisa.AVALIACAO_DESEMPENHO
   ) {
     throw new Error(
+      "O gestor possui acesso somente à Avaliação de Desempenho."
+    );
+  }
+
+  if (!usuario.clienteId) {
+    throw new Error(
       "Cliente não identificado."
+    );
+  }
+
+  if (
+    gestorCliente &&
+    !usuario.id
+  ) {
+    throw new Error(
+      "Gestor não identificado."
     );
   }
 
   return {
     usuario,
     clienteId:
-      usuario.clienteId as string,
+      usuario.clienteId,
   };
 }
-
 
 export async function obterMinhasAplicacoesModulo(
   tipo: TipoModuloPesquisa
@@ -55,14 +91,15 @@ export async function obterMinhasAplicacoesModulo(
   const {
     clienteId,
   } =
-    await validarCliente();
+    await validarAcessoClienteModulo(
+      tipo
+    );
 
   return RepositorioPesquisaCliente.obterMinhas(
     clienteId,
     tipo
   );
 }
-
 
 export async function obterMinhaAplicacaoModuloPorId(
   id: string,
@@ -71,7 +108,15 @@ export async function obterMinhaAplicacaoModuloPorId(
   const {
     clienteId,
   } =
-    await validarCliente();
+    await validarAcessoClienteModulo(
+      tipo
+    );
+
+  if (!id?.trim()) {
+    throw new Error(
+      "Aplicação não informada."
+    );
+  }
 
   return RepositorioPesquisaCliente.obterPorIdECliente(
     id,
@@ -80,7 +125,6 @@ export async function obterMinhaAplicacaoModuloPorId(
   );
 }
 
-
 export async function obterMeuRelatorioModulo(
   id: string,
   tipo: TipoModuloPesquisa
@@ -88,7 +132,15 @@ export async function obterMeuRelatorioModulo(
   const {
     clienteId,
   } =
-    await validarCliente();
+    await validarAcessoClienteModulo(
+      tipo
+    );
+
+  if (!id?.trim()) {
+    throw new Error(
+      "Aplicação não informada."
+    );
+  }
 
   return RepositorioPesquisaCliente.obterRelatorioPorCliente(
     id,

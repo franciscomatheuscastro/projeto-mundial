@@ -8,7 +8,6 @@ import type {
   SentidoPontuacao,
 } from "@/src/core/model/ModeloPesquisa";
 
-
 export type PerguntaRespostaPesquisa = {
   id: string;
 
@@ -29,7 +28,6 @@ export type PerguntaRespostaPesquisa = {
   sentidoPontuacao?: SentidoPontuacao;
 };
 
-
 export type PesquisaPublica = {
   id: string;
 
@@ -44,10 +42,23 @@ export type PesquisaPublica = {
   status: StatusPesquisaCliente;
 
   /*
-   * Setor fixado pela Mundial na aplicação.
-   * O campo é informativo; o respondente não o escolhe.
+   * Campo legado da aplicação.
+   *
+   * Na Pesquisa de Clima o setor não é mais fixado
+   * na PesquisaCliente; ele pode ser informado
+   * opcionalmente pelo respondente.
+   */
+  /*
+   * Na Avaliação de Desempenho, o setor é definido
+   * pela Mundial na criação da aplicação.
    */
   setor: string | null;
+
+  gestor?: {
+    id: string;
+    nome: string;
+    email?: string | null;
+  } | null;
 
   perguntas: PerguntaRespostaPesquisa[];
 
@@ -70,7 +81,6 @@ export type PesquisaPublica = {
   };
 };
 
-
 export type RespostaPesquisaItem = {
   id: string;
 
@@ -79,16 +89,20 @@ export type RespostaPesquisaItem = {
   valor: string;
 };
 
-
 export type NovaRespostaPesquisa = {
   pesquisaId: string;
 
   token: string;
 
   /*
-   * Mantidos para Diagnóstico Organizacional e Psicossocial.
-   * No CLIMA o backend ignora identificação e usa o setor
-   * fixado na própria PesquisaCliente.
+   * Identificação do respondente.
+   *
+   * CLIMA:
+   * - nome, e-mail, unidade e cargo não são persistidos;
+   * - setor é opcional e pertence à resposta.
+   *
+   * AVALIAÇÃO DE DESEMPENHO / PSICOSSOCIAL:
+   * - seguem a regra de identificação do formulário.
    */
   nome?: string | null;
 
@@ -99,6 +113,18 @@ export type NovaRespostaPesquisa = {
   setor?: string | null;
 
   cargo?: string | null;
+
+  /*
+   * Campos exclusivos da Avaliação de Desempenho.
+   *
+   * As datas devem chegar no formato YYYY-MM-DD,
+   * que é o formato nativo de <input type="date">.
+   */
+  nomeGestor?: string | null;
+
+  dataAvaliacao?: string | null;
+
+  dataAdmissao?: string | null;
 
   respostas: RespostaPesquisaItem[];
 };

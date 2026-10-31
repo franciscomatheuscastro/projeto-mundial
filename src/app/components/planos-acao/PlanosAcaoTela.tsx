@@ -82,13 +82,13 @@ export default function PlanosAcaoTela({
             </p>
 
             <h1 className="mt-1 text-2xl font-black text-slate-900">
-              Planos de ação
+              Planos de ação e PDIs
             </h1>
 
             <p className="mt-1 max-w-3xl text-sm text-slate-500">
               {usuarioMundial
-                ? "Gestão dos planos originados por pesquisas de clima, avaliações de desempenho, avaliações psicossociais e denúncias."
-                : "Visualize os relatórios finais dos planos de ação da sua empresa."}
+                ? "Gestão dos planos originados por pesquisas de clima, PDIs de avaliação de desempenho, avaliações psicossociais e denúncias."
+                : "Visualize os relatórios finais dos planos de ação e PDIs da sua empresa."}
             </p>
           </div>
 
@@ -134,7 +134,7 @@ export default function PlanosAcaoTela({
           />
 
           <Card
-            titulo="Desempenho"
+            titulo="PDIs"
             valor={
               planos.filter(
                 (
@@ -418,7 +418,7 @@ function TipoBadge({
       "bg-violet-100 text-violet-700";
 
     texto =
-      "Avaliação de desempenho";
+      "PDI · Desempenho";
   }
 
   if (

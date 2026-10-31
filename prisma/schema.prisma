@@ -27,6 +27,9 @@ model Usuario {
   tratativasCriadas     TratativaDenuncia[] @relation("TratativaCriadaPor")
   cliente               Cliente?            @relation(fields: [clienteId], references: [id])
 
+
+  avaliacoesDesempenhoGestor PesquisaCliente[] @relation("GestorAvaliacaoDesempenho")
+
   @@index([clienteId])
   @@index([perfil])
 
@@ -52,6 +55,9 @@ model Cliente {
   perguntasCanalDenuncia PerguntaCanalDenunciaCliente[]
   pesquisas              PesquisaCliente[]
   usuarios               Usuario[]
+
+  funcionarios Json @default("[]")
+  
 }
 
 model ModeloPesquisa {
@@ -93,6 +99,11 @@ model PesquisaCliente {
 
   setor String?
 
+
+  gestorUsuarioId String?
+
+  gestorUsuario Usuario? @relation("GestorAvaliacaoDesempenho", fields: [gestorUsuarioId], references: [id], onDelete: SetNull)
+
   dimensoes            Json @default("[]") // NOVO
   configuracaoAnalise  Json @default("{}") // NOVO
 
@@ -112,9 +123,19 @@ model RespostaPesquisa {
   criadoEm   DateTime         @default(now())
   respostas  Json
 
+  funcionarioId String?
+
   pesquisa   PesquisaCliente  @relation(fields: [pesquisaId], references: [id], onDelete: Cascade)
 
   unidade String? // NOVO
+
+
+  // Dados específicos da Avaliação de Desempenho
+  nomeGestor    String?
+  dataAvaliacao DateTime? @db.Date
+  dataAdmissao  DateTime? @db.Date
+
+  @@index([funcionarioId])
  
 }
 
@@ -404,6 +425,7 @@ enum PerfilUsuario {
   RECEPCAO
   CLIENTE
   COMITE_CLIENTE
+  GESTOR_CLIENTE
 }
 
 enum StatusAgendamento {

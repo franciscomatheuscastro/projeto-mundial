@@ -1,17 +1,11 @@
 import {
-  redirect,
-} from "next/navigation";
-
-import {
+  PerfilUsuario,
   TipoModuloPesquisa,
 } from "@prisma/client";
+import { redirect } from "next/navigation";
 
-import {
-  auth,
-} from "@/src/auth";
-
+import { auth } from "@/src/auth";
 import PesquisasModuloTela from "@/src/app/components/pesquisas/PesquisasModuloTela";
-
 
 type PageProps = {
   params: Promise<{
@@ -19,51 +13,40 @@ type PageProps = {
   }>;
 };
 
-
 export default async function MinhaAvaliacaoDesempenhoPage({
   params,
 }: PageProps) {
-  const session =
-    await auth();
+  const session = await auth();
 
-
-  if (
-    !session?.user
-  ) {
-    redirect(
-      "/login"
-    );
+  if (!session?.user) {
+    redirect("/login");
   }
 
+  const usuario = session.user as {
+    perfil?: PerfilUsuario;
+    clienteId?: string | null;
+  };
 
-  const usuario =
-    session.user as any;
+  const podeAcessar =
+    usuario.perfil === PerfilUsuario.CLIENTE ||
+    usuario.perfil === PerfilUsuario.GESTOR_CLIENTE;
 
+  if (!podeAcessar) {
+    if (
+      usuario.perfil ===
+      PerfilUsuario.COMITE_CLIENTE
+    ) {
+      redirect("/painel-controle");
+    }
 
-  if (
-    usuario.perfil !==
-    "CLIENTE"
-  ) {
-    redirect(
-      "/dashboard"
-    );
+    redirect("/dashboard");
   }
 
-
-  if (
-    !usuario.clienteId
-  ) {
-    redirect(
-      "/login"
-    );
+  if (!usuario.clienteId) {
+    redirect("/login");
   }
 
-
-  const {
-    id,
-  } =
-    await params;
-
+  const { id } = await params;
 
   return (
     <PesquisasModuloTela
@@ -73,9 +56,7 @@ export default async function MinhaAvaliacaoDesempenhoPage({
       }
       tituloModulo="Avaliação de Desempenho"
       baseHref="/minhas-avaliacoes-desempenho"
-      pesquisaId={
-        id
-      }
+      pesquisaId={id}
       contexto="cliente"
     />
   );

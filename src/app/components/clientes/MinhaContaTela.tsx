@@ -19,7 +19,6 @@ import {
 
 import { useClientes } from "@/src/app/data/hooks/useClientes";
 
-
 type UsuarioAtual = {
   id: string;
   nome: string;
@@ -30,11 +29,9 @@ type UsuarioAtual = {
   atualizadoEm: Date | string;
 };
 
-
 type Props = {
   usuarioAtual: UsuarioAtual;
 };
-
 
 function somenteNumeros(
   valor: string
@@ -45,7 +42,6 @@ function somenteNumeros(
   );
 }
 
-
 function formatarTelefone(
   valor?: string | null
 ) {
@@ -55,7 +51,6 @@ function formatarTelefone(
     return "Não informado";
   }
 
-
   const numeros =
     somenteNumeros(
       valor
@@ -63,7 +58,6 @@ function formatarTelefone(
       0,
       11
     );
-
 
   if (
     numeros.length ===
@@ -75,7 +69,6 @@ function formatarTelefone(
     );
   }
 
-
   if (
     numeros.length ===
     11
@@ -86,10 +79,8 @@ function formatarTelefone(
     );
   }
 
-
   return valor;
 }
-
 
 function formatarDocumento(
   valor?: string | null
@@ -100,12 +91,10 @@ function formatarDocumento(
     return "Não informado";
   }
 
-
   const numeros =
     somenteNumeros(
       valor
     );
-
 
   if (
     numeros.length ===
@@ -117,7 +106,6 @@ function formatarDocumento(
     );
   }
 
-
   if (
     numeros.length ===
     14
@@ -128,10 +116,8 @@ function formatarDocumento(
     );
   }
 
-
   return valor;
 }
-
 
 function formatarData(
   valor?: Date | string | null
@@ -142,12 +128,10 @@ function formatarData(
     return "Não informado";
   }
 
-
   const data =
     new Date(
       valor
     );
-
 
   if (
     Number.isNaN(
@@ -156,7 +140,6 @@ function formatarData(
   ) {
     return "Não informado";
   }
-
 
   return new Intl.DateTimeFormat(
     "pt-BR",
@@ -168,7 +151,6 @@ function formatarData(
     data
   );
 }
-
 
 function formatarPerfil(
   perfil: PerfilUsuario
@@ -197,13 +179,14 @@ function formatarPerfil(
 
     COMITE_CLIENTE:
       "Comitê do cliente",
-  };
 
+    GESTOR_CLIENTE:
+      "Gestor de avaliação",
+  };
 
   return nomes[perfil] ??
     perfil;
 }
-
 
 export default function MinhaContaTela({
   usuarioAtual,
@@ -218,11 +201,9 @@ export default function MinhaContaTela({
       false
     );
 
-
   const ehUsuarioMaster =
     usuarioAtual.perfil ===
     PerfilUsuario.CLIENTE;
-
 
   /*
    * Somente o usuário master precisa carregar
@@ -240,7 +221,6 @@ export default function MinhaContaTela({
         return;
       }
 
-
       carregarMinhaConta().catch(
         () => {
           // O hook já registra o erro.
@@ -252,7 +232,6 @@ export default function MinhaContaTela({
       ehUsuarioMaster,
     ]
   );
-
 
   if (
     ehUsuarioMaster &&
@@ -274,7 +253,6 @@ export default function MinhaContaTela({
       </main>
     );
   }
-
 
   if (
     ehUsuarioMaster &&
@@ -317,7 +295,6 @@ export default function MinhaContaTela({
     );
   }
 
-
   if (
     !ehUsuarioMaster
   ) {
@@ -330,10 +307,8 @@ export default function MinhaContaTela({
     );
   }
 
-
   const cliente =
     clienteSelecionado!;
-
 
   /*
    * Na conta master, usamos o usuário atual da sessão
@@ -344,7 +319,6 @@ export default function MinhaContaTela({
    */
   const usuario =
     usuarioAtual;
-
 
   return (
     <main className="min-h-screen bg-slate-100">
@@ -373,7 +347,6 @@ export default function MinhaContaTela({
           />
         </div>
       </header>
-
 
       <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)] lg:px-8">
         <div className="space-y-6">
@@ -415,7 +388,6 @@ export default function MinhaContaTela({
             </div>
           </Secao>
 
-
           <Secao
             titulo="Dados de contato"
             descricao="Canais de contato registrados para a empresa."
@@ -439,7 +411,6 @@ export default function MinhaContaTela({
             </div>
           </Secao>
 
-
           <Secao
             titulo="Informações complementares"
             descricao="Observações vinculadas ao cadastro."
@@ -453,7 +424,6 @@ export default function MinhaContaTela({
           </Secao>
         </div>
 
-
         <div className="space-y-6">
           <Secao
             titulo="Meu acesso"
@@ -466,14 +436,12 @@ export default function MinhaContaTela({
             />
           </Secao>
 
-
           <Secao
             titulo="Segurança"
             descricao="Altere a senha utilizada para entrar na Mundial Connect."
           >
             <FormularioAlterarSenha />
           </Secao>
-
 
           <Secao titulo="Dados do cadastro">
             <div className="space-y-4">
@@ -497,7 +465,6 @@ export default function MinhaContaTela({
     </main>
   );
 }
-
 
 function MinhaContaColaborador({
   usuarioAtual,
@@ -531,7 +498,6 @@ function MinhaContaColaborador({
         </div>
       </header>
 
-
       <section className="mx-auto grid max-w-5xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-2 lg:px-8">
         <Secao
           titulo="Meu acesso"
@@ -544,7 +510,6 @@ function MinhaContaColaborador({
           />
         </Secao>
 
-
         <Secao
           titulo="Segurança"
           descricao="Altere a senha utilizada para entrar na Mundial Connect."
@@ -555,7 +520,6 @@ function MinhaContaColaborador({
     </main>
   );
 }
-
 
 function DadosUsuario({
   usuario,
@@ -605,7 +569,6 @@ function DadosUsuario({
   );
 }
 
-
 function FormularioAlterarSenha() {
   const [
     senhaAtual,
@@ -615,7 +578,6 @@ function FormularioAlterarSenha() {
       ""
     );
 
-
   const [
     novaSenha,
     setNovaSenha,
@@ -623,7 +585,6 @@ function FormularioAlterarSenha() {
     useState(
       ""
     );
-
 
   const [
     confirmarSenha,
@@ -633,7 +594,6 @@ function FormularioAlterarSenha() {
       ""
     );
 
-
   const [
     mostrarSenhas,
     setMostrarSenhas,
@@ -642,7 +602,6 @@ function FormularioAlterarSenha() {
       false
     );
 
-
   const [
     salvando,
     setSalvando,
@@ -650,7 +609,6 @@ function FormularioAlterarSenha() {
     useState(
       false
     );
-
 
   const [
     feedback,
@@ -667,12 +625,10 @@ function FormularioAlterarSenha() {
       null
     );
 
-
   async function salvar(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-
 
     if (
       salvando
@@ -680,11 +636,9 @@ function FormularioAlterarSenha() {
       return;
     }
 
-
     setFeedback(
       null
     );
-
 
     if (
       novaSenha.length <
@@ -701,7 +655,6 @@ function FormularioAlterarSenha() {
       return;
     }
 
-
     if (
       novaSenha !==
       confirmarSenha
@@ -717,12 +670,10 @@ function FormularioAlterarSenha() {
       return;
     }
 
-
     try {
       setSalvando(
         true
       );
-
 
       const resultado =
         await alterarMinhaSenha({
@@ -730,7 +681,6 @@ function FormularioAlterarSenha() {
           novaSenha,
           confirmarSenha,
         });
-
 
       setFeedback({
         tipo:
@@ -741,7 +691,6 @@ function FormularioAlterarSenha() {
         mensagem:
           resultado.mensagem,
       });
-
 
       if (
         resultado.sucesso
@@ -773,12 +722,10 @@ function FormularioAlterarSenha() {
     }
   }
 
-
   const tipoInput =
     mostrarSenhas
       ? "text"
       : "password";
-
 
   return (
     <form
@@ -802,7 +749,6 @@ function FormularioAlterarSenha() {
         </div>
       )}
 
-
       <CampoSenha
         id="senhaAtual"
         label="Senha atual"
@@ -817,7 +763,6 @@ function FormularioAlterarSenha() {
           setSenhaAtual
         }
       />
-
 
       <CampoSenha
         id="novaSenha"
@@ -835,7 +780,6 @@ function FormularioAlterarSenha() {
         descricao="Use pelo menos 8 caracteres."
       />
 
-
       <CampoSenha
         id="confirmarSenha"
         label="Confirmar nova senha"
@@ -850,7 +794,6 @@ function FormularioAlterarSenha() {
           setConfirmarSenha
         }
       />
-
 
       <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-600">
         <input
@@ -870,7 +813,6 @@ function FormularioAlterarSenha() {
         Mostrar senhas
       </label>
 
-
       <button
         type="submit"
         disabled={
@@ -886,14 +828,12 @@ function FormularioAlterarSenha() {
           : "Alterar minha senha"}
       </button>
 
-
       <p className="text-xs leading-5 text-slate-400">
         Para sua segurança, informe a senha atual antes de cadastrar uma nova senha.
       </p>
     </form>
   );
 }
-
 
 function CampoSenha({
   id,
@@ -970,7 +910,6 @@ function CampoSenha({
   );
 }
 
-
 function Cabecalho() {
   return (
     <header className="border-b border-slate-200 bg-white px-4 py-6 sm:px-6 lg:px-8">
@@ -986,7 +925,6 @@ function Cabecalho() {
     </header>
   );
 }
-
 
 function Secao({
   titulo,
@@ -1022,7 +960,6 @@ function Secao({
   );
 }
 
-
 function Informacao({
   label,
   valor,
@@ -1054,7 +991,6 @@ function Informacao({
     </div>
   );
 }
-
 
 function StatusBadge({
   ativo,

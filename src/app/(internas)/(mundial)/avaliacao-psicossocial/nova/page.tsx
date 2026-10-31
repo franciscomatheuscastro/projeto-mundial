@@ -11,8 +11,9 @@ export default function Page() {
       tipo={
         TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
       }
-      tituloModulo="Avaliação Psicossocial"
+      tituloModulo="Gestão de Riscos Psicossociais"
       baseHref="/avaliacao-psicossocial"
+      contexto="mundial"
     />
   );
 }

@@ -10,7 +10,6 @@ import type {
   SentidoPontuacao,
 } from "@/src/core/model/ModeloPesquisa";
 
-
 export type PerguntaPesquisaCliente = {
   id: string;
   titulo: string;
@@ -23,13 +22,11 @@ export type PerguntaPesquisaCliente = {
   sentidoPontuacao: SentidoPontuacao;
 };
 
-
 export type RespostaPesquisaItem = {
   id: string;
   perguntaId: string;
   valor: string;
 };
-
 
 export type RespostaPesquisaCliente = {
   id: string;
@@ -39,10 +36,12 @@ export type RespostaPesquisaCliente = {
   unidade?: string | null;
   setor?: string | null;
   cargo?: string | null;
+  nomeGestor?: string | null;
+  dataAvaliacao?: Date | string | null;
+  dataAdmissao?: Date | string | null;
   respostas: RespostaPesquisaItem[];
   criadoEm: Date;
 };
-
 
 export type PesquisaCliente = {
   id?: string;
@@ -54,13 +53,13 @@ export type PesquisaCliente = {
   token?: string;
   status?: StatusPesquisaCliente;
   setor?: string | null;
+  gestorUsuarioId?: string | null;
   perguntas?: PerguntaPesquisaCliente[];
   dimensoes?: DimensaoModelo[];
   configuracaoAnalise?: ConfiguracaoAnaliseModelo;
   criadoEm?: Date;
   atualizadoEm?: Date;
 };
-
 
 export type PesquisaClienteResumo = {
   id: string;
@@ -70,6 +69,13 @@ export type PesquisaClienteResumo = {
   token: string;
   status: StatusPesquisaCliente;
   setor: string | null;
+  gestorUsuarioId?: string | null;
+  gestor?: {
+    id: string;
+    nome: string;
+    email?: string | null;
+    ativo?: boolean;
+  } | null;
   criadoEm: Date;
   atualizadoEm: Date;
   cliente: {
@@ -83,7 +89,6 @@ export type PesquisaClienteResumo = {
   totalRespostas: number;
 };
 
-
 export type PesquisaClienteDetalhada = {
   id: string;
   clienteId: string;
@@ -94,6 +99,13 @@ export type PesquisaClienteDetalhada = {
   token: string;
   status: StatusPesquisaCliente;
   setor: string | null;
+  gestorUsuarioId: string | null;
+  gestor: {
+    id: string;
+    nome: string;
+    email?: string | null;
+    ativo?: boolean;
+  } | null;
   perguntas: PerguntaPesquisaCliente[];
   dimensoes: DimensaoModelo[];
   configuracaoAnalise: ConfiguracaoAnaliseModelo;
@@ -115,7 +127,6 @@ export type PesquisaClienteDetalhada = {
   totalRespostas: number;
 };
 
-
 export type DadosFormularioPesquisaCliente = {
   clientes: {
     id: string;
@@ -127,6 +138,12 @@ export type DadosFormularioPesquisaCliente = {
     documento?: string | null;
     observacoes?: string | null;
     setores: string[];
+    gestores: {
+      id: string;
+      nome: string;
+      email: string;
+      ativo: boolean;
+    }[];
     criadoEm?: Date;
     atualizadoEm?: Date;
   }[];
@@ -144,7 +161,6 @@ export type DadosFormularioPesquisaCliente = {
     configuracaoAnalise: ConfiguracaoAnaliseModelo;
   }[];
 };
-
 
 export type PesquisaClienteRelatorio =
   PesquisaClienteDetalhada & {

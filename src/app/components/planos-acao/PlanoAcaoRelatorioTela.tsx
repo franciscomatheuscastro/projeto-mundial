@@ -23,6 +23,19 @@ type Props = {
   contexto?: "mundial" | "cliente";
 };
 
+type AcaoPDI = AcaoPlanoAcao & {
+  perguntaId?: string | null;
+  perguntaTitulo?: string | null;
+  perguntaOrdem?: number | null;
+  respostaOriginal?: string | null;
+  respostaPesquisaId?: string | null;
+  funcionarioId?: string | null;
+  funcionarioNome?: string | null;
+  setorFuncionario?: string | null;
+  cargoFuncionario?: string | null;
+  dimensaoNome?: string | null;
+};
+
 export default function PlanoAcaoRelatorioTela({
   id,
   contexto = "mundial",
@@ -180,7 +193,7 @@ export default function PlanoAcaoRelatorioTela({
           "AVALIACAO_DESEMPENHO"
         ) {
           tipoOrigem =
-            "Avaliação de desempenho";
+            "PDI · Plano de Desenvolvimento Individual";
         }
 
         if (
@@ -232,7 +245,7 @@ export default function PlanoAcaoRelatorioTela({
             return "pesquisa de clima";
 
           case "AVALIACAO_DESEMPENHO":
-            return "avaliação de desempenho";
+            return "avaliação de desempenho e PDI individual";
 
           case "AVALIACAO_PSICOSSOCIAL":
             return "avaliação psicossocial";
@@ -296,19 +309,47 @@ export default function PlanoAcaoRelatorioTela({
   } =
     dadosOrigem;
 
+  const ehPDI =
+    planoSelecionado.tipoOrigem ===
+    "AVALIACAO_DESEMPENHO";
+
+  const acoesPDI =
+    planoSelecionado.acoes as AcaoPDI[];
+
+  const primeiraAcaoPDI =
+    acoesPDI[0];
+
+  const funcionarioPDI =
+    primeiraAcaoPDI?.funcionarioNome ||
+    null;
+
+  const setorPDI =
+    primeiraAcaoPDI?.setorFuncionario ||
+    null;
+
+  const cargoPDI =
+    primeiraAcaoPDI?.cargoFuncionario ||
+    null;
+
   const resumoPadrao =
     planoDeDenuncia
       ? "Este plano de ação foi estruturado a partir da análise da denúncia, considerando os fatos relatados, os riscos identificados, as tratativas necessárias e as medidas de prevenção."
+      : ehPDI
+      ? "Este Plano de Desenvolvimento Individual foi estruturado a partir das respostas da avaliação de desempenho, vinculando cada item avaliado a uma ação concreta de desenvolvimento."
       : `Este plano de ação foi estruturado a partir da análise dos resultados de ${textoOrigemExecutivo}, com foco em melhorias práticas, priorização de ações e evolução dos resultados.`;
 
   const objetivoPadrao =
     planoDeDenuncia
       ? "Estabelecer medidas corretivas, preventivas e de acompanhamento para tratar adequadamente os fatos identificados e reduzir a recorrência de situações semelhantes."
+      : ehPDI
+      ? "Transformar cada resultado da avaliação de desempenho em uma ação objetiva de desenvolvimento, com responsável, prioridade, prazo e acompanhamento de execução."
       : `Transformar os achados de ${textoOrigemExecutivo} em iniciativas aplicáveis, mensuráveis e conectadas à melhoria dos resultados e desenvolvimento das pessoas.`;
 
   const conclusaoPadrao =
     planoDeDenuncia
       ? "A execução consistente deste plano contribui para uma tratativa responsável da denúncia, mitigação dos riscos identificados e fortalecimento dos mecanismos internos de prevenção e governança."
+      : ehPDI
+      ? "O acompanhamento periódico deste PDI permite verificar a evolução do colaborador em cada competência avaliada e redirecionar ações de desenvolvimento quando necessário."
       : `A execução consistente deste plano busca converter os achados de ${textoOrigemExecutivo} em melhorias mensuráveis de gestão, ambiente de trabalho e desempenho.`;
 
   return (
@@ -415,6 +456,46 @@ export default function PlanoAcaoRelatorioTela({
             width: 18% !important;
           }
 
+          .pdi-table th:nth-child(1),
+          .pdi-table td:nth-child(1) {
+            width: 4% !important;
+          }
+
+          .pdi-table th:nth-child(2),
+          .pdi-table td:nth-child(2) {
+            width: 18% !important;
+          }
+
+          .pdi-table th:nth-child(3),
+          .pdi-table td:nth-child(3) {
+            width: 13% !important;
+          }
+
+          .pdi-table th:nth-child(4),
+          .pdi-table td:nth-child(4) {
+            width: 24% !important;
+          }
+
+          .pdi-table th:nth-child(5),
+          .pdi-table td:nth-child(5) {
+            width: 12% !important;
+          }
+
+          .pdi-table th:nth-child(6),
+          .pdi-table td:nth-child(6) {
+            width: 10% !important;
+          }
+
+          .pdi-table th:nth-child(7),
+          .pdi-table td:nth-child(7) {
+            width: 9% !important;
+          }
+
+          .pdi-table th:nth-child(8),
+          .pdi-table td:nth-child(8) {
+            width: 10% !important;
+          }
+
           .print-title {
             font-size: 24px !important;
             line-height: 1.15 !important;
@@ -459,11 +540,15 @@ export default function PlanoAcaoRelatorioTela({
               </p>
 
               <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
-                Relatório do Plano de Ação
+                {ehPDI
+                  ? "Plano de Desenvolvimento Individual"
+                  : "Relatório do Plano de Ação"}
               </h1>
 
               <p className="mt-1 text-sm text-slate-500">
-                Apresentação executiva para acompanhamento do cliente.
+                {ehPDI
+                  ? "PDI estruturado a partir de cada resposta da avaliação de desempenho."
+                  : "Apresentação executiva para acompanhamento do cliente."}
               </p>
             </div>
 
@@ -519,6 +604,18 @@ export default function PlanoAcaoRelatorioTela({
             }
             clienteNome={
               clienteNome
+            }
+            ehPDI={
+              ehPDI
+            }
+            funcionarioPDI={
+              funcionarioPDI
+            }
+            setorPDI={
+              setorPDI
+            }
+            cargoPDI={
+              cargoPDI
             }
           />
 
@@ -693,134 +790,288 @@ export default function PlanoAcaoRelatorioTela({
             </Bloco>
           </section>
 
-          <Bloco titulo="Ações do plano">
-            <div className="print-table-wrapper overflow-x-auto rounded-xl border border-slate-200">
-              <table className="print-table min-w-[850px] w-full border-collapse text-sm">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <Th>
-                      #
-                    </Th>
+          {ehPDI ? (
+            <Bloco titulo="Plano de Desenvolvimento Individual">
+              <div className="mb-4 rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">
+                Cada linha do PDI corresponde a uma resposta registrada na avaliação de desempenho e à respectiva ação de desenvolvimento definida.
+              </div>
 
-                    <Th>
-                      Ação
-                    </Th>
-
-                    <Th>
-                      Responsável
-                    </Th>
-
-                    <Th>
-                      Prioridade
-                    </Th>
-
-                    <Th>
-                      Prazo
-                    </Th>
-
-                    <Th>
-                      Status
-                    </Th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {planoSelecionado.acoes.length ===
-                  0 ? (
+              <div className="print-table-wrapper overflow-x-auto rounded-xl border border-slate-200">
+                <table className="print-table pdi-table min-w-[1200px] w-full border-collapse text-sm">
+                  <thead className="bg-slate-50">
                     <tr>
-                      <td
-                        colSpan={
-                          6
-                        }
-                        className="px-4 py-8 text-center text-slate-500"
-                      >
-                        Nenhuma ação cadastrada.
-                      </td>
+                      <Th>
+                        #
+                      </Th>
+
+                      <Th>
+                        Item avaliado
+                      </Th>
+
+                      <Th>
+                        Resultado
+                      </Th>
+
+                      <Th>
+                        Ação de desenvolvimento
+                      </Th>
+
+                      <Th>
+                        Responsável
+                      </Th>
+
+                      <Th>
+                        Prioridade
+                      </Th>
+
+                      <Th>
+                        Prazo
+                      </Th>
+
+                      <Th>
+                        Status
+                      </Th>
                     </tr>
-                  ) : (
-                    planoSelecionado.acoes.map(
-                      (
-                        acao,
-                        index
-                      ) => (
-                        <tr
-                          key={
-                            acao.id
+                  </thead>
+
+                  <tbody>
+                    {acoesPDI.length ===
+                    0 ? (
+                      <tr>
+                        <td
+                          colSpan={
+                            8
                           }
-                          className="border-t border-slate-200"
+                          className="px-4 py-8 text-center text-slate-500"
                         >
-                          <td className="px-4 py-4 text-slate-500">
-                            {index +
-                              1}
-                          </td>
+                          Nenhuma ação de desenvolvimento cadastrada.
+                        </td>
+                      </tr>
+                    ) : (
+                      acoesPDI.map(
+                        (
+                          acao,
+                          index
+                        ) => (
+                          <tr
+                            key={
+                              acao.id
+                            }
+                            className="border-t border-slate-200 align-top"
+                          >
+                            <td className="px-4 py-4 text-slate-500">
+                              {index +
+                                1}
+                            </td>
 
-                          <td className="px-4 py-4">
-                            <div className="font-medium text-slate-900">
-                              {
-                                acao.titulo
-                              }
-                            </div>
+                            <td className="px-4 py-4">
+                              <div className="font-semibold text-slate-900">
+                                {acao.perguntaTitulo ||
+                                  `Item ${acao.perguntaOrdem || index + 1}`}
+                              </div>
 
-                            {acao.descricao && (
-                              <div className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-500">
+                              {acao.dimensaoNome && (
+                                <div className="mt-1 text-xs font-semibold text-indigo-600">
+                                  {
+                                    acao.dimensaoNome
+                                  }
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="px-4 py-4 text-slate-700">
+                              {formatarRespostaPDI(
+                                acao.respostaOriginal
+                              )}
+                            </td>
+
+                            <td className="px-4 py-4">
+                              <div className="font-semibold text-slate-900">
                                 {
-                                  acao.descricao
+                                  acao.titulo
                                 }
                               </div>
-                            )}
-                          </td>
 
-                          <td className="px-4 py-4 text-slate-700">
-                            {acao.responsavel ||
-                              "-"}
-                          </td>
+                              {acao.descricao && (
+                                <div className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-500">
+                                  {
+                                    acao.descricao
+                                  }
+                                </div>
+                              )}
+                            </td>
 
-                          <td className="px-4 py-4">
-                            <PrioridadeBadge
-                              prioridade={
-                                acao.prioridade
-                              }
-                            />
-                          </td>
+                            <td className="px-4 py-4 text-slate-700">
+                              {acao.responsavel ||
+                                "-"}
+                            </td>
 
-                          <td className="px-4 py-4 text-slate-700">
-                            {acao.prazo ||
-                              "-"}
-                          </td>
+                            <td className="px-4 py-4">
+                              <PrioridadeBadge
+                                prioridade={
+                                  acao.prioridade
+                                }
+                              />
+                            </td>
 
-                          <td className="px-4 py-4">
-                            <StatusAcaoBadge
-                              status={
-                                acao.status
-                              }
-                            />
-                          </td>
-                        </tr>
+                            <td className="px-4 py-4 text-slate-700">
+                              {acao.prazo ||
+                                "-"}
+                            </td>
+
+                            <td className="px-4 py-4">
+                              <StatusAcaoBadge
+                                status={
+                                  acao.status
+                                }
+                              />
+                            </td>
+                          </tr>
+                        )
                       )
-                    )
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Bloco>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Bloco>
+          ) : (
+            <Bloco titulo="Ações do plano">
+              <div className="print-table-wrapper overflow-x-auto rounded-xl border border-slate-200">
+                <table className="print-table min-w-[850px] w-full border-collapse text-sm">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <Th>
+                        #
+                      </Th>
+
+                      <Th>
+                        Ação
+                      </Th>
+
+                      <Th>
+                        Responsável
+                      </Th>
+
+                      <Th>
+                        Prioridade
+                      </Th>
+
+                      <Th>
+                        Prazo
+                      </Th>
+
+                      <Th>
+                        Status
+                      </Th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {planoSelecionado.acoes.length ===
+                    0 ? (
+                      <tr>
+                        <td
+                          colSpan={
+                            6
+                          }
+                          className="px-4 py-8 text-center text-slate-500"
+                        >
+                          Nenhuma ação cadastrada.
+                        </td>
+                      </tr>
+                    ) : (
+                      planoSelecionado.acoes.map(
+                        (
+                          acao,
+                          index
+                        ) => (
+                          <tr
+                            key={
+                              acao.id
+                            }
+                            className="border-t border-slate-200"
+                          >
+                            <td className="px-4 py-4 text-slate-500">
+                              {index +
+                                1}
+                            </td>
+
+                            <td className="px-4 py-4">
+                              <div className="font-medium text-slate-900">
+                                {
+                                  acao.titulo
+                                }
+                              </div>
+
+                              {acao.descricao && (
+                                <div className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-500">
+                                  {
+                                    acao.descricao
+                                  }
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="px-4 py-4 text-slate-700">
+                              {acao.responsavel ||
+                                "-"}
+                            </td>
+
+                            <td className="px-4 py-4">
+                              <PrioridadeBadge
+                                prioridade={
+                                  acao.prioridade
+                                }
+                              />
+                            </td>
+
+                            <td className="px-4 py-4 text-slate-700">
+                              {acao.prazo ||
+                                "-"}
+                            </td>
+
+                            <td className="px-4 py-4">
+                              <StatusAcaoBadge
+                                status={
+                                  acao.status
+                                }
+                              />
+                            </td>
+                          </tr>
+                        )
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Bloco>
+          )}
 
           <section className="print-grid-2 grid gap-6 lg:grid-cols-2">
             <Bloco titulo="Próximos passos">
               <ul className="space-y-3 text-sm text-slate-700">
                 <Item>
-                  Executar as ações pendentes e monitorar os respectivos prazos.
+                  {ehPDI
+                    ? "Executar as ações de desenvolvimento previstas para cada item avaliado."
+                    : "Executar as ações pendentes e monitorar os respectivos prazos."}
                 </Item>
 
                 <Item>
-                  Realizar reunião de acompanhamento com os responsáveis.
+                  {ehPDI
+                    ? "Realizar checkpoints periódicos entre colaborador e liderança."
+                    : "Realizar reunião de acompanhamento com os responsáveis."}
                 </Item>
 
                 <Item>
-                  Registrar a evolução e as evidências de execução.
+                  {ehPDI
+                    ? "Registrar evidências de evolução das competências trabalhadas."
+                    : "Registrar a evolução e as evidências de execução."}
                 </Item>
 
                 <Item>
-                  Reavaliar prioridades conforme o avanço do plano.
+                  {ehPDI
+                    ? "Revisar o PDI conforme a evolução observada em cada competência."
+                    : "Reavaliar prioridades conforme o avanço do plano."}
                 </Item>
               </ul>
             </Bloco>
@@ -852,6 +1103,10 @@ function Capa({
   tituloOrigem,
   identificadorOrigem,
   clienteNome,
+  ehPDI,
+  funcionarioPDI,
+  setorPDI,
+  cargoPDI,
 }: {
   plano: PlanoAcaoDetalhado;
 
@@ -864,13 +1119,30 @@ function Capa({
     | null;
 
   clienteNome: string;
+
+  ehPDI: boolean;
+
+  funcionarioPDI:
+    | string
+    | null;
+
+  setorPDI:
+    | string
+    | null;
+
+  cargoPDI:
+    | string
+    | null;
 }) {
   return (
     <section className="print-card overflow-hidden rounded-3xl bg-gradient-to-br from-blue-950 via-blue-900 to-blue-700 p-6 text-white shadow-sm sm:p-8">
       <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-200">
-            Plano de ação ·{" "}
+            {ehPDI
+              ? "Plano de Desenvolvimento Individual"
+              : "Plano de ação"}{" "}
+            ·{" "}
             {
               tipoOrigem
             }
@@ -911,6 +1183,23 @@ function Capa({
                 clienteNome
               }
             </p>
+
+            {ehPDI && funcionarioPDI && (
+              <p>
+                <strong className="font-semibold">
+                  Colaborador:
+                </strong>{" "}
+                {
+                  funcionarioPDI
+                }
+                {setorPDI
+                  ? ` · ${setorPDI}`
+                  : ""}
+                {cargoPDI
+                  ? ` · ${cargoPDI}`
+                  : ""}
+              </p>
+            )}
           </div>
         </div>
 
@@ -1163,6 +1452,37 @@ function PrioridadeBadge({
       )}
     </span>
   );
+}
+
+function formatarRespostaPDI(
+  valor?: string | null
+) {
+  const texto =
+    String(
+      valor ??
+      ""
+    ).trim();
+
+  const escala: Record<
+    string,
+    string
+  > = {
+    "1":
+      "Muito abaixo do esperado",
+    "2":
+      "Abaixo do esperado",
+    "3":
+      "Dentro do esperado",
+    "4":
+      "Acima do esperado",
+    "5":
+      "Muito acima do esperado",
+  };
+
+  return escala[texto]
+    ? `${texto} — ${escala[texto]}`
+    : texto ||
+        "Não informado";
 }
 
 function formatarStatus(

@@ -3,11 +3,16 @@ import {
 } from "crypto";
 
 import {
+  PerfilUsuario,
   Prisma,
   StatusPesquisaCliente,
   TipoModuloPesquisa,
   TipoPergunta,
 } from "@prisma/client";
+
+import {
+  auth,
+} from "@/src/auth";
 
 import {
   prisma,
@@ -27,7 +32,6 @@ import {
   RespostaPesquisaItem,
 } from "@/src/core/model/PesquisaCliente";
 
-
 /* =========================================================
  * TIPOS INTERNOS DOS MOTORES ANALÍTICOS
  * ======================================================= */
@@ -36,7 +40,6 @@ type ClassificacaoFavorabilidade =
   | "FAVORAVEL"
   | "NEUTRO"
   | "DESFAVORAVEL";
-
 
 type AcumuladorClima = {
   id: string;
@@ -51,8 +54,6 @@ type AcumuladorClima = {
   totalRespostas: number;
 };
 
-
-
 type DimensaoClimaSetor = {
   id: string;
   nome: string;
@@ -61,7 +62,6 @@ type DimensaoClimaSetor = {
   neutro: number;
   desfavoravel: number;
 };
-
 
 type AnaliseClimaSetor = {
   setor: string;
@@ -76,7 +76,6 @@ type AnaliseClimaSetor = {
    */
   agrupado?: boolean;
 };
-
 
 type AcumuladorScore = {
   id: string;
@@ -93,13 +92,11 @@ type AcumuladorScore = {
   respondentes: Set<string>;
 };
 
-
 type DistribuicaoInformacaoAdicional = {
   valor: string;
   quantidade: number;
   percentual: number;
 };
-
 
 type InformacaoAdicionalRelatorio = {
   id: string;
@@ -123,7 +120,6 @@ type InformacaoAdicionalRelatorio = {
 
   respostasTexto: string[];
 };
-
 
 type AcumuladorInformacaoAdicional = {
   id: string;
@@ -154,13 +150,11 @@ type AcumuladorInformacaoAdicional = {
   respostasTexto: string[];
 };
 
-
 type CelulaHeatmapPsicossocial = {
   fator: string;
   score: number | null;
   classificacao: string | null;
 };
-
 
 type LinhaHeatmapPsicossocial = {
   setor: string;
@@ -168,16 +162,13 @@ type LinhaHeatmapPsicossocial = {
   fatores: CelulaHeatmapPsicossocial[];
 };
 
-
 type HeatmapPsicossocial = {
   fatores: string[];
   setores: LinhaHeatmapPsicossocial[];
 };
 
-
 const MINIMO_RESPOSTAS_FILTRO_SETOR =
   5;
-
 
 /*
  * Valor interno usado no filtro para representar o agrupamento
@@ -189,10 +180,8 @@ const MINIMO_RESPOSTAS_FILTRO_SETOR =
 const VALOR_FILTRO_SETOR_GERAL =
   "__GERAL__";
 
-
 const NOME_SETOR_GERAL =
   "Geral";
-
 
 type SetorRelatorioCliente = {
   nome: string;
@@ -201,7 +190,6 @@ type SetorRelatorioCliente = {
   agrupado: boolean;
   totalRespostas: number;
 };
-
 
 type MetodologiaAplicacaoRelatorio = {
   modeloId: string;
@@ -223,7 +211,6 @@ type MetodologiaAplicacaoRelatorio = {
   perguntasInvertidas: number;
 };
 
-
 /* =========================================================
  * NORMALIZAÇÃO
  * ======================================================= */
@@ -242,7 +229,6 @@ function numeroSeguro(
     : padrao;
 }
 
-
 function limitar(
   valor: number,
   minimo: number,
@@ -257,7 +243,6 @@ function limitar(
   );
 }
 
-
 function chaveTexto(
   valor: string
 ) {
@@ -267,7 +252,6 @@ function chaveTexto(
       "pt-BR"
     );
 }
-
 
 function normalizarSetoresCliente(
   valor: unknown
@@ -306,6 +290,80 @@ function normalizarSetoresCliente(
   );
 }
 
+type FuncionarioEstrutura = {
+  id: string;
+  nome: string;
+  setor: string | null;
+  cargo: string | null;
+  ativo: boolean;
+};
+
+function normalizarFuncionariosCliente(
+  valor: unknown
+): FuncionarioEstrutura[] {
+  if (!Array.isArray(valor)) {
+    return [];
+  }
+
+  const ids =
+    new Set<string>();
+
+  return valor
+    .map(
+      (item): FuncionarioEstrutura | null => {
+        if (
+          !item ||
+          typeof item !== "object" ||
+          Array.isArray(item)
+        ) {
+          return null;
+        }
+
+        const dados =
+          item as Record<string, unknown>;
+
+        const id =
+          String(dados.id ?? "").trim();
+
+        const nome =
+          String(dados.nome ?? "").trim();
+
+        if (
+          !id ||
+          !nome ||
+          ids.has(id)
+        ) {
+          return null;
+        }
+
+        ids.add(id);
+
+        return {
+          id,
+          nome,
+          setor:
+            String(dados.setor ?? "").trim() ||
+            null,
+          cargo:
+            String(dados.cargo ?? "").trim() ||
+            null,
+          ativo:
+            dados.ativo !== false,
+        };
+      }
+    )
+    .filter(
+      (item): item is FuncionarioEstrutura =>
+        Boolean(item)
+    )
+    .sort(
+      (a, b) =>
+        a.nome.localeCompare(
+          b.nome,
+          "pt-BR"
+        )
+    );
+}
 
 function normalizarChaveSetor(
   valor: unknown
@@ -327,7 +385,6 @@ function normalizarChaveSetor(
     );
 }
 
-
 function listarSetoresRelatorio(
   pesquisasBanco: any[]
 ): string[] {
@@ -336,7 +393,6 @@ function listarSetoresRelatorio(
       string,
       string
     >();
-
 
   const adicionar = (
     valor: unknown
@@ -347,19 +403,16 @@ function listarSetoresRelatorio(
         ""
       ).trim();
 
-
     if (
       !nome
     ) {
       return;
     }
 
-
     const chave =
       normalizarChaveSetor(
         nome
       );
-
 
     if (
       !chave ||
@@ -370,13 +423,11 @@ function listarSetoresRelatorio(
       return;
     }
 
-
     mapa.set(
       chave,
       nome
     );
   };
-
 
   /*
    * O setor pertence à RESPOSTA em todos os módulos.
@@ -400,7 +451,6 @@ function listarSetoresRelatorio(
     }
   }
 
-
   return Array.from(
     mapa.values()
   ).sort(
@@ -415,7 +465,6 @@ function listarSetoresRelatorio(
   );
 }
 
-
 function contarRespostasPorSetor(
   pesquisasBanco: any[]
 ): Map<string, number> {
@@ -425,7 +474,6 @@ function contarRespostasPorSetor(
       number
     >();
 
-
   const adicionar = (
     setor: unknown
   ) => {
@@ -434,13 +482,11 @@ function contarRespostasPorSetor(
         setor
       );
 
-
     if (
       !chave
     ) {
       return;
     }
-
 
     mapa.set(
       chave,
@@ -453,7 +499,6 @@ function contarRespostasPorSetor(
       1
     );
   };
-
 
   /*
    * Cada resposta conta individualmente para o setor
@@ -477,10 +522,8 @@ function contarRespostasPorSetor(
     }
   }
 
-
   return mapa;
 }
-
 
 function filtrarPesquisasPorSetor(
   pesquisasBanco: any[],
@@ -495,11 +538,9 @@ function filtrarPesquisasPorSetor(
     return pesquisasBanco;
   }
 
-
   const filtroGeral =
     setor ===
     VALOR_FILTRO_SETOR_GERAL;
-
 
   const chaveFiltro =
     filtroGeral
@@ -508,14 +549,12 @@ function filtrarPesquisasPorSetor(
           setor
         );
 
-
   if (
     !filtroGeral &&
     !chaveFiltro
   ) {
     return pesquisasBanco;
   }
-
 
   /*
    * Para um setor normal, mantemos somente respostas
@@ -543,13 +582,11 @@ function filtrarPesquisasPorSetor(
                   resposta.setor
                 );
 
-
               if (
                 !chaveResposta
               ) {
                 return false;
               }
-
 
               if (
                 filtroGeral
@@ -558,7 +595,6 @@ function filtrarPesquisasPorSetor(
                   chaveResposta
                 );
               }
-
 
               return (
                 chaveResposta ===
@@ -575,6 +611,37 @@ function filtrarPesquisasPorSetor(
     );
 }
 
+function filtrarPesquisasPorFuncionario(
+  pesquisasBanco: any[],
+  funcionarioId?: string
+) {
+  const id =
+    String(funcionarioId ?? "").trim();
+
+  if (!id) {
+    return pesquisasBanco;
+  }
+
+  return pesquisasBanco
+    .map(
+      pesquisa => ({
+        ...pesquisa,
+        respostas:
+          (pesquisa.respostas || []).filter(
+            (resposta: any) =>
+              String(
+                resposta.funcionarioId ??
+                ""
+              ).trim() === id
+          ),
+      })
+    )
+    .filter(
+      pesquisa =>
+        pesquisa.respostas.length >
+        0
+    );
+}
 
 /* =========================================================
  * NORMALIZAÇÃO DAS DIMENSÕES
@@ -591,7 +658,6 @@ function normalizarDimensoes(
     return [];
   }
 
-
   return dimensoes
     .map(
       (
@@ -600,7 +666,6 @@ function normalizarDimensoes(
       ) => {
         const item =
           dimensao as Partial<DimensaoModelo>;
-
 
         return {
           id:
@@ -644,7 +709,6 @@ function normalizarDimensoes(
     );
 }
 
-
 function normalizarFaixas(
   faixas: unknown
 ): FaixaInterpretacaoModelo[] {
@@ -656,7 +720,6 @@ function normalizarFaixas(
     return [];
   }
 
-
   return faixas
     .map(
       (
@@ -665,7 +728,6 @@ function normalizarFaixas(
       ) => {
         const item =
           faixa as Partial<FaixaInterpretacaoModelo>;
-
 
         return {
           id:
@@ -709,7 +771,6 @@ function normalizarFaixas(
     );
 }
 
-
 function normalizarArrayNumerico(
   valor: unknown
 ): number[] {
@@ -720,7 +781,6 @@ function normalizarArrayNumerico(
   ) {
     return [];
   }
-
 
   return valor
     .map(
@@ -737,7 +797,6 @@ function normalizarArrayNumerico(
     );
 }
 
-
 function normalizarConfiguracaoAnalise(
   configuracao: unknown,
   tipo: TipoModuloPesquisa
@@ -746,7 +805,6 @@ function normalizarConfiguracaoAnalise(
     criarConfiguracaoAnalisePadrao(
       tipo
     );
-
 
   if (
     !configuracao ||
@@ -767,10 +825,8 @@ function normalizarConfiguracaoAnalise(
     } as ConfiguracaoAnaliseModelo;
   }
 
-
   const item =
     configuracao as Partial<ConfiguracaoAnaliseModelo>;
-
 
   return {
     metodo:
@@ -825,7 +881,6 @@ function normalizarConfiguracaoAnalise(
   } as ConfiguracaoAnaliseModelo;
 }
 
-
 function normalizarPerguntas(
   perguntas: unknown,
   dimensoes: DimensaoModelo[] = []
@@ -838,7 +893,6 @@ function normalizarPerguntas(
     return [];
   }
 
-
   const idsDimensoes =
     new Set(
       dimensoes.map(
@@ -847,7 +901,6 @@ function normalizarPerguntas(
       )
     );
 
-
   return perguntas.map(
     (
       pergunta,
@@ -855,7 +908,6 @@ function normalizarPerguntas(
     ) => {
       const item =
         pergunta as Partial<PerguntaPesquisaCliente>;
-
 
       const dimensaoId =
         item.dimensaoId &&
@@ -869,11 +921,9 @@ function normalizarPerguntas(
           ? item.dimensaoId
           : null;
 
-
       const tipo =
         item.tipo ||
         TipoPergunta.NOTA;
-
 
       return {
         id:
@@ -936,7 +986,6 @@ function normalizarPerguntas(
   );
 }
 
-
 function normalizarRespostas(
   respostas: unknown
 ): RespostaPesquisaItem[] {
@@ -948,12 +997,10 @@ function normalizarRespostas(
     return [];
   }
 
-
   return respostas.map(
     resposta => {
       const item =
         resposta as Partial<RespostaPesquisaItem>;
-
 
       return {
         id:
@@ -974,7 +1021,6 @@ function normalizarRespostas(
   );
 }
 
-
 function criarDataInicio(
   data?: string
 ): Date | undefined {
@@ -984,12 +1030,10 @@ function criarDataInicio(
     return undefined;
   }
 
-
   const resultado =
     new Date(
       `${data}T00:00:00-03:00`
     );
-
 
   return Number.isNaN(
     resultado.getTime()
@@ -997,7 +1041,6 @@ function criarDataInicio(
     ? undefined
     : resultado;
 }
-
 
 function criarDataFim(
   data?: string
@@ -1008,12 +1051,10 @@ function criarDataFim(
     return undefined;
   }
 
-
   const resultado =
     new Date(
       `${data}T23:59:59.999-03:00`
     );
-
 
   return Number.isNaN(
     resultado.getTime()
@@ -1021,7 +1062,6 @@ function criarDataFim(
     ? undefined
     : resultado;
 }
-
 
 /* =========================================================
  * FUNÇÕES DE CÁLCULO
@@ -1046,14 +1086,12 @@ function normalizarNotaPercentual(
     return 0;
   }
 
-
   const nota =
     limitar(
       valor,
       escalaMinima,
       escalaMaxima
     );
-
 
   return (
     (
@@ -1066,7 +1104,6 @@ function normalizarNotaPercentual(
     )
   ) * 100;
 }
-
 
 /*
  * Inverte a nota dentro da própria escala.
@@ -1091,7 +1128,6 @@ function inverterNota(
   );
 }
 
-
 /*
  * Para CLIMA e DIAGNÓSTICO:
  * quanto maior o resultado final, melhor.
@@ -1112,10 +1148,8 @@ function notaOrientadaPositivamente(
     );
   }
 
-
   return valor;
 }
-
 
 /*
  * Para PSICOSSOCIAL:
@@ -1146,10 +1180,8 @@ function notaOrientadaParaRisco(
     );
   }
 
-
   return valor;
 }
-
 
 function encontrarFaixa(
   score: number,
@@ -1164,7 +1196,6 @@ function encontrarFaixa(
           faixa.maximo
     );
 
-
   return encontrada
     ? {
         nome:
@@ -1175,7 +1206,6 @@ function encontrarFaixa(
       }
     : null;
 }
-
 
 function assinaturaFaixas(
   faixas: FaixaInterpretacaoModelo[]
@@ -1205,7 +1235,6 @@ function assinaturaFaixas(
   );
 }
 
-
 /*
  * Só usamos faixas no consolidado se todas as
  * aplicações estiverem usando exatamente as mesmas.
@@ -1223,7 +1252,6 @@ function obterFaixasCompativeis(
     return [];
   }
 
-
   const configuracoes =
     pesquisasBanco.map(
       pesquisa =>
@@ -1233,11 +1261,9 @@ function obterFaixasCompativeis(
         )
     );
 
-
   const primeira =
     configuracoes[0]
       .faixas;
-
 
   if (
     primeira.length ===
@@ -1246,12 +1272,10 @@ function obterFaixasCompativeis(
     return [];
   }
 
-
   const assinatura =
     assinaturaFaixas(
       primeira
     );
-
 
   const todasCompativeis =
     configuracoes.every(
@@ -1262,13 +1286,10 @@ function obterFaixasCompativeis(
         assinatura
     );
 
-
   return todasCompativeis
     ? primeira
     : [];
 }
-
-
 
 /* =========================================================
  * TRANSPARÊNCIA METODOLÓGICA
@@ -1375,7 +1396,6 @@ function montarMetodologiaAplicacao(
   };
 }
 
-
 /* =========================================================
  * INFORMAÇÕES ADICIONAIS
  * ======================================================= */
@@ -1404,7 +1424,6 @@ function montarInformacoesAdicionais(
       AcumuladorInformacaoAdicional
     >();
 
-
   for (
     const pesquisa
     of pesquisasBanco
@@ -1414,13 +1433,11 @@ function montarInformacoesAdicionais(
         pesquisa.dimensoes
       );
 
-
     const perguntas =
       normalizarPerguntas(
         pesquisa.perguntas,
         dimensoes
       );
-
 
     const mapaDimensoes =
       new Map(
@@ -1432,14 +1449,12 @@ function montarInformacoesAdicionais(
         )
       );
 
-
     const perguntasAdicionais =
       perguntas.filter(
         pergunta =>
           pergunta.tipo !==
           TipoPergunta.NOTA
       );
-
 
     const mapaPerguntas =
       new Map(
@@ -1450,7 +1465,6 @@ function montarInformacoesAdicionais(
           ]
         )
       );
-
 
     /*
      * Criamos primeiro os acumuladores das perguntas.
@@ -1467,7 +1481,6 @@ function montarInformacoesAdicionais(
               pergunta.dimensaoId
             )
           : null;
-
 
       /*
        * A chave consolida a mesma pergunta entre
@@ -1491,7 +1504,6 @@ function montarInformacoesAdicionais(
         ].join(
           "::"
         );
-
 
       if (
         !mapa.has(
@@ -1541,7 +1553,6 @@ function montarInformacoesAdicionais(
       }
     }
 
-
     /*
      * Agora consolidamos as respostas efetivamente recebidas.
      */
@@ -1554,7 +1565,6 @@ function montarInformacoesAdicionais(
           respostaPesquisa.respostas
         );
 
-
       for (
         const resposta
         of respostas
@@ -1564,17 +1574,14 @@ function montarInformacoesAdicionais(
             resposta.perguntaId
           );
 
-
         if (
           !pergunta
         ) {
           continue;
         }
 
-
         const valor =
           resposta.valor.trim();
-
 
         if (
           !valor
@@ -1582,14 +1589,12 @@ function montarInformacoesAdicionais(
           continue;
         }
 
-
         const dimensao =
           pergunta.dimensaoId
             ? mapaDimensoes.get(
                 pergunta.dimensaoId
               )
             : null;
-
 
         const chave =
           [
@@ -1610,12 +1615,10 @@ function montarInformacoesAdicionais(
             "::"
           );
 
-
         const acumulador =
           mapa.get(
             chave
           );
-
 
         if (
           !acumulador
@@ -1623,9 +1626,7 @@ function montarInformacoesAdicionais(
           continue;
         }
 
-
         acumulador.totalRespostas++;
-
 
         /*
          * SIM / NÃO e múltipla escolha:
@@ -1642,7 +1643,6 @@ function montarInformacoesAdicionais(
               valor
             );
 
-
           const atual =
             acumulador.distribuicao.get(
               chaveValor
@@ -1652,19 +1652,15 @@ function montarInformacoesAdicionais(
                 0,
             };
 
-
           atual.quantidade++;
-
 
           acumulador.distribuicao.set(
             chaveValor,
             atual
           );
 
-
           continue;
         }
-
 
         /*
          * Texto curto e texto longo:
@@ -1683,7 +1679,6 @@ function montarInformacoesAdicionais(
       }
     }
   }
-
 
   return Array.from(
     mapa.values()
@@ -1738,14 +1733,12 @@ function montarInformacoesAdicionais(
                         valor
                       );
 
-
                     if (
                       normalizado ===
                       "sim"
                     ) {
                       return 0;
                     }
-
 
                     if (
                       normalizado ===
@@ -1756,10 +1749,8 @@ function montarInformacoesAdicionais(
                       return 1;
                     }
 
-
                     return 2;
                   };
-
 
                   return (
                     ordem(
@@ -1771,7 +1762,6 @@ function montarInformacoesAdicionais(
                   );
                 }
 
-
                 /*
                  * Múltipla escolha:
                  * alternativas mais escolhidas primeiro.
@@ -1782,7 +1772,6 @@ function montarInformacoesAdicionais(
                 );
               }
             );
-
 
         return {
           id:
@@ -1825,7 +1814,6 @@ function montarInformacoesAdicionais(
     );
 }
 
-
 /* =========================================================
  * COMPATIBILIDADE COM RELATÓRIOS ANTIGOS
  * ======================================================= */
@@ -1841,7 +1829,6 @@ function calcularIndicadoresNotas(
       perguntasRaw
     );
 
-
   const perguntasNota =
     new Set(
       perguntas
@@ -1856,13 +1843,11 @@ function calcularIndicadoresNotas(
         )
     );
 
-
   let soma =
     0;
 
   let quantidade =
     0;
-
 
   for (
     const respostaPesquisa
@@ -1872,7 +1857,6 @@ function calcularIndicadoresNotas(
       normalizarRespostas(
         respostaPesquisa.respostas
       );
-
 
     for (
       const resposta
@@ -1886,12 +1870,10 @@ function calcularIndicadoresNotas(
         continue;
       }
 
-
       const valor =
         Number(
           resposta.valor
         );
-
 
       if (
         !Number.isFinite(
@@ -1901,14 +1883,12 @@ function calcularIndicadoresNotas(
         continue;
       }
 
-
       soma +=
         valor;
 
       quantidade++;
     }
   }
-
 
   return {
     soma,
@@ -1923,7 +1903,6 @@ function calcularIndicadoresNotas(
         : null,
   };
 }
-
 
 /* =========================================================
  * MOTOR DE CLIMA
@@ -1941,7 +1920,6 @@ function classificarFavorabilidade(
     return "FAVORAVEL";
   }
 
-
   if (
     configuracao.neutro.includes(
       valor
@@ -1949,7 +1927,6 @@ function classificarFavorabilidade(
   ) {
     return "NEUTRO";
   }
-
 
   if (
     configuracao.desfavoravel.includes(
@@ -1959,10 +1936,8 @@ function classificarFavorabilidade(
     return "DESFAVORAVEL";
   }
 
-
   return null;
 }
-
 
 function analisarPesquisaClima(
   pesquisa: any
@@ -1972,13 +1947,11 @@ function analisarPesquisaClima(
       pesquisa.dimensoes
     );
 
-
   const perguntas =
     normalizarPerguntas(
       pesquisa.perguntas,
       dimensoes
     );
-
 
   const configuracao =
     normalizarConfiguracaoAnalise(
@@ -1986,13 +1959,11 @@ function analisarPesquisaClima(
       TipoModuloPesquisa.CLIMA
     );
 
-
   const mapaDimensoes =
     new Map<
       string,
       AcumuladorClima
     >();
-
 
   for (
     const dimensao
@@ -2031,7 +2002,6 @@ function analisarPesquisaClima(
     );
   }
 
-
   const mapaPerguntas =
     new Map(
       perguntas.map(
@@ -2042,10 +2012,8 @@ function analisarPesquisaClima(
       )
     );
 
-
   const comentariosAbertos: string[] =
     [];
-
 
   for (
     const respostaPesquisa
@@ -2056,7 +2024,6 @@ function analisarPesquisaClima(
         respostaPesquisa.respostas
       );
 
-
     for (
       const resposta
       of respostas
@@ -2066,13 +2033,11 @@ function analisarPesquisaClima(
           resposta.perguntaId
         );
 
-
       if (
         !pergunta
       ) {
         continue;
       }
-
 
       if (
         pergunta.tipo ===
@@ -2082,7 +2047,6 @@ function analisarPesquisaClima(
       ) {
         const texto =
           resposta.valor.trim();
-
 
         if (
           texto
@@ -2095,7 +2059,6 @@ function analisarPesquisaClima(
         continue;
       }
 
-
       if (
         pergunta.tipo !==
           TipoPergunta.NOTA ||
@@ -2104,12 +2067,10 @@ function analisarPesquisaClima(
         continue;
       }
 
-
       const dimensao =
         mapaDimensoes.get(
           pergunta.dimensaoId
         );
-
 
       if (
         !dimensao
@@ -2117,12 +2078,10 @@ function analisarPesquisaClima(
         continue;
       }
 
-
       const valorOriginal =
         Number(
           resposta.valor
         );
-
 
       if (
         !Number.isFinite(
@@ -2132,7 +2091,6 @@ function analisarPesquisaClima(
         continue;
       }
 
-
       const valorOrientado =
         notaOrientadaPositivamente(
           valorOriginal,
@@ -2140,13 +2098,11 @@ function analisarPesquisaClima(
           configuracao
         );
 
-
       const classificacao =
         classificarFavorabilidade(
           valorOrientado,
           configuracao
         );
-
 
       if (
         !classificacao
@@ -2154,9 +2110,7 @@ function analisarPesquisaClima(
         continue;
       }
 
-
       dimensao.totalRespostas++;
-
 
       if (
         classificacao ===
@@ -2165,14 +2119,12 @@ function analisarPesquisaClima(
         dimensao.favoravel++;
       }
 
-
       if (
         classificacao ===
         "NEUTRO"
       ) {
         dimensao.neutro++;
       }
-
 
       if (
         classificacao ===
@@ -2182,7 +2134,6 @@ function analisarPesquisaClima(
       }
     }
   }
-
 
   const dimensoesResultado =
     Array.from(
@@ -2239,7 +2190,6 @@ function analisarPesquisaClima(
         })
       );
 
-
   const pesoTotal =
     dimensoesResultado.reduce(
       (
@@ -2250,7 +2200,6 @@ function analisarPesquisaClima(
         dimensao.pesoDimensao,
       0
     );
-
 
   const indiceGeralClima =
     pesoTotal >
@@ -2268,7 +2217,6 @@ function analisarPesquisaClima(
         pesoTotal
       : null;
 
-
   return {
     indiceGeralClima,
 
@@ -2278,7 +2226,6 @@ function analisarPesquisaClima(
     comentariosAbertos,
   };
 }
-
 
 function montarAnaliseClima(
   pesquisasBanco: any[]
@@ -2300,17 +2247,14 @@ function montarAnaliseClima(
       }
     >();
 
-
   const comentariosAbertos: string[] =
     [];
-
 
   const historico: {
     rotulo: string;
     indice: number;
   }[] =
     [];
-
 
   for (
     const pesquisa
@@ -2321,11 +2265,9 @@ function montarAnaliseClima(
         pesquisa
       );
 
-
     comentariosAbertos.push(
       ...resultado.comentariosAbertos
     );
-
 
     if (
       resultado.indiceGeralClima !==
@@ -2340,7 +2282,6 @@ function montarAnaliseClima(
       });
     }
 
-
     for (
       const dimensao
       of resultado.dimensoes
@@ -2349,7 +2290,6 @@ function montarAnaliseClima(
         chaveTexto(
           dimensao.nome
         );
-
 
       const atual =
         mapaDimensoes.get(
@@ -2377,7 +2317,6 @@ function montarAnaliseClima(
             0,
         };
 
-
       atual.favoravelQuantidade +=
         dimensao.favoravelQuantidade;
 
@@ -2390,14 +2329,12 @@ function montarAnaliseClima(
       atual.totalRespostas +=
         dimensao.totalRespostas;
 
-
       mapaDimensoes.set(
         chave,
         atual
       );
     }
   }
-
 
   const dimensoesComPeso =
     Array.from(
@@ -2453,7 +2390,6 @@ function montarAnaliseClima(
           a.favoravel
       );
 
-
   const pesoTotal =
     dimensoesComPeso.reduce(
       (
@@ -2464,7 +2400,6 @@ function montarAnaliseClima(
         dimensao.pesoDimensao,
       0
     );
-
 
   const indiceGeralClima =
     pesoTotal >
@@ -2481,7 +2416,6 @@ function montarAnaliseClima(
         ) /
         pesoTotal
       : null;
-
 
   return {
     indiceGeralClima,
@@ -2500,8 +2434,6 @@ function montarAnaliseClima(
     historico,
   };
 }
-
-
 
 /* =========================================================
  * CLIMA — ANÁLISE POR SETOR
@@ -2544,13 +2476,11 @@ function montarAnaliseClimaPorSetor(
     >;
   };
 
-
   const grupos =
     new Map<
       string,
       GrupoSetor
     >();
-
 
   for (
     const pesquisa
@@ -2567,7 +2497,6 @@ function montarAnaliseClimaPorSetor(
           ""
         ).trim();
 
-
       /*
        * Resposta sem setor continua participando do
        * consolidado geral da pesquisa, mas não entra
@@ -2579,19 +2508,16 @@ function montarAnaliseClimaPorSetor(
         continue;
       }
 
-
       const chave =
         normalizarChaveSetor(
           setor
         );
-
 
       if (
         !chave
       ) {
         continue;
       }
-
 
       const grupo =
         grupos.get(
@@ -2606,7 +2532,6 @@ function montarAnaliseClimaPorSetor(
             >(),
         };
 
-
       const pesquisaSetor =
         grupo.pesquisas.get(
           pesquisa.id
@@ -2617,17 +2542,14 @@ function montarAnaliseClimaPorSetor(
             [],
         };
 
-
       pesquisaSetor.respostas.push(
         resposta
       );
-
 
       grupo.pesquisas.set(
         pesquisa.id,
         pesquisaSetor
       );
-
 
       grupos.set(
         chave,
@@ -2636,11 +2558,9 @@ function montarAnaliseClimaPorSetor(
     }
   }
 
-
   const resultados:
     AnaliseClimaSetor[] =
       [];
-
 
   /*
    * Os setores com menos de 5 respostas não serão
@@ -2653,10 +2573,8 @@ function montarAnaliseClimaPorSetor(
       any
     >();
 
-
   let totalRespostasGeral =
     0;
-
 
   for (
     const grupo
@@ -2666,7 +2584,6 @@ function montarAnaliseClimaPorSetor(
       Array.from(
         grupo.pesquisas.values()
       );
-
 
     const totalRespostas =
       pesquisas.reduce(
@@ -2682,14 +2599,12 @@ function montarAnaliseClimaPorSetor(
         0
       );
 
-
     if (
       totalRespostas <
       MINIMO_RESPOSTAS_FILTRO_SETOR
     ) {
       totalRespostasGeral +=
         totalRespostas;
-
 
       for (
         const pesquisa
@@ -2705,7 +2620,6 @@ function montarAnaliseClimaPorSetor(
               [],
           };
 
-
         pesquisaGeral.respostas.push(
           ...(
             pesquisa.respostas ||
@@ -2713,23 +2627,19 @@ function montarAnaliseClimaPorSetor(
           )
         );
 
-
         pesquisasGeral.set(
           pesquisa.id,
           pesquisaGeral
         );
       }
 
-
       continue;
     }
-
 
     const analise =
       montarAnaliseClima(
         pesquisas
       );
-
 
     resultados.push({
       setor:
@@ -2751,7 +2661,6 @@ function montarAnaliseClimaPorSetor(
     });
   }
 
-
   /*
    * Exceção solicitada:
    *
@@ -2768,12 +2677,10 @@ function montarAnaliseClimaPorSetor(
         pesquisasGeral.values()
       );
 
-
     const analise =
       montarAnaliseClima(
         pesquisas
       );
-
 
     resultados.push({
       setor:
@@ -2796,7 +2703,6 @@ function montarAnaliseClimaPorSetor(
     });
   }
 
-
   return resultados.sort(
     (
       a,
@@ -2818,7 +2724,6 @@ function montarAnaliseClimaPorSetor(
           : -1;
       }
 
-
       return (
         (
           b.indiceGeralClima ??
@@ -2837,7 +2742,6 @@ function montarAnaliseClimaPorSetor(
   );
 }
 
-
 /* =========================================================
  * MOTOR DE AVALIAÇÃO DE DESEMPENHO
  * ======================================================= */
@@ -2850,20 +2754,17 @@ function analisarPesquisaDesempenho(
       pesquisa.dimensoes
     );
 
-
   const perguntas =
     normalizarPerguntas(
       pesquisa.perguntas,
       dimensoes
     );
 
-
   const configuracao =
     normalizarConfiguracaoAnalise(
       pesquisa.configuracaoAnalise,
       TipoModuloPesquisa.AVALIACAO_DESEMPENHO
     );
-
 
   const mapaPerguntas =
     new Map(
@@ -2875,13 +2776,11 @@ function analisarPesquisaDesempenho(
       )
     );
 
-
   const mapaDimensoes =
     new Map<
       string,
       AcumuladorScore
     >();
-
 
   for (
     const dimensao
@@ -2924,7 +2823,6 @@ function analisarPesquisaDesempenho(
     );
   }
 
-
   for (
     const respostaPesquisa
     of pesquisa.respostas
@@ -2933,7 +2831,6 @@ function analisarPesquisaDesempenho(
       normalizarRespostas(
         respostaPesquisa.respostas
       );
-
 
     for (
       const resposta
@@ -2944,7 +2841,6 @@ function analisarPesquisaDesempenho(
           resposta.perguntaId
         );
 
-
       if (
         !pergunta ||
         pergunta.tipo !==
@@ -2954,12 +2850,10 @@ function analisarPesquisaDesempenho(
         continue;
       }
 
-
       const dimensao =
         mapaDimensoes.get(
           pergunta.dimensaoId
         );
-
 
       if (
         !dimensao
@@ -2967,12 +2861,10 @@ function analisarPesquisaDesempenho(
         continue;
       }
 
-
       const valor =
         Number(
           resposta.valor
         );
-
 
       if (
         !Number.isFinite(
@@ -2982,7 +2874,6 @@ function analisarPesquisaDesempenho(
         continue;
       }
 
-
       const orientado =
         notaOrientadaPositivamente(
           valor,
@@ -2990,14 +2881,12 @@ function analisarPesquisaDesempenho(
           configuracao
         );
 
-
       const score =
         normalizarNotaPercentual(
           orientado,
           configuracao.escalaMinima,
           configuracao.escalaMaxima
         );
-
 
       dimensao.soma +=
         score;
@@ -3011,7 +2900,6 @@ function analisarPesquisaDesempenho(
       );
     }
   }
-
 
   const dimensoesResultado =
     Array.from(
@@ -3028,13 +2916,11 @@ function analisarPesquisaDesempenho(
             item.soma /
             item.quantidade;
 
-
           const faixa =
             encontrarFaixa(
               score,
               configuracao.faixas
             );
-
 
           return {
             id:
@@ -3059,7 +2945,6 @@ function analisarPesquisaDesempenho(
         }
       );
 
-
   const pesoGeral =
     dimensoesResultado.reduce(
       (
@@ -3070,7 +2955,6 @@ function analisarPesquisaDesempenho(
         dimensao.pesoDimensao,
       0
     );
-
 
   const somaGeral =
     dimensoesResultado.reduce(
@@ -3083,7 +2967,6 @@ function analisarPesquisaDesempenho(
           dimensao.pesoDimensao,
       0
     );
-
 
   return {
     scoreDesempenho:
@@ -3102,7 +2985,6 @@ function analisarPesquisaDesempenho(
   };
 }
 
-
 function montarAnaliseDesempenho(
   pesquisasBanco: any[]
 ) {
@@ -3120,13 +3002,11 @@ function montarAnaliseDesempenho(
       }
     >();
 
-
   let somaGeral =
     0;
 
   let pesoGeral =
     0;
-
 
   for (
     const pesquisa
@@ -3137,13 +3017,11 @@ function montarAnaliseDesempenho(
         pesquisa
       );
 
-
     somaGeral +=
       resultado.somaGeral;
 
     pesoGeral +=
       resultado.pesoGeral;
-
 
     for (
       const dimensao
@@ -3153,7 +3031,6 @@ function montarAnaliseDesempenho(
         chaveTexto(
           dimensao.nome
         );
-
 
       const atual =
         mapaDimensoes.get(
@@ -3175,7 +3052,6 @@ function montarAnaliseDesempenho(
             0,
         };
 
-
       atual.somaPonderada +=
         dimensao.score *
         dimensao.pesoDimensao;
@@ -3186,7 +3062,6 @@ function montarAnaliseDesempenho(
       atual.totalRespostas +=
         dimensao.totalRespostas;
 
-
       mapaDimensoes.set(
         chave,
         atual
@@ -3194,12 +3069,10 @@ function montarAnaliseDesempenho(
     }
   }
 
-
   const faixas =
     obterFaixasCompativeis(
       pesquisasBanco
     );
-
 
   const dimensoes =
     Array.from(
@@ -3216,13 +3089,11 @@ function montarAnaliseDesempenho(
             item.somaPonderada /
             item.pesoTotal;
 
-
           const faixa =
             encontrarFaixa(
               score,
               faixas
             );
-
 
           return {
             id:
@@ -3252,10 +3123,8 @@ function montarAnaliseDesempenho(
           a.score
       );
 
-
   const quantidade =
     dimensoes.length;
-
 
   const tamanhoGrupo =
     quantidade >
@@ -3269,7 +3138,6 @@ function montarAnaliseDesempenho(
         )
       : 0;
 
-
   const forcas =
     dimensoes
       .slice(
@@ -3280,7 +3148,6 @@ function montarAnaliseDesempenho(
         item =>
           item.nome
       );
-
 
   const prioridades =
     dimensoes
@@ -3296,18 +3163,15 @@ function montarAnaliseDesempenho(
           item.nome
       );
 
-
   const nomesForcas =
     new Set(
       forcas
     );
 
-
   const nomesPrioridades =
     new Set(
       prioridades
     );
-
 
   const pontosAtencao =
     dimensoes
@@ -3324,7 +3188,6 @@ function montarAnaliseDesempenho(
         item =>
           item.nome
       );
-
 
   return {
     scoreDesempenho:
@@ -3344,7 +3207,6 @@ function montarAnaliseDesempenho(
   };
 }
 
-
 /* =========================================================
  * MOTOR PSICOSSOCIAL
  * ======================================================= */
@@ -3357,20 +3219,17 @@ function analisarPesquisaPsicossocial(
       pesquisa.dimensoes
     );
 
-
   const perguntas =
     normalizarPerguntas(
       pesquisa.perguntas,
       dimensoes
     );
 
-
   const configuracao =
     normalizarConfiguracaoAnalise(
       pesquisa.configuracaoAnalise,
       TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
     );
-
 
   const mapaPerguntas =
     new Map(
@@ -3382,13 +3241,11 @@ function analisarPesquisaPsicossocial(
       )
     );
 
-
   const mapaDimensoes =
     new Map<
       string,
       AcumuladorScore
     >();
-
 
   for (
     const dimensao
@@ -3431,7 +3288,6 @@ function analisarPesquisaPsicossocial(
     );
   }
 
-
   for (
     const respostaPesquisa
     of pesquisa.respostas
@@ -3440,7 +3296,6 @@ function analisarPesquisaPsicossocial(
       normalizarRespostas(
         respostaPesquisa.respostas
       );
-
 
     for (
       const resposta
@@ -3451,7 +3306,6 @@ function analisarPesquisaPsicossocial(
           resposta.perguntaId
         );
 
-
       if (
         !pergunta ||
         pergunta.tipo !==
@@ -3461,12 +3315,10 @@ function analisarPesquisaPsicossocial(
         continue;
       }
 
-
       const dimensao =
         mapaDimensoes.get(
           pergunta.dimensaoId
         );
-
 
       if (
         !dimensao
@@ -3474,12 +3326,10 @@ function analisarPesquisaPsicossocial(
         continue;
       }
 
-
       const valor =
         Number(
           resposta.valor
         );
-
 
       if (
         !Number.isFinite(
@@ -3489,7 +3339,6 @@ function analisarPesquisaPsicossocial(
         continue;
       }
 
-
       const orientado =
         notaOrientadaParaRisco(
           valor,
@@ -3497,14 +3346,12 @@ function analisarPesquisaPsicossocial(
           configuracao
         );
 
-
       const score =
         normalizarNotaPercentual(
           orientado,
           configuracao.escalaMinima,
           configuracao.escalaMaxima
         );
-
 
       dimensao.soma +=
         score;
@@ -3518,7 +3365,6 @@ function analisarPesquisaPsicossocial(
       );
     }
   }
-
 
   return {
     faixas:
@@ -3564,7 +3410,6 @@ function analisarPesquisaPsicossocial(
   };
 }
 
-
 function montarAnalisePsicossocial(
   pesquisasBanco: any[]
 ) {
@@ -3583,7 +3428,6 @@ function montarAnalisePsicossocial(
       }
     >();
 
-
   for (
     const pesquisa
     of pesquisasBanco
@@ -3593,7 +3437,6 @@ function montarAnalisePsicossocial(
         pesquisa
       );
 
-
     for (
       const fator
       of resultado.fatores
@@ -3602,12 +3445,10 @@ function montarAnalisePsicossocial(
         fator.fatorRisco ||
         fator.nome;
 
-
       const chave =
         chaveTexto(
           nomeChave
         );
-
 
       const atual =
         mapaFatores.get(
@@ -3642,14 +3483,12 @@ function montarAnalisePsicossocial(
             new Set<string>(),
         };
 
-
       atual.somaPonderada +=
         fator.score *
         fator.pesoDimensao;
 
       atual.pesoTotal +=
         fator.pesoDimensao;
-
 
       for (
         const respondente
@@ -3660,7 +3499,6 @@ function montarAnalisePsicossocial(
         );
       }
 
-
       mapaFatores.set(
         chave,
         atual
@@ -3668,12 +3506,10 @@ function montarAnalisePsicossocial(
     }
   }
 
-
   const faixas =
     obterFaixasCompativeis(
       pesquisasBanco
     );
-
 
   const fatores =
     Array.from(
@@ -3688,7 +3524,6 @@ function montarAnalisePsicossocial(
                 item.pesoTotal
               : null;
 
-
           const faixa =
             score !==
             null
@@ -3697,7 +3532,6 @@ function montarAnalisePsicossocial(
                   faixas
                 )
               : null;
-
 
           return {
             id:
@@ -3736,13 +3570,10 @@ function montarAnalisePsicossocial(
           )
       );
 
-
   return {
     fatores,
   };
 }
-
-
 
 function montarDimensoesPsicossociais(
   pesquisasBanco: any[]
@@ -3760,7 +3591,6 @@ function montarDimensoesPsicossociais(
       }
     >();
 
-
   for (
     const pesquisa
     of pesquisasBanco
@@ -3770,7 +3600,6 @@ function montarDimensoesPsicossociais(
         pesquisa
       );
 
-
     for (
       const dimensao
       of resultado.fatores
@@ -3779,7 +3608,6 @@ function montarDimensoesPsicossociais(
         chaveTexto(
           dimensao.nome
         );
-
 
       const atual =
         mapaDimensoes.get(
@@ -3804,14 +3632,12 @@ function montarDimensoesPsicossociais(
             new Set<string>(),
         };
 
-
       atual.somaPonderada +=
         dimensao.score *
         dimensao.pesoDimensao;
 
       atual.pesoTotal +=
         dimensao.pesoDimensao;
-
 
       for (
         const respondente
@@ -3822,7 +3648,6 @@ function montarDimensoesPsicossociais(
         );
       }
 
-
       mapaDimensoes.set(
         chave,
         atual
@@ -3830,12 +3655,10 @@ function montarDimensoesPsicossociais(
     }
   }
 
-
   const faixas =
     obterFaixasCompativeis(
       pesquisasBanco
     );
-
 
   return Array.from(
     mapaDimensoes.values()
@@ -3849,7 +3672,6 @@ function montarDimensoesPsicossociais(
               item.pesoTotal
             : null;
 
-
         const faixa =
           score !==
           null
@@ -3858,7 +3680,6 @@ function montarDimensoesPsicossociais(
                 faixas
               )
             : null;
-
 
         return {
           id:
@@ -3884,8 +3705,6 @@ function montarDimensoesPsicossociais(
     );
 }
 
-
-
 /* =========================================================
  * HEATMAP PSICOSSOCIAL — SETOR × FATOR
  * ======================================================= */
@@ -3909,7 +3728,6 @@ function montarHeatmapPsicossocial(
     pesoTotal: number;
   };
 
-
   type AcumuladorSetor = {
     setor: string;
 
@@ -3925,20 +3743,17 @@ function montarHeatmapPsicossocial(
     >;
   };
 
-
   const setores =
     new Map<
       string,
       AcumuladorSetor
     >();
 
-
   const nomesFatores =
     new Map<
       string,
       string
     >();
-
 
   for (
     const pesquisa
@@ -3949,20 +3764,17 @@ function montarHeatmapPsicossocial(
         pesquisa.dimensoes
       );
 
-
     const perguntas =
       normalizarPerguntas(
         pesquisa.perguntas,
         dimensoes
       );
 
-
     const configuracao =
       normalizarConfiguracaoAnalise(
         pesquisa.configuracaoAnalise,
         TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
       );
-
 
     const mapaDimensoes =
       new Map(
@@ -3974,7 +3786,6 @@ function montarHeatmapPsicossocial(
         )
       );
 
-
     const mapaPerguntas =
       new Map(
         perguntas.map(
@@ -3984,7 +3795,6 @@ function montarHeatmapPsicossocial(
           ]
         )
       );
-
 
     for (
       const respostaPesquisa
@@ -3996,7 +3806,6 @@ function montarHeatmapPsicossocial(
           ""
         ).trim();
 
-
       /*
        * Sem setor não existe recorte confiável.
        * A resposta permanece no consolidado geral.
@@ -4007,12 +3816,10 @@ function montarHeatmapPsicossocial(
         continue;
       }
 
-
       const chaveSetor =
         chaveTexto(
           setor
         );
-
 
       const atualSetor =
         setores.get(
@@ -4027,11 +3834,9 @@ function montarHeatmapPsicossocial(
             new Map(),
         };
 
-
       atualSetor.respondentes.add(
         `${pesquisa.id}:${respostaPesquisa.id}`
       );
-
 
       /*
        * Primeiro consolidamos todas as perguntas
@@ -4046,12 +3851,10 @@ function montarHeatmapPsicossocial(
           }
         >();
 
-
       const respostas =
         normalizarRespostas(
           respostaPesquisa.respostas
         );
-
 
       for (
         const resposta
@@ -4062,7 +3865,6 @@ function montarHeatmapPsicossocial(
             resposta.perguntaId
           );
 
-
         if (
           !pergunta ||
           pergunta.tipo !==
@@ -4072,12 +3874,10 @@ function montarHeatmapPsicossocial(
           continue;
         }
 
-
         const dimensao =
           mapaDimensoes.get(
             pergunta.dimensaoId
           );
-
 
         if (
           !dimensao
@@ -4085,12 +3885,10 @@ function montarHeatmapPsicossocial(
           continue;
         }
 
-
         const valor =
           Number(
             resposta.valor
           );
-
 
         if (
           !Number.isFinite(
@@ -4100,7 +3898,6 @@ function montarHeatmapPsicossocial(
           continue;
         }
 
-
         const orientado =
           notaOrientadaParaRisco(
             valor,
@@ -4108,14 +3905,12 @@ function montarHeatmapPsicossocial(
             configuracao
           );
 
-
         const score =
           normalizarNotaPercentual(
             orientado,
             configuracao.escalaMinima,
             configuracao.escalaMaxima
           );
-
 
         const acumulador =
           acumuladoresDimensao.get(
@@ -4128,19 +3923,16 @@ function montarHeatmapPsicossocial(
               0,
           };
 
-
         acumulador.soma +=
           score;
 
         acumulador.quantidade++;
-
 
         acumuladoresDimensao.set(
           dimensao.id,
           acumulador
         );
       }
-
 
       /*
        * Depois transformamos as dimensões em fatores
@@ -4160,12 +3952,10 @@ function montarHeatmapPsicossocial(
           continue;
         }
 
-
         const dimensao =
           mapaDimensoes.get(
             dimensaoId
           );
-
 
         if (
           !dimensao
@@ -4173,23 +3963,19 @@ function montarHeatmapPsicossocial(
           continue;
         }
 
-
         const nomeFator =
           dimensao.fatorRisco ||
           dimensao.nome;
-
 
         const chaveFator =
           chaveTexto(
             nomeFator
           );
 
-
         nomesFatores.set(
           chaveFator,
           nomeFator
         );
-
 
         const peso =
           Math.max(
@@ -4200,7 +3986,6 @@ function montarHeatmapPsicossocial(
             )
           );
 
-
         if (
           peso <=
           0
@@ -4208,11 +3993,9 @@ function montarHeatmapPsicossocial(
           continue;
         }
 
-
         const scoreDimensao =
           acumulador.soma /
           acumulador.quantidade;
-
 
         const atualFator =
           atualSetor.fatores.get(
@@ -4228,7 +4011,6 @@ function montarHeatmapPsicossocial(
               0,
           };
 
-
         atualFator.somaPonderada +=
           scoreDimensao *
           peso;
@@ -4236,13 +4018,11 @@ function montarHeatmapPsicossocial(
         atualFator.pesoTotal +=
           peso;
 
-
         atualSetor.fatores.set(
           chaveFator,
           atualFator
         );
       }
-
 
       setores.set(
         chaveSetor,
@@ -4251,12 +4031,10 @@ function montarHeatmapPsicossocial(
     }
   }
 
-
   const faixas =
     obterFaixasCompativeis(
       pesquisasBanco
     );
-
 
   const fatoresOrdenados =
     Array.from(
@@ -4272,7 +4050,6 @@ function montarHeatmapPsicossocial(
             "pt-BR"
           )
       );
-
 
   const linhas =
     Array.from(
@@ -4297,7 +4074,6 @@ function montarHeatmapPsicossocial(
                     chaveFator
                   );
 
-
                 const score =
                   acumulador &&
                   acumulador.pesoTotal >
@@ -4305,7 +4081,6 @@ function montarHeatmapPsicossocial(
                     ? acumulador.somaPonderada /
                       acumulador.pesoTotal
                     : null;
-
 
                 const faixa =
                   score !==
@@ -4315,7 +4090,6 @@ function montarHeatmapPsicossocial(
                         faixas
                       )
                     : null;
-
 
                 return {
                   fator:
@@ -4345,7 +4119,6 @@ function montarHeatmapPsicossocial(
           )
       );
 
-
   return {
     fatores:
       fatoresOrdenados.map(
@@ -4361,6 +4134,55 @@ function montarHeatmapPsicossocial(
   };
 }
 
+/* =========================================================
+ * RESTRIÇÃO DE ACESSO DO GESTOR
+ * ======================================================= */
+
+async function obterRestricaoGestorCliente(
+  clienteId: string,
+  tipo?: TipoModuloPesquisa
+): Promise<Prisma.PesquisaClienteWhereInput> {
+  const session = await auth();
+
+  const usuario = session?.user as
+    | {
+        id?: string;
+        perfil?: PerfilUsuario;
+        clienteId?: string | null;
+      }
+    | undefined;
+
+  if (
+    usuario?.perfil !==
+    PerfilUsuario.GESTOR_CLIENTE
+  ) {
+    return {};
+  }
+
+  if (
+    !usuario.id ||
+    !usuario.clienteId ||
+    usuario.clienteId !== clienteId
+  ) {
+    throw new Error(
+      "Gestor não autorizado para este cliente."
+    );
+  }
+
+  if (
+    tipo &&
+    tipo !==
+      TipoModuloPesquisa.AVALIACAO_DESEMPENHO
+  ) {
+    throw new Error(
+      "O gestor possui acesso somente à Avaliação de Desempenho."
+    );
+  }
+
+  return {
+    gestorUsuarioId: usuario.id,
+  };
+}
 
 /* =========================================================
  * REPOSITÓRIO
@@ -4375,7 +4197,6 @@ export default class RepositorioPesquisaCliente {
     const titulo =
       pesquisa.titulo?.trim();
 
-
     if (
       !titulo
     ) {
@@ -4383,7 +4204,6 @@ export default class RepositorioPesquisaCliente {
         "Título é obrigatório."
       );
     }
-
 
     if (
       !pesquisa.clienteId
@@ -4393,7 +4213,6 @@ export default class RepositorioPesquisaCliente {
       );
     }
 
-
     if (
       !pesquisa.modeloId
     ) {
@@ -4401,7 +4220,6 @@ export default class RepositorioPesquisaCliente {
         "Modelo é obrigatório."
       );
     }
-
 
     const [
       cliente,
@@ -4423,7 +4241,6 @@ export default class RepositorioPesquisaCliente {
         }),
       ]);
 
-
     if (
       !cliente
     ) {
@@ -4432,7 +4249,6 @@ export default class RepositorioPesquisaCliente {
       );
     }
 
-
     if (
       !modelo
     ) {
@@ -4440,7 +4256,6 @@ export default class RepositorioPesquisaCliente {
         "Modelo não encontrado."
       );
     }
-
 
     if (
       modelo.tipo !==
@@ -4452,11 +4267,74 @@ export default class RepositorioPesquisaCliente {
     }
 
 
+    const ehAvaliacaoDesempenho =
+      tipoEsperado ===
+      TipoModuloPesquisa.AVALIACAO_DESEMPENHO;
+
+
+    let gestorUsuarioId:
+      | string
+      | null =
+        null;
+
+
+    if (
+      ehAvaliacaoDesempenho
+    ) {
+      gestorUsuarioId =
+        String(
+          pesquisa.gestorUsuarioId ??
+          ""
+        ).trim() ||
+        null;
+
+
+      if (
+        !gestorUsuarioId
+      ) {
+        throw new Error(
+          "Gestor responsável é obrigatório."
+        );
+      }
+
+
+      const gestor =
+        await prisma.usuario.findFirst({
+          where: {
+            id:
+              gestorUsuarioId,
+
+            clienteId:
+              pesquisa.clienteId,
+
+            perfil:
+              PerfilUsuario.GESTOR_CLIENTE,
+
+            ativo:
+              true,
+          },
+
+          select: {
+            id:
+              true,
+          },
+        });
+
+
+      if (
+        !gestor
+      ) {
+        throw new Error(
+          "O gestor selecionado não está ativo ou não pertence a este cliente."
+        );
+      }
+    }
+
+
     const dimensoesModelo =
       normalizarDimensoes(
         modelo.dimensoes
       );
-
 
     const perguntasModelo =
       normalizarPerguntas(
@@ -4464,13 +4342,11 @@ export default class RepositorioPesquisaCliente {
         dimensoesModelo
       );
 
-
     const configuracaoModelo =
       normalizarConfiguracaoAnalise(
         modelo.configuracaoAnalise,
         modelo.tipo
       );
-
 
     if (
       perguntasModelo.length ===
@@ -4480,7 +4356,6 @@ export default class RepositorioPesquisaCliente {
         "O modelo selecionado não possui perguntas."
       );
     }
-
 
     /*
      * EDIÇÃO
@@ -4505,7 +4380,6 @@ export default class RepositorioPesquisaCliente {
           },
         });
 
-
       if (
         !atual
       ) {
@@ -4513,7 +4387,6 @@ export default class RepositorioPesquisaCliente {
           "Aplicação não encontrada."
         );
       }
-
 
       if (
         atual.tipo !==
@@ -4524,11 +4397,9 @@ export default class RepositorioPesquisaCliente {
         );
       }
 
-
       const possuiMovimento =
         atual._count.respostas >
         0;
-
 
       if (
         possuiMovimento &&
@@ -4539,7 +4410,6 @@ export default class RepositorioPesquisaCliente {
           "O modelo não pode ser alterado porque esta aplicação já possui respostas."
         );
       }
-
 
       if (
         possuiMovimento &&
@@ -4552,10 +4422,21 @@ export default class RepositorioPesquisaCliente {
       }
 
 
+      if (
+        possuiMovimento &&
+        ehAvaliacaoDesempenho &&
+        atual.gestorUsuarioId !==
+          gestorUsuarioId
+      ) {
+        throw new Error(
+          "O gestor não pode ser alterado porque esta avaliação já possui respostas."
+        );
+      }
+
+
       const manteveModelo =
         atual.modeloId ===
         pesquisa.modeloId;
-
 
       const dimensoes =
         manteveModelo
@@ -4563,7 +4444,6 @@ export default class RepositorioPesquisaCliente {
               atual.dimensoes
             )
           : dimensoesModelo;
-
 
       const perguntas =
         manteveModelo
@@ -4573,7 +4453,6 @@ export default class RepositorioPesquisaCliente {
             )
           : perguntasModelo;
 
-
       const configuracaoAnalise =
         manteveModelo
           ? normalizarConfiguracaoAnalise(
@@ -4581,7 +4460,6 @@ export default class RepositorioPesquisaCliente {
               atual.tipo
             )
           : configuracaoModelo;
-
 
       const resultado =
         await prisma.pesquisaCliente.update({
@@ -4611,11 +4489,17 @@ export default class RepositorioPesquisaCliente {
               atual.status,
 
             /*
-             * O setor não pertence mais à aplicação.
-             * Ele é informado opcionalmente em cada resposta.
+             * Avaliação de Desempenho:
+             * somente o gestor é definido na aplicação.
+             * Funcionário e setor pertencem à resposta.
              */
             setor:
               null,
+
+            gestorUsuarioId:
+              ehAvaliacaoDesempenho
+                ? gestorUsuarioId
+                : null,
 
             perguntas:
               perguntas as unknown as Prisma.InputJsonValue,
@@ -4631,12 +4515,10 @@ export default class RepositorioPesquisaCliente {
             this.includeCompleto(),
         });
 
-
       return this.formatarDetalhada(
         resultado
       );
     }
-
 
     /*
      * CRIAÇÃO / SNAPSHOT
@@ -4668,11 +4550,17 @@ export default class RepositorioPesquisaCliente {
             randomUUID(),
 
           /*
-           * O setor não pertence mais à aplicação.
-           * Ele é informado opcionalmente em cada resposta.
+           * Avaliação de Desempenho:
+           * somente o gestor é definido na aplicação.
+           * Funcionário e setor pertencem à resposta.
            */
           setor:
             null,
+
+          gestorUsuarioId:
+            ehAvaliacaoDesempenho
+              ? gestorUsuarioId
+              : null,
 
           perguntas:
             perguntasModelo as unknown as Prisma.InputJsonValue,
@@ -4688,12 +4576,10 @@ export default class RepositorioPesquisaCliente {
           this.includeCompleto(),
       });
 
-
     return this.formatarDetalhada(
       resultado
     );
   }
-
 
   static async obterTodos(
     tipo: TipoModuloPesquisa =
@@ -4731,6 +4617,22 @@ export default class RepositorioPesquisaCliente {
             },
           },
 
+          gestorUsuario: {
+            select: {
+              id:
+                true,
+
+              nome:
+                true,
+
+              email:
+                true,
+
+              ativo:
+                true,
+            },
+          },
+
           _count: {
             select: {
               respostas:
@@ -4739,7 +4641,6 @@ export default class RepositorioPesquisaCliente {
           },
         },
       });
-
 
     return pesquisas.map(
       pesquisa => ({
@@ -4764,6 +4665,26 @@ export default class RepositorioPesquisaCliente {
         setor:
           pesquisa.setor,
 
+        gestorUsuarioId:
+          pesquisa.gestorUsuarioId,
+
+        gestor:
+          pesquisa.gestorUsuario
+            ? {
+                id:
+                  pesquisa.gestorUsuario.id,
+
+                nome:
+                  pesquisa.gestorUsuario.nome,
+
+                email:
+                  pesquisa.gestorUsuario.email,
+
+                ativo:
+                  pesquisa.gestorUsuario.ativo,
+              }
+            : null,
+
         criadoEm:
           pesquisa.criadoEm,
 
@@ -4781,7 +4702,6 @@ export default class RepositorioPesquisaCliente {
       })
     );
   }
-
 
   static async obterPorId(
     id: string,
@@ -4803,7 +4723,6 @@ export default class RepositorioPesquisaCliente {
           this.includeCompleto(),
       });
 
-
     if (
       !pesquisa
     ) {
@@ -4812,12 +4731,10 @@ export default class RepositorioPesquisaCliente {
       );
     }
 
-
     return this.formatarDetalhada(
       pesquisa
     );
   }
-
 
   static async excluir(
     id: string,
@@ -4836,7 +4753,6 @@ export default class RepositorioPesquisaCliente {
         },
       });
 
-
     if (
       !pesquisa
     ) {
@@ -4845,17 +4761,14 @@ export default class RepositorioPesquisaCliente {
       );
     }
 
-
     await prisma.pesquisaCliente.delete({
       where: {
         id,
       },
     });
 
-
     return id;
   }
-
 
   static async alterarStatus(
     id: string,
@@ -4875,7 +4788,6 @@ export default class RepositorioPesquisaCliente {
         },
       });
 
-
     if (
       !pesquisaAtual
     ) {
@@ -4883,7 +4795,6 @@ export default class RepositorioPesquisaCliente {
         "Aplicação não encontrada."
       );
     }
-
 
     const pesquisa =
       await prisma.pesquisaCliente.update({
@@ -4899,12 +4810,10 @@ export default class RepositorioPesquisaCliente {
           this.includeCompleto(),
       });
 
-
     return this.formatarDetalhada(
       pesquisa
     );
   }
-
 
   static async obterDadosFormulario(
     tipo: TipoModuloPesquisa =
@@ -4925,6 +4834,37 @@ export default class RepositorioPesquisaCliente {
             nome:
               "asc",
           },
+
+          include: {
+            usuarios: {
+              where: {
+                perfil:
+                  PerfilUsuario.GESTOR_CLIENTE,
+
+                ativo:
+                  true,
+              },
+
+              orderBy: {
+                nome:
+                  "asc",
+              },
+
+              select: {
+                id:
+                  true,
+
+                nome:
+                  true,
+
+                email:
+                  true,
+
+                ativo:
+                  true,
+              },
+            },
+          },
         }),
 
         prisma.modeloPesquisa.findMany({
@@ -4942,17 +4882,34 @@ export default class RepositorioPesquisaCliente {
         }),
       ]);
 
-
     return {
       clientes:
         clientes.map(
-          cliente => ({
-            ...cliente,
-            setores:
-              normalizarSetoresCliente(
-                cliente.setores
-              ),
-          })
+          cliente => {
+            const {
+              usuarios,
+              ...dadosCliente
+            } =
+              cliente;
+
+
+            return {
+              ...dadosCliente,
+
+              setores:
+                normalizarSetoresCliente(
+                  cliente.setores
+                ),
+
+              funcionarios:
+                normalizarFuncionariosCliente(
+                  cliente.funcionarios
+                ),
+
+              gestores:
+                usuarios,
+            };
+          }
         ),
 
       modelos:
@@ -4962,7 +4919,6 @@ export default class RepositorioPesquisaCliente {
               normalizarDimensoes(
                 modelo.dimensoes
               );
-
 
             return {
               id:
@@ -5008,7 +4964,6 @@ export default class RepositorioPesquisaCliente {
     };
   }
 
-
   static async obterRelatorio(
     id: string,
     tipo?: TipoModuloPesquisa
@@ -5019,12 +4974,10 @@ export default class RepositorioPesquisaCliente {
         tipo
       );
 
-
     return this.montarRelatorio(
       pesquisa
     );
   }
-
 
   /*
    * =====================================================
@@ -5040,6 +4993,7 @@ export default class RepositorioPesquisaCliente {
       dataFim?: string;
       clienteId?: string;
       setor?: string;
+      funcionarioId?: string;
     } = {}
   ) {
     const dataInicio =
@@ -5047,18 +5001,15 @@ export default class RepositorioPesquisaCliente {
         filtros.dataInicio
       );
 
-
     const dataFim =
       criarDataFim(
         filtros.dataFim
       );
 
-
     const whereBase: Prisma.PesquisaClienteWhereInput =
       {
         tipo,
       };
-
 
     if (
       dataInicio ||
@@ -5067,14 +5018,12 @@ export default class RepositorioPesquisaCliente {
       whereBase.criadoEm =
         {};
 
-
       if (
         dataInicio
       ) {
         whereBase.criadoEm.gte =
           dataInicio;
       }
-
 
       if (
         dataFim
@@ -5084,12 +5033,10 @@ export default class RepositorioPesquisaCliente {
       }
     }
 
-
     const whereRelatorio: Prisma.PesquisaClienteWhereInput =
       {
         ...whereBase,
       };
-
 
     if (
       filtros.clienteId
@@ -5097,7 +5044,6 @@ export default class RepositorioPesquisaCliente {
       whereRelatorio.clienteId =
         filtros.clienteId;
     }
-
 
     const [
       pesquisasBancoBase,
@@ -5141,6 +5087,24 @@ export default class RepositorioPesquisaCliente {
             respostas: {
               select: {
                 id:
+                  true,
+
+                funcionarioId:
+                  true,
+
+                nome:
+                  true,
+
+                cargo:
+                  true,
+
+                nomeGestor:
+                  true,
+
+                dataAvaliacao:
+                  true,
+
+                dataAdmissao:
                   true,
 
                 respostas:
@@ -5204,10 +5168,12 @@ export default class RepositorioPesquisaCliente {
 
             setores:
               true,
+
+            funcionarios:
+              true,
           },
         }),
       ]);
-
 
     /*
      * Cada cliente possui a sua própria lista de setores.
@@ -5224,7 +5190,6 @@ export default class RepositorioPesquisaCliente {
               cliente.setores
             );
 
-
           const pesquisasCliente =
             pesquisasSetoresBase.filter(
               pesquisa =>
@@ -5232,25 +5197,21 @@ export default class RepositorioPesquisaCliente {
                 cliente.id
             );
 
-
           const setoresEncontrados =
             listarSetoresRelatorio(
               pesquisasCliente
             );
-
 
           const contagemPorSetor =
             contarRespostasPorSetor(
               pesquisasCliente
             );
 
-
           const mapaSetores =
             new Map<
               string,
               string
             >();
-
 
           for (
             const setor
@@ -5263,7 +5224,6 @@ export default class RepositorioPesquisaCliente {
               normalizarChaveSetor(
                 setor
               );
-
 
             if (
               chave &&
@@ -5278,20 +5238,16 @@ export default class RepositorioPesquisaCliente {
             }
           }
 
-
           const setoresComMinimo:
             SetorRelatorioCliente[] =
               [];
-
 
           const chavesSetoresGerais:
             string[] =
               [];
 
-
           let totalRespostasGeral =
             0;
-
 
           for (
             const [
@@ -5306,7 +5262,6 @@ export default class RepositorioPesquisaCliente {
               ) ||
               0;
 
-
             /*
              * Setor sem resposta não aparece no relatório.
              */
@@ -5316,7 +5271,6 @@ export default class RepositorioPesquisaCliente {
             ) {
               continue;
             }
-
 
             if (
               totalRespostas >=
@@ -5337,10 +5291,8 @@ export default class RepositorioPesquisaCliente {
                 totalRespostas,
               });
 
-
               continue;
             }
-
 
             /*
              * Setores com menos de 5 respostas deixam de
@@ -5355,7 +5307,6 @@ export default class RepositorioPesquisaCliente {
               totalRespostas;
           }
 
-
           setoresComMinimo.sort(
             (
               a,
@@ -5367,13 +5318,11 @@ export default class RepositorioPesquisaCliente {
               )
           );
 
-
           const setoresRelatorio:
             SetorRelatorioCliente[] =
               [
                 ...setoresComMinimo,
               ];
-
 
           /*
            * O grupo "Geral" é sempre disponível quando
@@ -5403,7 +5352,6 @@ export default class RepositorioPesquisaCliente {
             });
           }
 
-
           return {
             id:
               cliente.id,
@@ -5413,6 +5361,14 @@ export default class RepositorioPesquisaCliente {
 
             empresa:
               cliente.empresa,
+
+            funcionarios:
+              normalizarFuncionariosCliente(
+                cliente.funcionarios
+              ).filter(
+                funcionario =>
+                  funcionario.ativo
+              ),
 
             /*
              * Lista pública usada pelo relatório.
@@ -5435,7 +5391,6 @@ export default class RepositorioPesquisaCliente {
         }
       );
 
-
     /*
      * O setor só pode ser usado como filtro quando um cliente
      * também estiver selecionado.
@@ -5453,7 +5408,6 @@ export default class RepositorioPesquisaCliente {
           null
         : null;
 
-
     const valorSetorSolicitado =
       clienteSelecionado
         ? String(
@@ -5461,7 +5415,6 @@ export default class RepositorioPesquisaCliente {
             ""
           ).trim()
         : "";
-
 
     const setorSolicitado =
       valorSetorSolicitado
@@ -5482,12 +5435,10 @@ export default class RepositorioPesquisaCliente {
           null
         : null;
 
-
     const setorSelecionado =
       setorSolicitado?.disponivel
         ? setorSolicitado.valor
         : null;
-
 
     /*
      * Um setor pequeno antigo, informado manualmente na URL,
@@ -5501,7 +5452,6 @@ export default class RepositorioPesquisaCliente {
         !setorSolicitado
       );
 
-
     /*
      * Lista exibida no dropdown de setor:
      * somente setores individuais com >= 5 respostas
@@ -5514,13 +5464,11 @@ export default class RepositorioPesquisaCliente {
       ) ||
       [];
 
-
     const chavesSetoresAgrupados =
       new Set(
         clienteSelecionado?.chavesSetoresGerais ||
         []
       );
-
 
     /*
      * O recorte mantém somente as respostas do setor
@@ -5529,14 +5477,13 @@ export default class RepositorioPesquisaCliente {
      * Para "__GERAL__", ele mantém todas as respostas
      * dos setores que ficaram abaixo do mínimo de 5.
      */
-    const pesquisasBanco =
+    const pesquisasBancoSetor =
       filtrarPesquisasPorSetor(
         pesquisasBancoBase,
         setorSelecionado ||
         undefined,
         chavesSetoresAgrupados
       );
-
 
     /*
      * -------------------------------------------------
@@ -5549,13 +5496,20 @@ export default class RepositorioPesquisaCliente {
     let quantidadeNotasGeral =
       0;
 
+    const pesquisasBanco =
+      tipo ===
+      TipoModuloPesquisa.AVALIACAO_DESEMPENHO
+        ? filtrarPesquisasPorFuncionario(
+            pesquisasBancoSetor,
+            filtros.funcionarioId
+          )
+        : pesquisasBancoSetor;
 
     const pesquisas =
       pesquisasBanco.map(
         pesquisa => {
           const totalRespostas =
             pesquisa.respostas.length;
-
 
           /*
            * Média antiga mantida SOMENTE por
@@ -5567,13 +5521,11 @@ export default class RepositorioPesquisaCliente {
               pesquisa.respostas
             );
 
-
           somaNotasGeral +=
             notas.soma;
 
           quantidadeNotasGeral +=
             notas.quantidade;
-
 
           return {
             id:
@@ -5656,10 +5608,8 @@ export default class RepositorioPesquisaCliente {
         }
       );
 
-
     const totalPesquisas =
       pesquisas.length;
-
 
     const totalAbertas =
       pesquisas.filter(
@@ -5668,7 +5618,6 @@ export default class RepositorioPesquisaCliente {
           StatusPesquisaCliente.ABERTA
       ).length;
 
-
     const totalFechadas =
       pesquisas.filter(
         pesquisa =>
@@ -5676,14 +5625,12 @@ export default class RepositorioPesquisaCliente {
           StatusPesquisaCliente.FECHADA
       ).length;
 
-
     const totalArquivadas =
       pesquisas.filter(
         pesquisa =>
           pesquisa.status ===
           StatusPesquisaCliente.ARQUIVADA
       ).length;
-
 
     const totalRespostas =
       pesquisas.reduce(
@@ -5696,14 +5643,12 @@ export default class RepositorioPesquisaCliente {
         0
       );
 
-
     const mediaGeral =
       quantidadeNotasGeral >
       0
         ? somaNotasGeral /
           quantidadeNotasGeral
         : null;
-
 
     /*
      * -------------------------------------------------
@@ -5731,7 +5676,6 @@ export default class RepositorioPesquisaCliente {
           quantidadeNotas: number;
         }
       >();
-
 
     for (
       const pesquisa
@@ -5763,7 +5707,6 @@ export default class RepositorioPesquisaCliente {
             0,
         };
 
-
       atual.totalPesquisas++;
 
       atual.totalRespostas +=
@@ -5775,13 +5718,11 @@ export default class RepositorioPesquisaCliente {
       atual.quantidadeNotas +=
         pesquisa.quantidadeNotas;
 
-
       mapaClientes.set(
         pesquisa.cliente.id,
         atual
       );
     }
-
 
     const porCliente =
       Array.from(
@@ -5829,7 +5770,6 @@ export default class RepositorioPesquisaCliente {
             b.totalRespostas -
             a.totalRespostas
         );
-
 
     /*
      * -------------------------------------------------
@@ -5879,7 +5819,6 @@ export default class RepositorioPesquisaCliente {
                 ),
             };
 
-
     /*
      * Consolidação complementar:
      *
@@ -5895,6 +5834,83 @@ export default class RepositorioPesquisaCliente {
         pesquisasBanco
       );
 
+    /*
+     * Dados de cada avaliação respondida.
+     *
+     * Este bloco existe somente para Avaliação de Desempenho
+     * e alimenta a tabela de identificação da avaliação no
+     * relatório de tela e no relatório impresso.
+     */
+    const avaliacoesRespondidas =
+      tipo ===
+      TipoModuloPesquisa.AVALIACAO_DESEMPENHO
+        ? pesquisasBanco
+            .flatMap(
+              pesquisa =>
+                (
+                  pesquisa.respostas ||
+                  []
+                ).map(
+                  (
+                    resposta: any
+                  ) => ({
+                    id:
+                      resposta.id,
+
+                    funcionarioId:
+                      resposta.funcionarioId ??
+                      null,
+
+                    pesquisaId:
+                      pesquisa.id,
+
+                    pesquisaTitulo:
+                      pesquisa.titulo,
+
+                    nome:
+                      resposta.nome ??
+                      null,
+
+                    nomeGestor:
+                      resposta.nomeGestor ??
+                      null,
+
+                    dataAvaliacao:
+                      resposta.dataAvaliacao ??
+                      null,
+
+                    dataAdmissao:
+                      resposta.dataAdmissao ??
+                      null,
+
+                    setor:
+                      resposta.setor ??
+                      null,
+
+                    cargo:
+                      resposta.cargo ??
+                      null,
+
+                    criadoEm:
+                      resposta.criadoEm,
+                  })
+                )
+            )
+            .sort(
+              (
+                a,
+                b
+              ) =>
+                new Date(
+                  b.dataAvaliacao ||
+                  b.criadoEm
+                ).getTime() -
+                new Date(
+                  a.dataAvaliacao ||
+                  a.criadoEm
+                ).getTime()
+            )
+        : [];
 
     return {
       tipo,
@@ -5914,6 +5930,13 @@ export default class RepositorioPesquisaCliente {
 
         setor:
           setorSelecionado,
+
+        funcionarioId:
+          tipo ===
+          TipoModuloPesquisa.AVALIACAO_DESEMPENHO
+            ? filtros.funcionarioId ||
+              null
+            : null,
       },
 
       setores,
@@ -5994,6 +6017,12 @@ export default class RepositorioPesquisaCliente {
         ),
 
       /*
+       * Metadados das respostas da Avaliação de Desempenho.
+       * Nos demais módulos o array fica vazio.
+       */
+      avaliacoesRespondidas,
+
+      /*
        * Dados complementares dos tipos não quantitativos.
        */
       informacoesAdicionais,
@@ -6002,109 +6031,88 @@ export default class RepositorioPesquisaCliente {
     };
   }
 
-
   static async obterMinhas(
     clienteId: string,
     tipo: TipoModuloPesquisa =
       TipoModuloPesquisa.CLIMA
   ) {
+    const restricaoGestor =
+      await obterRestricaoGestorCliente(
+        clienteId,
+        tipo
+      );
+
     const pesquisas =
       await prisma.pesquisaCliente.findMany({
         where: {
           clienteId,
           tipo,
+          ...restricaoGestor,
         },
 
         orderBy: {
-          criadoEm:
-            "desc",
+          criadoEm: "desc",
         },
 
         include: {
           cliente: {
             select: {
-              id:
-                true,
-
-              nome:
-                true,
+              id: true,
+              nome: true,
             },
           },
 
           modelo: {
             select: {
-              id:
-                true,
-
-              titulo:
-                true,
+              id: true,
+              titulo: true,
             },
           },
 
           _count: {
             select: {
-              respostas:
-                true,
+              respostas: true,
             },
           },
         },
       });
 
-
     return pesquisas.map(
       pesquisa => ({
-        id:
-          pesquisa.id,
-
-        tipo:
-          pesquisa.tipo,
-
-        titulo:
-          pesquisa.titulo,
-
-        descricao:
-          pesquisa.descricao,
-
-        token:
-          pesquisa.token,
-
-        status:
-          pesquisa.status,
-
-        setor:
-          pesquisa.setor,
-
-        criadoEm:
-          pesquisa.criadoEm,
-
-        atualizadoEm:
-          pesquisa.atualizadoEm,
-
-        cliente:
-          pesquisa.cliente,
-
-        modelo:
-          pesquisa.modelo,
-
+        id: pesquisa.id,
+        tipo: pesquisa.tipo,
+        titulo: pesquisa.titulo,
+        descricao: pesquisa.descricao,
+        token: pesquisa.token,
+        status: pesquisa.status,
+        setor: pesquisa.setor,
+        criadoEm: pesquisa.criadoEm,
+        atualizadoEm: pesquisa.atualizadoEm,
+        cliente: pesquisa.cliente,
+        modelo: pesquisa.modelo,
         totalRespostas:
           pesquisa._count.respostas,
       })
     );
   }
 
-
   static async obterPorIdECliente(
     id: string,
     clienteId: string,
     tipo?: TipoModuloPesquisa
   ) {
+    const restricaoGestor =
+      await obterRestricaoGestorCliente(
+        clienteId,
+        tipo
+      );
+
     const pesquisa =
       await prisma.pesquisaCliente.findFirst({
         where: {
           id,
-
           clienteId,
-
+          ...restricaoGestor,
           ...(tipo
             ? {
                 tipo,
@@ -6116,69 +6124,45 @@ export default class RepositorioPesquisaCliente {
           this.includeCompleto(),
       });
 
-
-    if (
-      !pesquisa
-    ) {
+    if (!pesquisa) {
       throw new Error(
-        "Aplicação não encontrada."
+        "Aplicação não encontrada ou acesso não autorizado."
       );
     }
-
 
     const detalhada =
       this.formatarDetalhada(
         pesquisa
       );
 
-
-    /*
-     * PRIVACIDADE DO PAINEL DO CLIENTE
-     *
-     * Pesquisa de Clima e Avaliação Psicossocial:
-     * o detalhe da aplicação não devolve o conteúdo
-     * das respostas ao navegador do cliente.
-     *
-     * Mantemos totalRespostas para os indicadores
-     * operacionais e removemos apenas o conteúdo bruto.
-     *
-     * Avaliação de Desempenho permanece com o
-     * comportamento completo.
-     */
     if (
       this.clienteVeSomenteParticipacao(
         detalhada.tipo
       )
     ) {
-      detalhada.respostas =
-        [];
+      detalhada.respostas = [];
     }
-
 
     return detalhada;
   }
-
 
   static async obterRelatorioPorCliente(
     id: string,
     clienteId: string,
     tipo?: TipoModuloPesquisa
   ) {
-    /*
-     * Não usamos obterPorIdECliente() aqui porque esse método
-     * já remove as respostas brutas de Clima/Psicossocial.
-     *
-     * Para calcular a participação, precisamos ler as respostas
-     * somente no servidor e devolver ao cliente exclusivamente
-     * as contagens e percentuais.
-     */
+    const restricaoGestor =
+      await obterRestricaoGestorCliente(
+        clienteId,
+        tipo
+      );
+
     const pesquisaBanco =
       await prisma.pesquisaCliente.findFirst({
         where: {
           id,
-
           clienteId,
-
+          ...restricaoGestor,
           ...(tipo
             ? {
                 tipo,
@@ -6190,21 +6174,16 @@ export default class RepositorioPesquisaCliente {
           this.includeCompleto(),
       });
 
-
-    if (
-      !pesquisaBanco
-    ) {
+    if (!pesquisaBanco) {
       throw new Error(
-        "Aplicação não encontrada."
+        "Aplicação não encontrada ou acesso não autorizado."
       );
     }
-
 
     const pesquisa =
       this.formatarDetalhada(
         pesquisaBanco
       );
-
 
     if (
       this.clienteVeSomenteParticipacao(
@@ -6216,16 +6195,10 @@ export default class RepositorioPesquisaCliente {
       );
     }
 
-
-    /*
-     * Avaliação de Desempenho:
-     * mantém o relatório individual completo.
-     */
     return this.montarRelatorio(
       pesquisa
     );
   }
-
 
   /*
    * Pesquisa de Clima e Avaliação Psicossocial:
@@ -6245,7 +6218,6 @@ export default class RepositorioPesquisaCliente {
         TipoModuloPesquisa.AVALIACAO_PSICOSSOCIAL
     );
   }
-
 
   /*
    * Relatório seguro para o painel do cliente.
@@ -6273,7 +6245,6 @@ export default class RepositorioPesquisaCliente {
         ? pesquisa.perguntas
         : [];
 
-
     const respostasPesquisa: RespostaPesquisaCliente[] =
       Array.isArray(
         pesquisa.respostas
@@ -6281,10 +6252,8 @@ export default class RepositorioPesquisaCliente {
         ? pesquisa.respostas
         : [];
 
-
     const totalRespondentes =
       respostasPesquisa.length;
-
 
     /*
      * Para cada pergunta guardamos os IDs dos respondentes
@@ -6300,7 +6269,6 @@ export default class RepositorioPesquisaCliente {
         Set<string>
       >();
 
-
     for (
       const respostaCliente
       of respostasPesquisa
@@ -6308,14 +6276,12 @@ export default class RepositorioPesquisaCliente {
       const perguntasRespondidas =
         new Set<string>();
 
-
       const respostas =
         Array.isArray(
           respostaCliente.respostas
         )
           ? respostaCliente.respostas
           : [];
-
 
       for (
         const resposta
@@ -6327,13 +6293,11 @@ export default class RepositorioPesquisaCliente {
             ""
           ).trim();
 
-
         const valor =
           String(
             resposta.valor ??
             ""
           ).trim();
-
 
         if (
           !perguntaId ||
@@ -6342,12 +6306,10 @@ export default class RepositorioPesquisaCliente {
           continue;
         }
 
-
         perguntasRespondidas.add(
           perguntaId
         );
       }
-
 
       for (
         const perguntaId
@@ -6359,11 +6321,9 @@ export default class RepositorioPesquisaCliente {
           ) ||
           new Set<string>();
 
-
         atual.add(
           respostaCliente.id
         );
-
 
         respondentesPorPergunta.set(
           perguntaId,
@@ -6371,7 +6331,6 @@ export default class RepositorioPesquisaCliente {
         );
       }
     }
-
 
     const perguntasComResumo =
       perguntas.map(
@@ -6382,7 +6341,6 @@ export default class RepositorioPesquisaCliente {
             )?.size ||
             0;
 
-
           const percentualRespondentes =
             totalRespondentes >
             0
@@ -6392,7 +6350,6 @@ export default class RepositorioPesquisaCliente {
                 ) *
                 100
               : 0;
-
 
           return {
             pergunta,
@@ -6414,7 +6371,6 @@ export default class RepositorioPesquisaCliente {
           };
         }
       );
-
 
     return {
       ...pesquisa,
@@ -6451,7 +6407,6 @@ export default class RepositorioPesquisaCliente {
     };
   }
 
-
   /*
    * Relatório individual completo.
    *
@@ -6468,7 +6423,6 @@ export default class RepositorioPesquisaCliente {
         ? pesquisa.perguntas
         : [];
 
-
     type ResumoPergunta = {
       pergunta: PerguntaPesquisaCliente;
 
@@ -6478,7 +6432,6 @@ export default class RepositorioPesquisaCliente {
 
       respostas: RespostaPesquisaItem[];
     };
-
 
     const perguntasComResumo: ResumoPergunta[] =
       perguntas.map(
@@ -6494,7 +6447,6 @@ export default class RepositorioPesquisaCliente {
                     pergunta.id
                 )
             );
-
 
           const valoresNumericos =
             pergunta.tipo ===
@@ -6514,7 +6466,6 @@ export default class RepositorioPesquisaCliente {
                   )
               : [];
 
-
           const media =
             valoresNumericos.length >
             0
@@ -6530,7 +6481,6 @@ export default class RepositorioPesquisaCliente {
                 valoresNumericos.length
               : 0;
 
-
           return {
             pergunta,
 
@@ -6545,7 +6495,6 @@ export default class RepositorioPesquisaCliente {
         }
       );
 
-
     const mediasValidas =
       perguntasComResumo.filter(
         item =>
@@ -6554,7 +6503,6 @@ export default class RepositorioPesquisaCliente {
           item.totalRespostas >
             0
       );
-
 
     const mediaGeral =
       mediasValidas.length >
@@ -6571,6 +6519,135 @@ export default class RepositorioPesquisaCliente {
           mediasValidas.length
         : 0;
 
+    /*
+     * Avaliação de Desempenho é, por natureza, identificada.
+     *
+     * Além do consolidado por pergunta, devolvemos cada
+     * questionário respondido com o snapshot do colaborador
+     * e as respostas vinculadas às respectivas perguntas.
+     *
+     * Clima e Psicossocial continuam protegidos pela regra
+     * clienteVeSomenteParticipacao() antes de chegar aqui.
+     */
+    const respostasIndividuais =
+      pesquisa.tipo ===
+      TipoModuloPesquisa.AVALIACAO_DESEMPENHO
+        ? (
+            Array.isArray(
+              pesquisa.respostas
+            )
+              ? pesquisa.respostas
+              : []
+          ).map(
+            (
+              respostaCliente: any
+            ) => {
+              const respostas =
+                Array.isArray(
+                  respostaCliente.respostas
+                )
+                  ? respostaCliente.respostas
+                  : [];
+
+              return {
+                id:
+                  respostaCliente.id,
+
+                funcionarioId:
+                  respostaCliente.funcionarioId ??
+                  null,
+
+                nome:
+                  respostaCliente.nome ??
+                  null,
+
+                setor:
+                  respostaCliente.setor ??
+                  null,
+
+                cargo:
+                  respostaCliente.cargo ??
+                  null,
+
+                nomeGestor:
+                  respostaCliente.nomeGestor ??
+                  pesquisa.gestor?.nome ??
+                  null,
+
+                dataAvaliacao:
+                  respostaCliente.dataAvaliacao ??
+                  null,
+
+                dataAdmissao:
+                  respostaCliente.dataAdmissao ??
+                  null,
+
+                criadoEm:
+                  respostaCliente.criadoEm,
+
+                respostas:
+                  perguntas.map(
+                    pergunta => {
+                      const resposta =
+                        respostas.find(
+                          (
+                            item: any
+                          ) =>
+                            item.perguntaId ===
+                            pergunta.id
+                        );
+
+                      const dimensao =
+                        Array.isArray(
+                          pesquisa.dimensoes
+                        )
+                          ? pesquisa.dimensoes.find(
+                              (
+                                item: any
+                              ) =>
+                                item.id ===
+                                pergunta.dimensaoId
+                            )
+                          : null;
+
+                      return {
+                        perguntaId:
+                          pergunta.id,
+
+                        ordem:
+                          pergunta.ordem,
+
+                        titulo:
+                          pergunta.titulo,
+
+                        descricao:
+                          pergunta.descricao ??
+                          null,
+
+                        tipo:
+                          pergunta.tipo,
+
+                        dimensao:
+                          dimensao
+                            ? {
+                                id:
+                                  dimensao.id,
+
+                                nome:
+                                  dimensao.nome,
+                              }
+                            : null,
+
+                        valor:
+                          resposta?.valor ??
+                          null,
+                      };
+                    }
+                  ),
+              };
+            }
+          )
+        : [];
 
     return {
       ...pesquisa,
@@ -6578,9 +6655,14 @@ export default class RepositorioPesquisaCliente {
       perguntasComResumo,
 
       mediaGeral,
+
+      respostasIndividuais,
+
+      conteudoRespostasDisponivel:
+        pesquisa.tipo ===
+        TipoModuloPesquisa.AVALIACAO_DESEMPENHO,
     };
   }
-
 
   private static includeCompleto() {
     return {
@@ -6589,6 +6671,22 @@ export default class RepositorioPesquisaCliente {
 
       modelo:
         true,
+
+      gestorUsuario: {
+        select: {
+          id:
+            true,
+
+          nome:
+            true,
+
+          email:
+            true,
+
+          ativo:
+            true,
+        },
+      },
 
       respostas: {
         orderBy: {
@@ -6599,7 +6697,6 @@ export default class RepositorioPesquisaCliente {
     };
   }
 
-
   private static formatarDetalhada(
     pesquisa: any
   ) {
@@ -6608,13 +6705,11 @@ export default class RepositorioPesquisaCliente {
         pesquisa.dimensoes
       );
 
-
     const perguntasPesquisa =
       normalizarPerguntas(
         pesquisa.perguntas,
         dimensoesPesquisa
       );
-
 
     const configuracaoPesquisa =
       normalizarConfiguracaoAnalise(
@@ -6622,12 +6717,10 @@ export default class RepositorioPesquisaCliente {
         pesquisa.tipo
       );
 
-
     const dimensoesModelo =
       normalizarDimensoes(
         pesquisa.modelo?.dimensoes
       );
-
 
     const perguntasModelo =
       normalizarPerguntas(
@@ -6635,14 +6728,12 @@ export default class RepositorioPesquisaCliente {
         dimensoesModelo
       );
 
-
     const configuracaoModelo =
       normalizarConfiguracaoAnalise(
         pesquisa.modelo?.configuracaoAnalise,
         pesquisa.modelo?.tipo ??
           pesquisa.tipo
       );
-
 
     return {
       id:
@@ -6672,6 +6763,27 @@ export default class RepositorioPesquisaCliente {
       setor:
         pesquisa.setor ??
         null,
+
+      gestorUsuarioId:
+        pesquisa.gestorUsuarioId ??
+        null,
+
+      gestor:
+        pesquisa.gestorUsuario
+          ? {
+              id:
+                pesquisa.gestorUsuario.id,
+
+              nome:
+                pesquisa.gestorUsuario.nome,
+
+              email:
+                pesquisa.gestorUsuario.email,
+
+              ativo:
+                pesquisa.gestorUsuario.ativo,
+            }
+          : null,
 
       perguntas:
         perguntasPesquisa,
@@ -6739,6 +6851,22 @@ export default class RepositorioPesquisaCliente {
 
             cargo:
               resposta.cargo,
+
+            funcionarioId:
+              resposta.funcionarioId ??
+              null,
+
+            nomeGestor:
+              resposta.nomeGestor ??
+              null,
+
+            dataAvaliacao:
+              resposta.dataAvaliacao ??
+              null,
+
+            dataAdmissao:
+              resposta.dataAdmissao ??
+              null,
 
             respostas:
               normalizarRespostas(
