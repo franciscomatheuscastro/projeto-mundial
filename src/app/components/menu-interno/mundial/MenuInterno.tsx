@@ -9,9 +9,11 @@ import {
   prisma,
 } from "@/src/lib/prisma";
 
+
 export async function MenuInterno() {
   const session =
     await auth();
+
 
   const usuarioSessao =
     session?.user as
@@ -20,8 +22,10 @@ export async function MenuInterno() {
         }
       | undefined;
 
+
   let membroComiteEtica =
     false;
+
 
   if (
     usuarioSessao?.id
@@ -39,10 +43,12 @@ export async function MenuInterno() {
         },
       });
 
+
     membroComiteEtica =
       usuario?.membroComiteEtica ??
       false;
   }
+
 
   async function sair() {
     "use server";
@@ -52,6 +58,7 @@ export async function MenuInterno() {
         "/login",
     });
   }
+
 
   return (
     <>
@@ -87,6 +94,7 @@ export async function MenuInterno() {
         </details>
       </header>
 
+
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-72 overflow-hidden bg-gradient-to-b from-blue-800 via-blue-700 to-cyan-600 text-white shadow-xl lg:block">
         <div className="flex h-full flex-col">
           <div className="shrink-0 px-7 pb-5 pt-7">
@@ -102,6 +110,7 @@ export async function MenuInterno() {
             </h1>
           </div>
 
+
           <div className="relative min-h-0 flex-1">
             <div className="h-full overflow-y-auto px-5 pb-24 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <MenuNavegacao
@@ -113,6 +122,7 @@ export async function MenuInterno() {
 
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-cyan-600 via-cyan-600/90 to-transparent" />
           </div>
+
 
           <div className="shrink-0 border-t border-white/10 bg-cyan-600/95 px-5 py-4 backdrop-blur-sm">
             <form
@@ -133,6 +143,7 @@ export async function MenuInterno() {
     </>
   );
 }
+
 
 function MenuNavegacao({
   mobile = false,
@@ -201,6 +212,7 @@ function MenuNavegacao({
         </MenuLink>
       </GrupoMenu>
 
+
       <GrupoMenu
         titulo="Canal de Denúncias"
         mobile={
@@ -246,6 +258,7 @@ function MenuNavegacao({
         )}
       </GrupoMenu>
 
+
       <GrupoMenu
         titulo="Pesquisa de Clima"
         mobile={
@@ -270,6 +283,7 @@ function MenuNavegacao({
           Relatório Clima
         </MenuLink>
       </GrupoMenu>
+
 
       <GrupoMenu
         titulo="Avaliação Desempenho"
@@ -296,6 +310,7 @@ function MenuNavegacao({
         </MenuLink>
       </GrupoMenu>
 
+
       <GrupoMenu
         titulo="Gestão de Riscos Psicossociais"
         mobile={
@@ -321,12 +336,22 @@ function MenuNavegacao({
         </MenuLink>
       </GrupoMenu>
 
+
       <GrupoMenu
         titulo="Suporte"
         mobile={
           mobile
         }
       >
+        <MenuLink
+          href="/conta"
+          mobile={
+            mobile
+          }
+        >
+          Minha conta
+        </MenuLink>
+
         <MenuLink
           href="/central-ajuda"
           mobile={
@@ -348,6 +373,7 @@ function MenuNavegacao({
     </nav>
   );
 }
+
 
 function MenuMobile({
   sair,
@@ -381,6 +407,7 @@ function MenuMobile({
     </div>
   );
 }
+
 
 function GrupoMenu({
   titulo,
@@ -419,6 +446,7 @@ function GrupoMenu({
     </section>
   );
 }
+
 
 function MenuLink({
   href,

@@ -31,10 +31,28 @@ type DadosAlteracaoSenha = {
 };
 
 
-const PERFIS_CLIENTE_PERMITIDOS =
+const PERFIS_MUNDIAL =
+  new Set<PerfilUsuario>([
+    PerfilUsuario.ADMIN,
+    PerfilUsuario.GESTOR,
+    PerfilUsuario.PSICOLOGO,
+    PerfilUsuario.ASSISTENTE_SOCIAL,
+    PerfilUsuario.RECEPCAO,
+  ]);
+
+
+const PERFIS_CLIENTE =
   new Set<PerfilUsuario>([
     PerfilUsuario.CLIENTE,
     PerfilUsuario.COMITE_CLIENTE,
+    PerfilUsuario.GESTOR_CLIENTE,
+  ]);
+
+
+const PERFIS_PERMITIDOS =
+  new Set<PerfilUsuario>([
+    ...PERFIS_MUNDIAL,
+    ...PERFIS_CLIENTE,
   ]);
 
 
@@ -71,7 +89,7 @@ export async function alterarMinhaSenha({
   if (
     !usuarioSessao.id ||
     !usuarioSessao.perfil ||
-    !PERFIS_CLIENTE_PERMITIDOS.has(
+    !PERFIS_PERMITIDOS.has(
       usuarioSessao.perfil
     )
   ) {
@@ -85,23 +103,45 @@ export async function alterarMinhaSenha({
   }
 
 
+  /*
+   * Perfis vinculados a clientes precisam
+   * possuir uma empresa vinculada.
+   *
+   * Usuários internos da Mundial não precisam.
+   */
+  if (
+    PERFIS_CLIENTE.has(
+      usuarioSessao.perfil
+    ) &&
+    !usuarioSessao.clienteId
+  ) {
+    return {
+      sucesso:
+        false,
+
+      mensagem:
+        "Seu usuário não possui uma empresa vinculada.",
+    };
+  }
+
+
   const senhaAtualLimpa =
     String(
-      senhaAtual ||
+      senhaAtual ??
       ""
     );
 
 
   const novaSenhaLimpa =
     String(
-      novaSenha ||
+      novaSenha ??
       ""
     );
 
 
   const confirmarSenhaLimpa =
     String(
-      confirmarSenha ||
+      confirmarSenha ??
       ""
     );
 
@@ -136,9 +176,7 @@ export async function alterarMinhaSenha({
 
 
   /*
-   * O bcrypt considera no máximo 72 bytes.
-   * Limitamos explicitamente para evitar senhas
-   * visualmente diferentes que produzam o mesmo hash.
+   * O bcrypt utiliza no máximo 72 bytes.
    */
   if (
     Buffer.byteLength(
@@ -183,10 +221,12 @@ export async function alterarMinhaSenha({
         perfil:
           usuarioSessao.perfil,
 
-        ...(usuarioSessao.clienteId
+        ...(PERFIS_CLIENTE.has(
+          usuarioSessao.perfil
+        )
           ? {
               clienteId:
-                usuarioSessao.clienteId,
+                usuarioSessao.clienteId!,
             }
           : {}),
       },
@@ -199,6 +239,12 @@ export async function alterarMinhaSenha({
           true,
 
         ativo:
+          true,
+
+        perfil:
+          true,
+
+        clienteId:
           true,
       },
     });
