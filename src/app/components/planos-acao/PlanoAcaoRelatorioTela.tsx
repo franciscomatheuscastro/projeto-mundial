@@ -201,7 +201,7 @@ export default function PlanoAcaoRelatorioTela({
           "AVALIACAO_PSICOSSOCIAL"
         ) {
           tipoOrigem =
-            "Avaliação psicossocial";
+            "Gestão de Riscos Psicossociais";
         }
 
         return {
@@ -248,7 +248,7 @@ export default function PlanoAcaoRelatorioTela({
             return "avaliação de desempenho e PDI individual";
 
           case "AVALIACAO_PSICOSSOCIAL":
-            return "avaliação psicossocial";
+            return "gestão de riscos psicossociais";
 
           case "DENUNCIA":
             return "denúncia";

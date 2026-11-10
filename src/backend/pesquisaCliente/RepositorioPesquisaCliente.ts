@@ -32,6 +32,18 @@ import {
   RespostaPesquisaItem,
 } from "@/src/core/model/PesquisaCliente";
 
+/*
+ * Compatibilidade incremental com o modelo atual de PesquisaCliente.
+ *
+ * O peso pertence ao snapshot da pergunta e precisa sobreviver
+ * do modelo até a aplicação. Mantemos a extensão local para não
+ * exigir alteração imediata no tipo legado PerguntaPesquisaCliente.
+ */
+type PerguntaPesquisaClienteComPeso =
+  PerguntaPesquisaCliente & {
+    peso: number;
+  };
+
 /* =========================================================
  * TIPOS INTERNOS DOS MOTORES ANALÍTICOS
  * ======================================================= */
@@ -86,6 +98,12 @@ type AcumuladorScore = {
 
   soma: number;
   quantidade: number;
+
+  /*
+   * Soma dos pesos das perguntas efetivamente respondidas.
+   * Utilizada no motor de Gestão de Riscos Psicossociais.
+   */
+  pesoPerguntasTotal: number;
 
   totalRespostas: number;
 
@@ -227,6 +245,22 @@ function numeroSeguro(
   )
     ? numero
     : padrao;
+}
+
+
+function pesoPerguntaSeguro(
+  valor: unknown
+) {
+  const numero =
+    numeroSeguro(
+      valor,
+      1
+    );
+
+  return numero >
+    0
+    ? numero
+    : 1;
 }
 
 function limitar(
@@ -884,7 +918,7 @@ function normalizarConfiguracaoAnalise(
 function normalizarPerguntas(
   perguntas: unknown,
   dimensoes: DimensaoModelo[] = []
-): PerguntaPesquisaCliente[] {
+): PerguntaPesquisaClienteComPeso[] {
   if (
     !Array.isArray(
       perguntas
@@ -907,7 +941,7 @@ function normalizarPerguntas(
       index
     ) => {
       const item =
-        pergunta as Partial<PerguntaPesquisaCliente>;
+        pergunta as Partial<PerguntaPesquisaClienteComPeso>;
 
       const dimensaoId =
         item.dimensaoId &&
@@ -973,6 +1007,18 @@ function normalizarPerguntas(
         dimensaoId,
 
         /*
+         * O peso da pergunta participa da média ponderada
+         * dentro da dimensão psicossocial.
+         *
+         * Aplicações antigas sem o campo continuam equivalentes
+         * ao comportamento anterior, pois recebem peso 1.
+         */
+        peso:
+          pesoPerguntaSeguro(
+            item.peso
+          ),
+
+        /*
          * A orientação continua pertencendo à pergunta,
          * pois uma afirmação pode ser positiva ou negativa.
          */
@@ -981,7 +1027,7 @@ function normalizarPerguntas(
           "NEGATIVO"
             ? "NEGATIVO"
             : "POSITIVO",
-      } as PerguntaPesquisaCliente;
+      } as PerguntaPesquisaClienteComPeso;
     }
   );
 }
@@ -2814,6 +2860,9 @@ function analisarPesquisaDesempenho(
         quantidade:
           0,
 
+        pesoPerguntasTotal:
+          0,
+
         totalRespostas:
           0,
 
@@ -3279,6 +3328,9 @@ function analisarPesquisaPsicossocial(
         quantidade:
           0,
 
+        pesoPerguntasTotal:
+          0,
+
         totalRespostas:
           0,
 
@@ -3353,8 +3405,22 @@ function analisarPesquisaPsicossocial(
           configuracao.escalaMaxima
         );
 
+      const pesoPergunta =
+        pesoPerguntaSeguro(
+          pergunta.peso
+        );
+
+      /*
+       * Primeiro aplicamos o peso da pergunta dentro da dimensão.
+       * O peso da dimensão será aplicado somente no nível seguinte,
+       * evitando dupla ponderação.
+       */
       dimensao.soma +=
-        score;
+        score *
+        pesoPergunta;
+
+      dimensao.pesoPerguntasTotal +=
+        pesoPergunta;
 
       dimensao.quantidade++;
 
@@ -3394,8 +3460,11 @@ function analisarPesquisaPsicossocial(
               item.pesoDimensao,
 
             score:
-              item.soma /
-              item.quantidade,
+              item.pesoPerguntasTotal >
+              0
+                ? item.soma /
+                  item.pesoPerguntasTotal
+                : 0,
 
             totalRespostas:
               item.respondentes.size,
@@ -3713,7 +3782,8 @@ function montarDimensoesPsicossociais(
  * O heatmap usa somente perguntas do tipo NOTA.
  *
  * Cada resposta é analisada individualmente:
- * 1. calcula-se o score de risco de cada dimensão;
+ * 1. calcula-se o score de risco de cada dimensão usando
+ *    a média ponderada pelos pesos das perguntas;
  * 2. dimensões com o mesmo fator de risco são consolidadas;
  * 3. os resultados são agrupados pelo setor informado.
  *
@@ -3846,8 +3916,8 @@ function montarHeatmapPsicossocial(
         new Map<
           string,
           {
-            soma: number;
-            quantidade: number;
+            somaPonderadaPerguntas: number;
+            pesoPerguntasTotal: number;
           }
         >();
 
@@ -3912,21 +3982,28 @@ function montarHeatmapPsicossocial(
             configuracao.escalaMaxima
           );
 
+        const pesoPergunta =
+          pesoPerguntaSeguro(
+            pergunta.peso
+          );
+
         const acumulador =
           acumuladoresDimensao.get(
             dimensao.id
           ) || {
-            soma:
+            somaPonderadaPerguntas:
               0,
 
-            quantidade:
+            pesoPerguntasTotal:
               0,
           };
 
-        acumulador.soma +=
-          score;
+        acumulador.somaPonderadaPerguntas +=
+          score *
+          pesoPergunta;
 
-        acumulador.quantidade++;
+        acumulador.pesoPerguntasTotal +=
+          pesoPergunta;
 
         acumuladoresDimensao.set(
           dimensao.id,
@@ -3946,7 +4023,7 @@ function montarHeatmapPsicossocial(
         of acumuladoresDimensao
       ) {
         if (
-          acumulador.quantidade <=
+          acumulador.pesoPerguntasTotal <=
           0
         ) {
           continue;
@@ -3994,8 +4071,8 @@ function montarHeatmapPsicossocial(
         }
 
         const scoreDimensao =
-          acumulador.soma /
-          acumulador.quantidade;
+          acumulador.somaPonderadaPerguntas /
+          acumulador.pesoPerguntasTotal;
 
         const atualFator =
           atualSetor.fatores.get(
@@ -6201,7 +6278,7 @@ export default class RepositorioPesquisaCliente {
   }
 
   /*
-   * Pesquisa de Clima e Avaliação Psicossocial:
+   * Pesquisa de Clima e Gestão de Riscos Psicossociais:
    * o cliente visualiza somente participação.
    *
    * A regra fica no backend para impedir que o conteúdo

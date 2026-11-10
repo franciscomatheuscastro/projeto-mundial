@@ -443,7 +443,7 @@ export default async function DashboardPage({
       }),
 
       /* ===============================================
-       * CLIENTE — AVALIAÇÃO PSICOSSOCIAL
+       * CLIENTE — GESTÃO DE RISCOS PSICOSSOCIAIS
        * ============================================= */
 
       prisma.pesquisaCliente.count({
@@ -569,7 +569,7 @@ export default async function DashboardPage({
 
               <p className="mt-1 max-w-3xl text-sm text-slate-500 sm:text-base">
                 Visão executiva de Pesquisa de Clima, Avaliação de Desempenho,
-                Avaliação Psicossocial, planos de ação e Canal de Denúncias.
+                Gestão de Riscos Psicossociais, planos de ação e Canal de Denúncias.
               </p>
             </div>
           </div>
@@ -663,8 +663,8 @@ export default async function DashboardPage({
 
         <section>
           <CabecalhoBloco
-            titulo="Modalidades de avaliação"
-            descricao="Acompanhamento das três linhas de pesquisa da plataforma."
+            titulo="Módulos de pesquisa e gestão"
+            descricao="Acompanhamento dos principais módulos de pesquisa e gestão da plataforma."
           />
 
           <div className="grid gap-5 lg:grid-cols-3">
@@ -699,7 +699,7 @@ export default async function DashboardPage({
             />
 
             <CardModulo
-              titulo="Avaliação Psicossocial"
+              titulo="Gestão de Riscos Psicossociais"
               descricao="Exposição aos fatores psicossociais relacionados ao trabalho."
               total={
                 psicossocialTotal
@@ -839,7 +839,7 @@ export default async function DashboardPage({
 
         <section>
           <CabecalhoBloco
-            titulo="Avaliações do cliente"
+            titulo="Módulos do cliente"
             descricao="Distribuição das aplicações e respostas por modalidade."
           />
 
@@ -875,7 +875,7 @@ export default async function DashboardPage({
             />
 
             <CardModulo
-              titulo="Avaliação Psicossocial"
+              titulo="Gestão de Riscos Psicossociais"
               descricao="Aplicações e respostas da modalidade."
               total={
                 psicossocialCliente

@@ -473,7 +473,7 @@ export default async function ClienteDashboardPage() {
   const descricaoDashboard = gestorCliente
     ? "Acompanhe exclusivamente as Avaliações de Desempenho atribuídas ao seu usuário."
     : administradorCliente
-      ? "Visão executiva da Pesquisa de Clima, Avaliação de Desempenho, Avaliação Psicossocial, planos de ação, agendamentos e protocolos de denúncias da empresa."
+      ? "Visão executiva da Pesquisa de Clima, Avaliação de Desempenho, Gestão de Riscos Psicossociais, planos de ação, agendamentos e protocolos de denúncias da empresa."
       : "Painel do Comitê de Ética para acompanhamento das denúncias disponibilizadas ao seu usuário.";
 
   return (
@@ -532,7 +532,7 @@ export default async function ClienteDashboardPage() {
 
             <section>
               <h2 className="mb-3 text-base font-black text-slate-900 sm:text-lg">
-                Pesquisas e avaliações
+                Módulos de pesquisa e gestão
               </h2>
 
               <div className="grid gap-5 lg:grid-cols-3">
@@ -555,7 +555,7 @@ export default async function ClienteDashboardPage() {
                 />
 
                 <CardModulo
-                  titulo="Avaliação Psicossocial"
+                  titulo="Gestão de Riscos Psicossociais"
                   descricao="Exposição aos fatores psicossociais relacionados ao trabalho."
                   total={psicossocialTotal}
                   abertas={psicossocialAbertas}

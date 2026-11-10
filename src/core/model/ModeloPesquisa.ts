@@ -55,6 +55,17 @@ export type PerguntaModelo = {
   obrigatoria: boolean;
   opcoes: string[];
   dimensaoId?: string | null;
+
+  /*
+   * Peso relativo da pergunta dentro da dimensão.
+   *
+   * Mantido opcional por compatibilidade com modelos antigos.
+   * Quando ausente ou inválido, os repositórios assumem peso 1.
+   *
+   * O peso é utilizado no cálculo da Gestão de Riscos Psicossociais.
+   */
+  peso?: number;
+
   sentidoPontuacao: SentidoPontuacao;
 };
 

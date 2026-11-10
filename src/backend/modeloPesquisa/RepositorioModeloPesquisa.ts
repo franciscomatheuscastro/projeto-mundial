@@ -63,6 +63,29 @@ function pesoSeguro(
 }
 
 
+/*
+ * Peso da pergunta:
+ * - modelos antigos sem peso assumem 1;
+ * - peso zero/negativo não é aceito para evitar
+ *   eliminar silenciosamente uma pergunta do cálculo.
+ */
+function pesoPerguntaSeguro(
+  valor: unknown
+) {
+  const numero =
+    numeroSeguro(
+      valor,
+      1
+    );
+
+
+  return numero >
+    0
+    ? numero
+    : 1;
+}
+
+
 /* =========================================================
  * DIMENSÕES
  * ======================================================= */
@@ -474,6 +497,15 @@ function normalizarPerguntas(
           dimensaoId,
 
           /*
+           * O peso da pergunta é preservado no JSON do modelo.
+           * Modelos legados sem esse campo recebem peso 1.
+           */
+          peso:
+            pesoPerguntaSeguro(
+              item.peso
+            ),
+
+          /*
            * O sentido só possui efeito
            * analítico nas perguntas NOTA.
            *
@@ -537,6 +569,9 @@ function criarPerguntaPadrao(): PerguntaModelo {
 
     dimensaoId:
       null,
+
+    peso:
+      1,
 
     sentidoPontuacao:
       "POSITIVO",
@@ -1102,6 +1137,11 @@ export default class RepositorioModeloPesquisa {
       dimensaoId:
         pergunta.dimensaoId ||
         null,
+
+      peso:
+        pesoPerguntaSeguro(
+          pergunta.peso
+        ),
 
       sentidoPontuacao:
         tipo ===

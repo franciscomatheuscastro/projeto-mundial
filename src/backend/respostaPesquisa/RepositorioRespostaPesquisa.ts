@@ -18,6 +18,15 @@ import {
   PerguntaRespostaPesquisa,
 } from "@/src/core/model/RespostaPesquisa";
 
+/*
+ * Extensão local para preservar o peso da pergunta no questionário
+ * público sem exigir alteração imediata do tipo legado.
+ */
+type PerguntaRespostaPesquisaComPeso =
+  PerguntaRespostaPesquisa & {
+    peso: number;
+  };
+
 /* =========================================================
  * UTILITÁRIOS
  * ======================================================= */
@@ -36,6 +45,22 @@ function numeroSeguro(
   )
     ? numero
     : padrao;
+}
+
+
+function pesoPerguntaSeguro(
+  valor: unknown
+) {
+  const numero =
+    numeroSeguro(
+      valor,
+      1
+    );
+
+  return numero >
+    0
+    ? numero
+    : 1;
 }
 
 function textoOuNull(
@@ -221,7 +246,7 @@ function normalizarConfiguracaoAnalise(
 
 function normalizarPerguntas(
   perguntas: unknown
-): PerguntaRespostaPesquisa[] {
+): PerguntaRespostaPesquisaComPeso[] {
   if (
     !Array.isArray(
       perguntas
@@ -235,9 +260,9 @@ function normalizarPerguntas(
       (
         pergunta,
         index
-      ): PerguntaRespostaPesquisa => {
+      ): PerguntaRespostaPesquisaComPeso => {
         const item =
-          pergunta as Partial<PerguntaRespostaPesquisa>;
+          pergunta as Partial<PerguntaRespostaPesquisaComPeso>;
 
         const tipo =
           item.tipo ||
@@ -296,15 +321,17 @@ function normalizarPerguntas(
               : [],
 
           /*
-           * A pergunta apenas referencia
-           * a dimensão.
-           *
-           * Peso e fator de risco pertencem
-           * exclusivamente à dimensão.
+           * A pergunta referencia a dimensão, mas também preserva
+           * seu próprio peso relativo para o cálculo psicossocial.
            */
           dimensaoId:
             item.dimensaoId ??
             null,
+
+          peso:
+            pesoPerguntaSeguro(
+              item.peso
+            ),
 
           /*
            * O sentido é necessário principalmente

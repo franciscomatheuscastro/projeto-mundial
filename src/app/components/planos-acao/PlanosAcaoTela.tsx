@@ -87,7 +87,7 @@ export default function PlanosAcaoTela({
 
             <p className="mt-1 max-w-3xl text-sm text-slate-500">
               {usuarioMundial
-                ? "Gestão dos planos originados por pesquisas de clima, PDIs de avaliação de desempenho, avaliações psicossociais e denúncias."
+                ? "Gestão dos planos originados por pesquisas de clima, PDIs de avaliação de desempenho, gestão de riscos psicossociais e denúncias."
                 : "Visualize os relatórios finais dos planos de ação e PDIs da sua empresa."}
             </p>
           </div>
@@ -147,7 +147,7 @@ export default function PlanosAcaoTela({
           />
 
           <Card
-            titulo="Psicossociais"
+            titulo="Riscos psicossociais"
             valor={
               planos.filter(
                 (
@@ -429,7 +429,7 @@ function TipoBadge({
       "bg-orange-100 text-orange-700";
 
     texto =
-      "Avaliação psicossocial";
+      "Gestão de Riscos Psicossociais";
   }
 
   if (

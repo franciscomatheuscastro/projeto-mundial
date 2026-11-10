@@ -287,7 +287,7 @@ function nomeTipoOrigem(
       return "Avaliação de desempenho";
 
     case "AVALIACAO_PSICOSSOCIAL":
-      return "Avaliação psicossocial";
+      return "Gestão de Riscos Psicossociais";
 
     case "DENUNCIA":
       return "Denúncia";
@@ -1033,7 +1033,7 @@ export default function PlanoAcaoFormularioTela({
             <p className="mt-1 max-w-3xl text-sm text-slate-500">
               {ehPDI
                 ? "Estruture o Plano de Desenvolvimento Individual a partir das respostas da avaliação de desempenho."
-                : "Estruture contexto, objetivos e ações relacionadas a pesquisas de clima, avaliações psicossociais ou denúncias."}
+                : "Estruture contexto, objetivos e ações relacionadas a pesquisas de clima, gestão de riscos psicossociais ou denúncias."}
             </p>
           </div>
         </div>
@@ -1086,7 +1086,7 @@ export default function PlanoAcaoFormularioTela({
                 </option>
 
                 <option value="AVALIACAO_PSICOSSOCIAL">
-                  Avaliação psicossocial
+                  Gestão de Riscos Psicossociais
                 </option>
 
                 <option value="DENUNCIA">

@@ -189,6 +189,22 @@ type EtapaEditor =
   | "perguntas";
 
 
+/*
+ * Compatibilidade incremental:
+ *
+ * O tipo base PerguntaModelo ainda pode não possuir "peso".
+ * Mantemos uma extensão local para permitir a evolução da tela
+ * sem quebrar os modelos já existentes.
+ *
+ * O backend deve preservar este campo nos normalizadores para
+ * que ele participe efetivamente dos cálculos.
+ */
+type PerguntaModeloComPeso =
+  PerguntaModelo & {
+    peso?: number;
+  };
+
+
 /* =========================================================
  * ESTILO
  * ======================================================= */
@@ -320,7 +336,7 @@ function nomeModulo(
     tipo ===
     TIPO_MODULO.AVALIACAO_PSICOSSOCIAL
   ) {
-    return "Avaliação Psicossocial";
+    return "Gestão de Riscos Psicossociais";
   }
 
 
@@ -1689,6 +1705,10 @@ export default function ModelosPesquisaTela({
                           dimensoes={
                             dimensoes
                           }
+                          psicossocial={
+                            tipo ===
+                            TIPO_MODULO.AVALIACAO_PSICOSSOCIAL
+                          }
                           processando={
                             processando
                           }
@@ -2224,7 +2244,7 @@ function FaixasEditor({
 
           <p className="mt-1 text-xs leading-5 text-slate-500">
             {psicossocial
-              ? "Use as classificações psicossociais padronizadas. Os limites devem permanecer entre 0 e 100."
+              ? "Use as classificações padronizadas da Gestão de Riscos Psicossociais. Os limites devem permanecer entre 0 e 100."
               : "Use as classificações de desempenho padronizadas. Os limites devem permanecer entre 0 e 100."}
           </p>
         </div>
@@ -2613,20 +2633,23 @@ function PerguntaCard({
   indice,
   pergunta,
   dimensoes,
+  psicossocial,
   processando,
   onSalvar,
   onExcluir,
 }: {
   indice: number;
 
-  pergunta: PerguntaModelo;
+  pergunta: PerguntaModeloComPeso;
 
   dimensoes: DimensaoModelo[];
+
+  psicossocial: boolean;
 
   processando: boolean;
 
   onSalvar: (
-    pergunta: PerguntaModelo
+    pergunta: PerguntaModeloComPeso
   ) => Promise<void>;
 
   onExcluir: (
@@ -2701,6 +2724,27 @@ function PerguntaCard({
     );
 
 
+  const [
+    pesoPergunta,
+    setPesoPergunta,
+  ] =
+    useState(
+      Number.isFinite(
+        Number(
+          pergunta.peso
+        )
+      ) &&
+      Number(
+        pergunta.peso
+      ) >
+        0
+        ? Number(
+            pergunta.peso
+          )
+        : 1
+    );
+
+
   const dimensaoSelecionada =
     dimensoes.find(
       dimensao =>
@@ -2730,7 +2774,7 @@ function PerguntaCard({
         : [];
 
 
-    const perguntaAtualizada: PerguntaModelo =
+    const perguntaAtualizada: PerguntaModeloComPeso =
       {
         id:
           pergunta.id,
@@ -2754,6 +2798,13 @@ function PerguntaCard({
         dimensaoId:
           dimensaoId ||
           null,
+
+        ...(psicossocial
+          ? {
+              peso:
+                pesoPergunta,
+            }
+          : {}),
 
         sentidoPontuacao:
           tipo ===
@@ -2799,6 +2850,16 @@ function PerguntaCard({
                 {dimensaoSelecionada?.nome ||
                   "Sem dimensão"}
               </span>
+
+
+              {psicossocial && (
+                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+                  Peso{" "}
+                  {
+                    pesoPergunta
+                  }
+                </span>
+              )}
 
 
               {obrigatoria && (
@@ -2945,6 +3006,38 @@ function PerguntaCard({
               )}
             </select>
           </div>
+
+
+          {psicossocial && (
+            <div className="mb-5">
+              <CampoNumero
+                label="Peso da pergunta"
+                value={
+                  pesoPergunta
+                }
+                min={
+                  0.01
+                }
+                onChange={(
+                  valor
+                ) =>
+                  setPesoPergunta(
+                    Number.isFinite(
+                      valor
+                    ) &&
+                    valor >
+                      0
+                      ? valor
+                      : 1
+                  )
+                }
+              />
+
+              <p className="-mt-2 text-xs leading-5 text-slate-500">
+                Peso relativo desta pergunta no cálculo da dimensão. Use 1 para peso padrão.
+              </p>
+            </div>
+          )}
 
 
           {tipo ===
@@ -3427,7 +3520,7 @@ function SelectTipoModelo({
         </option>
 
         <option value="AVALIACAO_PSICOSSOCIAL">
-          Avaliação Psicossocial
+          Gestão de Riscos Psicossociais
         </option>
       </select>
     </div>
@@ -3462,7 +3555,7 @@ function TipoModeloBadge({
   ) {
     return (
       <span className="inline-flex whitespace-nowrap rounded-full bg-orange-100 px-3 py-1.5 text-xs font-bold text-orange-700">
-        Avaliação Psicossocial
+        Gestão de Riscos Psicossociais
       </span>
     );
   }
