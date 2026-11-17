@@ -30,7 +30,222 @@ import {
   verificarArquivoNoBucket,
 } from "@/src/lib/storage";
 
+import {
+  enviarEmailDirecionamentoTratativaCliente,
+  enviarEmailNovaDenunciaMundial,
+  enviarEmailPrazoTratativaVencidoCliente,
+  enviarEmailTratativaClienteMundial,
+} from "@/src/lib/email";
+
 const LIMITE_ANEXOS_POR_DENUNCIA = 5;
+const PRAZO_TRATATIVA_DIAS_UTEIS = 5;
+
+const FERIADOS_TRATATIVA = new Set(
+  String(process.env.DENUNCIAS_FERIADOS ?? "")
+    .split(/[;,]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+);
+
+function chaveDataSaoPaulo(data: Date) {
+  const partes = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(data);
+
+  const mapa = Object.fromEntries(
+    partes.map((parte) => [parte.type, parte.value])
+  );
+
+  return `${mapa.year}-${mapa.month}-${mapa.day}`;
+}
+
+function ehDiaUtilTratativa(data: Date) {
+  const diaSemana = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    weekday: "short",
+  }).format(data);
+
+  if (diaSemana === "Sat" || diaSemana === "Sun") {
+    return false;
+  }
+
+  return !FERIADOS_TRATATIVA.has(chaveDataSaoPaulo(data));
+}
+
+function adicionarDiasUteisTratativa(inicio: Date, quantidade: number) {
+  const resultado = new Date(inicio);
+  let restantes = Math.max(0, Math.trunc(quantidade));
+
+  while (restantes > 0) {
+    resultado.setUTCDate(resultado.getUTCDate() + 1);
+
+    if (ehDiaUtilTratativa(resultado)) {
+      restantes -= 1;
+    }
+  }
+
+  return resultado;
+}
+
+function obterEmailResponsavel(colaborador: {
+  email?: string | null;
+  usuario?: { email?: string | null } | null;
+} | null) {
+  return (
+    colaborador?.email?.trim().toLowerCase() ||
+    colaborador?.usuario?.email?.trim().toLowerCase() ||
+    null
+  );
+}
+
+async function obterDestinatariosComiteEtica() {
+  const integrantes =
+    await prisma.usuario.findMany({
+      where: {
+        ativo:
+          true,
+
+        membroComiteEtica:
+          true,
+
+        /*
+         * Garante que sejam usuários internos da Mundial,
+         * e não usuários vinculados a um cliente.
+         */
+        clienteId:
+          null,
+      },
+
+      orderBy: {
+        nome:
+          "asc",
+      },
+
+      select: {
+        nome:
+          true,
+
+        email:
+          true,
+      },
+    });
+
+  return integrantes
+    .map(
+      integrante => ({
+        nome:
+          integrante.nome,
+
+        email:
+          integrante.email
+            .trim()
+            .toLowerCase(),
+      })
+    )
+    .filter(
+      integrante =>
+        Boolean(
+          integrante.email
+        )
+    );
+}
+
+async function tentarNotificarNovaDenunciaMundial(denunciaId: string) {
+  try {
+    const denuncia = await prisma.denuncia.findUnique({
+      where: { id: denunciaId },
+      select: {
+        id: true,
+        protocolo: true,
+        gravidade: true,
+        criadoEm: true,
+        cliente: { select: { nome: true, empresa: true } },
+        categoria: { select: { nome: true } },
+      },
+    });
+
+    if (!denuncia) return;
+
+    const destinatarios =
+      await obterDestinatariosComiteEtica();
+
+    if (
+      destinatarios.length ===
+      0
+    ) {
+      console.warn(
+        `Alerta da denúncia ${denuncia.protocolo} não enviado: nenhum integrante ativo do Comitê de Ética da Mundial possui e-mail cadastrado.`
+      );
+
+      return;
+    }
+
+    await enviarEmailNovaDenunciaMundial({
+      denunciaId: denuncia.id,
+      protocolo: denuncia.protocolo,
+      clienteNome: denuncia.cliente.empresa || denuncia.cliente.nome,
+      categoria: denuncia.categoria?.nome || null,
+      gravidade: denuncia.gravidade,
+      criadoEm: denuncia.criadoEm,
+      destinatarios,
+    });
+  } catch (error) {
+    console.error(
+      "Erro ao enviar alerta de nova denúncia para a Mundial:",
+      error
+    );
+  }
+}
+
+async function tentarNotificarTratativaClienteMundial(
+  denunciaId: string,
+  responsavelNome: string,
+  tituloTratativa: string
+) {
+  try {
+    const denuncia = await prisma.denuncia.findUnique({
+      where: { id: denunciaId },
+      select: {
+        id: true,
+        protocolo: true,
+        cliente: { select: { nome: true, empresa: true } },
+      },
+    });
+
+    if (!denuncia) return;
+
+    const destinatarios =
+      await obterDestinatariosComiteEtica();
+
+    if (
+      destinatarios.length ===
+      0
+    ) {
+      console.warn(
+        `Alerta da tratativa da denúncia ${denuncia.protocolo} não enviado: nenhum integrante ativo do Comitê de Ética da Mundial possui e-mail cadastrado.`
+      );
+
+      return;
+    }
+
+    await enviarEmailTratativaClienteMundial({
+      denunciaId: denuncia.id,
+      protocolo: denuncia.protocolo,
+      clienteNome: denuncia.cliente.empresa || denuncia.cliente.nome,
+      responsavelNome,
+      tituloTratativa,
+      destinatarios,
+    });
+  } catch (error) {
+    console.error(
+      "Erro ao enviar alerta de tratativa do cliente para a Mundial:",
+      error
+    );
+  }
+}
 
 export type AtorDenuncia = {
   usuarioId?: string | null;
@@ -820,6 +1035,8 @@ export default class RepositorioDenuncia {
       },
     });
 
+    await tentarNotificarNovaDenunciaMundial(denuncia.id);
+
     return denuncia;
   }
 
@@ -907,6 +1124,10 @@ export default class RepositorioDenuncia {
       },
       include: includeDetalhadaMundial,
     });
+
+    if (ator.origem !== "MUNDIAL") {
+      await tentarNotificarNovaDenunciaMundial(denuncia.id);
+    }
 
     return montarDetalhada(denuncia);
   }
@@ -1236,6 +1457,7 @@ export default class RepositorioDenuncia {
 
     let colaboradorId: string | null = null;
     let colaboradorNome: string | null = null;
+    let colaboradorEmail: string | null = null;
 
     if (dados.destino === "COLABORADOR") {
       if (!dados.colaboradorId?.trim()) {
@@ -1256,6 +1478,12 @@ export default class RepositorioDenuncia {
           select: {
             id: true,
             nome: true,
+            email: true,
+            usuario: {
+              select: {
+                email: true,
+              },
+            },
           },
         });
 
@@ -1267,6 +1495,13 @@ export default class RepositorioDenuncia {
 
       colaboradorId = colaborador.id;
       colaboradorNome = colaborador.nome;
+      colaboradorEmail = obterEmailResponsavel(colaborador);
+
+      if (!colaboradorEmail) {
+        throw new Error(
+          "O colaborador responsável precisa possuir um e-mail cadastrado para receber o direcionamento da tratativa."
+        );
+      }
     }
 
     const visualizadorIdsRecebidos = Array.from(
@@ -1335,6 +1570,15 @@ export default class RepositorioDenuncia {
         ? denuncia.status
         : "EM_TRATATIVA";
 
+    const momentoDirecionamento = new Date();
+    const prazoTratativaEm =
+      dados.destino === "COLABORADOR"
+        ? adicionarDiasUteisTratativa(
+            momentoDirecionamento,
+            PRAZO_TRATATIVA_DIAS_UTEIS
+          )
+        : null;
+
     await prisma.$transaction(async (tx) => {
       await tx.denuncia.update({
         where: { id: denuncia.id },
@@ -1342,9 +1586,11 @@ export default class RepositorioDenuncia {
           tratativaLiberada: true,
           destinoTratativa: dados.destino,
           colaboradorResponsavelId: colaboradorId,
-          tratativaLiberadaEm: new Date(),
+          tratativaLiberadaEm: momentoDirecionamento,
           tratativaLiberadaPorUsuarioId:
             ator.usuarioId || null,
+          prazoTratativaEm,
+          alertaPrazoTratativaEnviadoEm: null,
           status: novoStatus,
         },
       });
@@ -1413,6 +1659,41 @@ export default class RepositorioDenuncia {
         });
       }
     });
+
+    if (
+      dados.destino === "COLABORADOR" &&
+      colaboradorNome &&
+      colaboradorEmail &&
+      prazoTratativaEm
+    ) {
+      try {
+        const dadosEmail = await prisma.denuncia.findUnique({
+          where: { id: denuncia.id },
+          select: {
+            id: true,
+            protocolo: true,
+            cliente: { select: { nome: true, empresa: true } },
+          },
+        });
+
+        if (dadosEmail) {
+          await enviarEmailDirecionamentoTratativaCliente({
+            denunciaId: dadosEmail.id,
+            protocolo: dadosEmail.protocolo,
+            clienteNome:
+              dadosEmail.cliente.empresa || dadosEmail.cliente.nome,
+            responsavelNome: colaboradorNome,
+            responsavelEmail: colaboradorEmail,
+            prazoTratativaEm,
+          });
+        }
+      } catch (error) {
+        console.error(
+          "Erro ao enviar e-mail de direcionamento da tratativa ao cliente:",
+          error
+        );
+      }
+    }
 
     return this.obterPorId(denuncia.id);
   }
@@ -1565,6 +1846,18 @@ export default class RepositorioDenuncia {
     });
 
     if (
+      (ator.origem === "COMITE_CLIENTE" ||
+        ator.origem === "CLIENTE") &&
+      colaboradorId
+    ) {
+      await tentarNotificarTratativaClienteMundial(
+        denunciaId,
+        ator.nome,
+        titulo
+      );
+    }
+
+    if (
       ator.origem === "COMITE_CLIENTE" &&
       colaboradorId
     ) {
@@ -1664,6 +1957,97 @@ export default class RepositorioDenuncia {
 
     return this.obterPorId(dados.denunciaId);
   }
+
+  static async processarAlertasPrazoTratativaVencido() {
+    const agora = new Date();
+
+    const denuncias = await prisma.denuncia.findMany({
+      where: {
+        tratativaLiberada: true,
+        destinoTratativa: "COLABORADOR",
+        colaboradorResponsavelId: { not: null },
+        prazoTratativaEm: { lte: agora },
+        alertaPrazoTratativaEnviadoEm: null,
+        status: {
+          notIn: [
+            StatusDenuncia.CONCLUIDA,
+            StatusDenuncia.ARQUIVADA,
+          ],
+        },
+        tratativas: { none: {} },
+      },
+      select: {
+        id: true,
+        protocolo: true,
+        prazoTratativaEm: true,
+        cliente: { select: { nome: true, empresa: true } },
+        colaboradorResponsavel: {
+          select: {
+            nome: true,
+            email: true,
+            usuario: { select: { email: true } },
+          },
+        },
+      },
+    });
+
+    let enviados = 0;
+    let falhas = 0;
+    let semEmail = 0;
+
+    for (const denuncia of denuncias) {
+      const responsavel = denuncia.colaboradorResponsavel;
+      const emailResponsavel = obterEmailResponsavel(responsavel);
+
+      if (!responsavel || !emailResponsavel || !denuncia.prazoTratativaEm) {
+        semEmail += 1;
+        console.warn(
+          `Alerta de prazo não enviado para ${denuncia.protocolo}: responsável sem e-mail cadastrado.`
+        );
+        continue;
+      }
+
+      try {
+        await enviarEmailPrazoTratativaVencidoCliente({
+          denunciaId: denuncia.id,
+          protocolo: denuncia.protocolo,
+          clienteNome: denuncia.cliente.empresa || denuncia.cliente.nome,
+          responsavelNome: responsavel.nome,
+          responsavelEmail: emailResponsavel,
+          prazoTratativaEm: denuncia.prazoTratativaEm,
+        });
+
+        const atualizado = await prisma.denuncia.updateMany({
+          where: {
+            id: denuncia.id,
+            alertaPrazoTratativaEnviadoEm: null,
+            tratativas: { none: {} },
+          },
+          data: {
+            alertaPrazoTratativaEnviadoEm: new Date(),
+          },
+        });
+
+        if (atualizado.count > 0) {
+          enviados += 1;
+        }
+      } catch (error) {
+        falhas += 1;
+        console.error(
+          `Erro ao enviar alerta de prazo vencido da denúncia ${denuncia.protocolo}:`,
+          error
+        );
+      }
+    }
+
+    return {
+      analisadas: denuncias.length,
+      enviados,
+      falhas,
+      semEmail,
+    };
+  }
+
 
   static async obterTodos(): Promise<
     DenunciaResumo[]

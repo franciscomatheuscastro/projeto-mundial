@@ -1116,3 +1116,221 @@ export async function enviarEmailRedefinicaoSenha({
   });
 }
 
+/* =========================================================
+ * ALERTAS DO CANAL DE DENÚNCIAS
+ * ======================================================= */
+
+type AlertaDenunciaDestinatario = {
+  nome?: string | null;
+  email: string;
+};
+
+function normalizarEmailDenuncia(valor?: string | null) {
+  return String(valor ?? "").trim().toLowerCase();
+}
+
+function urlDenunciaMundial(id: string) {
+  return new URL(
+    `/denuncias/${encodeURIComponent(id)}`,
+    APP_URL
+  ).toString();
+}
+
+function urlDenunciaCliente(id: string) {
+  return new URL(
+    `/minhas-denuncias/${encodeURIComponent(id)}`,
+    APP_URL
+  ).toString();
+}
+
+function formatarDataDenuncia(valor: Date | string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(valor));
+}
+
+async function enviarAlertaDenuncia({
+  destinatarios,
+  assunto,
+  titulo,
+  mensagem,
+  linhas,
+  url,
+  textoBotao,
+}: {
+  destinatarios: AlertaDenunciaDestinatario[];
+  assunto: string;
+  titulo: string;
+  mensagem: string;
+  linhas: Array<{ rotulo: string; valor: string }>;
+  url: string;
+  textoBotao: string;
+}) {
+  validarConfiguracaoEmail();
+
+  const unicos = Array.from(
+    new Map(
+      destinatarios
+        .map((item) => ({
+          nome: item.nome?.trim() || "",
+          email: normalizarEmailDenuncia(item.email),
+        }))
+        .filter((item) => item.email)
+        .map((item) => [item.email, item])
+    ).values()
+  );
+
+  if (unicos.length === 0) {
+    throw new Error("Nenhum destinatário válido para o alerta de denúncia.");
+  }
+
+  const textoLinhas = linhas
+    .map((item) => `${item.rotulo}: ${item.valor}`)
+    .join("\n");
+
+  const htmlLinhas = linhas
+    .map(
+      (item) =>
+        `<p style="margin:0 0 8px;"><strong>${escaparHtml(item.rotulo)}:</strong> ${escaparHtml(item.valor)}</p>`
+    )
+    .join("");
+
+  await transporter.sendMail({
+    from: { name: SMTP_FROM_NAME, address: SMTP_FROM! },
+    to: unicos.map((item) => ({
+      name: item.nome || item.email,
+      address: item.email,
+    })),
+    subject: assunto,
+    text: [
+      titulo,
+      "",
+      mensagem,
+      "",
+      textoLinhas,
+      "",
+      `Acessar: ${url}`,
+      "",
+      "Mundial Connect",
+    ].join("\n"),
+    html: `
+      <!doctype html>
+      <html lang="pt-BR">
+        <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+          <div style="max-width:620px;margin:32px auto;background:#fff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;">
+            <div style="padding:24px 28px;background:#0f3fce;color:#fff;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">MundialSafe</div>
+              <h1 style="margin:8px 0 0;font-size:24px;">${escaparHtml(titulo)}</h1>
+            </div>
+            <div style="padding:28px;">
+              <p style="margin:0 0 20px;color:#475569;line-height:1.6;">${escaparHtml(mensagem)}</p>
+              <div style="margin:0 0 22px;padding:18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">${htmlLinhas}</div>
+              <a href="${escaparHtml(url)}" style="display:inline-block;padding:13px 22px;border-radius:12px;background:#2563eb;color:#fff;font-weight:700;text-decoration:none;">${escaparHtml(textoBotao)}</a>
+              <p style="margin:22px 0 0;color:#64748b;font-size:12px;line-height:1.6;">Por confidencialidade, detalhes sensíveis da denúncia não são enviados por e-mail.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  });
+}
+
+export async function enviarEmailNovaDenunciaMundial(dados: {
+  denunciaId: string;
+  protocolo: string;
+  clienteNome: string;
+  categoria?: string | null;
+  gravidade: string;
+  criadoEm: Date | string;
+  destinatarios: AlertaDenunciaDestinatario[];
+}) {
+  return enviarAlertaDenuncia({
+    destinatarios: dados.destinatarios,
+    assunto: `[MundialSafe] Nova denúncia recebida — ${dados.protocolo}`,
+    titulo: "Nova denúncia recebida",
+    mensagem: "Uma nova denúncia foi registrada e aguarda análise da Mundial.",
+    linhas: [
+      { rotulo: "Protocolo", valor: dados.protocolo },
+      { rotulo: "Cliente", valor: dados.clienteNome },
+      { rotulo: "Categoria", valor: dados.categoria || "Não informada" },
+      { rotulo: "Gravidade", valor: dados.gravidade },
+      { rotulo: "Recebida em", valor: formatarDataDenuncia(dados.criadoEm) },
+    ],
+    url: urlDenunciaMundial(dados.denunciaId),
+    textoBotao: "Analisar denúncia",
+  });
+}
+
+export async function enviarEmailDirecionamentoTratativaCliente(dados: {
+  denunciaId: string;
+  protocolo: string;
+  clienteNome: string;
+  responsavelNome: string;
+  responsavelEmail: string;
+  prazoTratativaEm: Date | string;
+}) {
+  return enviarAlertaDenuncia({
+    destinatarios: [{ nome: dados.responsavelNome, email: dados.responsavelEmail }],
+    assunto: `[MundialSafe] Denúncia direcionada para tratativa — ${dados.protocolo}`,
+    titulo: "Tratativa atribuída",
+    mensagem: "A Mundial direcionou uma denúncia para sua tratativa. O prazo para registrar a primeira tratativa é de 5 dias úteis.",
+    linhas: [
+      { rotulo: "Protocolo", valor: dados.protocolo },
+      { rotulo: "Empresa", valor: dados.clienteNome },
+      { rotulo: "Responsável", valor: dados.responsavelNome },
+      { rotulo: "Prazo", valor: formatarDataDenuncia(dados.prazoTratativaEm) },
+    ],
+    url: urlDenunciaCliente(dados.denunciaId),
+    textoBotao: "Abrir denúncia",
+  });
+}
+
+export async function enviarEmailTratativaClienteMundial(dados: {
+  denunciaId: string;
+  protocolo: string;
+  clienteNome: string;
+  responsavelNome: string;
+  tituloTratativa: string;
+  destinatarios: AlertaDenunciaDestinatario[];
+}) {
+  return enviarAlertaDenuncia({
+    destinatarios: dados.destinatarios,
+    assunto: `[MundialSafe] Tratativa registrada pelo cliente — ${dados.protocolo}`,
+    titulo: "Nova tratativa do cliente",
+    mensagem: "O responsável do cliente registrou uma nova tratativa para uma denúncia direcionada pela Mundial.",
+    linhas: [
+      { rotulo: "Protocolo", valor: dados.protocolo },
+      { rotulo: "Cliente", valor: dados.clienteNome },
+      { rotulo: "Responsável", valor: dados.responsavelNome },
+      { rotulo: "Tratativa", valor: dados.tituloTratativa },
+    ],
+    url: urlDenunciaMundial(dados.denunciaId),
+    textoBotao: "Revisar tratativa",
+  });
+}
+
+export async function enviarEmailPrazoTratativaVencidoCliente(dados: {
+  denunciaId: string;
+  protocolo: string;
+  clienteNome: string;
+  responsavelNome: string;
+  responsavelEmail: string;
+  prazoTratativaEm: Date | string;
+}) {
+  return enviarAlertaDenuncia({
+    destinatarios: [{ nome: dados.responsavelNome, email: dados.responsavelEmail }],
+    assunto: `[MundialSafe] Prazo de tratativa vencido — ${dados.protocolo}`,
+    titulo: "Prazo de tratativa vencido",
+    mensagem: "O prazo de 5 dias úteis expirou e ainda não há tratativa registrada.",
+    linhas: [
+      { rotulo: "Protocolo", valor: dados.protocolo },
+      { rotulo: "Empresa", valor: dados.clienteNome },
+      { rotulo: "Responsável", valor: dados.responsavelNome },
+      { rotulo: "Prazo expirado em", valor: formatarDataDenuncia(dados.prazoTratativaEm) },
+    ],
+    url: urlDenunciaCliente(dados.denunciaId),
+    textoBotao: "Registrar tratativa",
+  });
+}

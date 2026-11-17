@@ -49,6 +49,9 @@ export default function DenunciasTela({
   const [status, setStatus] =
     useState("");
 
+  const [protocoloBusca, setProtocoloBusca] =
+    useState("");
+
   const [filtrosAplicados, setFiltrosAplicados] =
     useState({
       dataInicio: "",
@@ -147,7 +150,7 @@ export default function DenunciasTela({
   ]);
 
 
-  const denunciasFiltradas =
+  const denunciasFiltradasPorStatus =
     useMemo(() => {
       if (
         !filtrosAplicados.status
@@ -163,6 +166,30 @@ export default function DenunciasTela({
     }, [
       denunciasBaseFiltradas,
       filtrosAplicados.status,
+    ]);
+
+  const denunciasFiltradas =
+    useMemo(() => {
+      const termo =
+        normalizarProtocoloBusca(
+          protocoloBusca
+        );
+
+      if (!termo) {
+        return denunciasFiltradasPorStatus;
+      }
+
+      return denunciasFiltradasPorStatus.filter(
+        denuncia =>
+          normalizarProtocoloBusca(
+            denuncia.protocolo
+          ).includes(
+            termo
+          )
+      );
+    }, [
+      denunciasFiltradasPorStatus,
+      protocoloBusca,
     ]);
 
 
@@ -236,6 +263,7 @@ export default function DenunciasTela({
     setDataFim("");
     setClienteId("");
     setStatus("");
+    setProtocoloBusca("");
     setErroFiltro(null);
 
     setFiltrosAplicados({
@@ -582,14 +610,59 @@ export default function DenunciasTela({
 
         <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="font-bold text-slate-900">
-              Registros
-            </h2>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h2 className="font-bold text-slate-900">
+                  Registros
+                </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
-              {denunciasFiltradas.length} denúncia(s)
-              encontrada(s) nos filtros aplicados.
-            </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {denunciasFiltradas.length} denúncia(s)
+                  encontrada(s).
+                </p>
+              </div>
+
+              <div className="w-full lg:max-w-md">
+                <label
+                  htmlFor="busca-protocolo-denuncia"
+                  className="mb-2 block text-sm font-semibold text-slate-700"
+                >
+                  Código / protocolo
+                </label>
+
+                <div className="flex gap-2">
+                  <input
+                    id="busca-protocolo-denuncia"
+                    type="search"
+                    value={protocoloBusca}
+                    onChange={(event) =>
+                      setProtocoloBusca(
+                        event.target.value
+                      )
+                    }
+                    placeholder="Digite o protocolo da denúncia"
+                    autoComplete="off"
+                    className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  />
+
+                  {protocoloBusca && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setProtocoloBusca("")
+                      }
+                      className="shrink-0 rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                    >
+                      Limpar
+                    </button>
+                  )}
+                </div>
+
+                <p className="mt-1.5 text-xs leading-5 text-slate-400">
+                  A busca é instantânea e aceita o protocolo com ou sem hífens e espaços.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -636,7 +709,11 @@ export default function DenunciasTela({
                 ) : denunciasFiltradas.length === 0 ? (
                   <LinhaVazia
                     colunas={quantidadeColunas}
-                    texto="Nenhuma denúncia encontrada para os filtros selecionados."
+                    texto={
+                      protocoloBusca.trim()
+                        ? "Nenhuma denúncia encontrada para o código/protocolo informado."
+                        : "Nenhuma denúncia encontrada para os filtros selecionados."
+                    }
                   />
                 ) : (
                   denunciasFiltradas.map(
@@ -888,6 +965,20 @@ function LinhaVazia({
       </td>
     </tr>
   );
+}
+
+function normalizarProtocoloBusca(
+  valor?: string | null
+) {
+  return String(
+    valor ?? ""
+  )
+    .trim()
+    .toUpperCase()
+    .replace(
+      /[^A-Z0-9]/g,
+      ""
+    );
 }
 
 function formatarData(

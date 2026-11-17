@@ -246,6 +246,11 @@ model Denuncia {
   respostasPerguntasCanal       RespostaPerguntaCanalDenuncia[]
   tratativas                    TratativaDenuncia[]
 
+  prazoTratativaEm              DateTime?
+  alertaPrazoTratativaEnviadoEm DateTime?  
+
+  @@index([prazoTratativaEm, alertaPrazoTratativaEnviadoEm])
+
   visualizadores DenunciaVisualizador[] @relation("VisualizadoresDenuncia")
 
   @@index([clienteId])
