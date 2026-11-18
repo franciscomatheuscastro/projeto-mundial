@@ -830,14 +830,14 @@ export default async function DashboardPage({
          * FILTRO CLIENTE
          * =============================================== */}
 
-        <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
+        <div className="w-full min-w-0 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+          <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,460px)] lg:items-end">
+            <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-600">
                 Indicadores por cliente
               </p>
 
-              <h2 className="mt-2 text-xl font-black text-slate-900">
+              <h2 className="mt-2 break-words text-xl font-black text-slate-900">
                 {
                   clienteSelecionado
                 }
@@ -848,18 +848,18 @@ export default async function DashboardPage({
               </p>
             </div>
 
-            <form className="w-full lg:w-96">
+            <form className="w-full min-w-0">
               <label className="mb-1 block text-sm font-semibold text-slate-700">
                 Cliente
               </label>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                 <select
                   name="clienteId"
                   defaultValue={
                     clienteId
                   }
-                  className="min-h-12 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  className="min-h-12 w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                 >
                   <option value="todos">
                     Todos os clientes
@@ -884,7 +884,7 @@ export default async function DashboardPage({
 
                 <button
                   type="submit"
-                  className="min-h-12 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
+                  className="min-h-12 w-full shrink-0 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700 sm:w-auto"
                 >
                   Filtrar
                 </button>
