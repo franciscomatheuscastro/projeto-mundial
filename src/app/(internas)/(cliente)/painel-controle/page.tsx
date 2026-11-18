@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import Link from "next/link";
+
 import {
   PerfilUsuario,
   Prisma,
@@ -470,6 +472,121 @@ export default async function ClienteDashboardPage() {
       ])
     : [0, 0, 0, 0, 0];
 
+  /*
+   * Notificações operacionais do Canal de Denúncias.
+   *
+   * CLIENTE:
+   * - acompanha os direcionamentos da própria empresa;
+   * - recebe alerta visual quando o prazo de 5 dias úteis venceu.
+   *
+   * COMITE_CLIENTE:
+   * - visualiza apenas denúncias em que é o responsável designado.
+   *
+   * GESTOR_CLIENTE:
+   * - não participa do Canal de Denúncias.
+   */
+  const filtroNotificacoesDenuncias:
+    | Prisma.DenunciaWhereInput
+    | null =
+    administradorCliente
+      ? {
+          clienteId,
+          tratativaLiberada: true,
+          destinoTratativa: "COLABORADOR",
+        }
+      : membroComite
+        ? {
+            clienteId,
+            tratativaLiberada: true,
+            destinoTratativa: "COLABORADOR",
+            colaboradorResponsavelId: colaboradorId!,
+          }
+        : null;
+
+  const denunciasParaNotificacao =
+    filtroNotificacoesDenuncias
+      ? await prisma.denuncia.findMany({
+          where: filtroNotificacoesDenuncias,
+          orderBy: {
+            tratativaLiberadaEm: "desc",
+          },
+          take: 20,
+          select: {
+            id: true,
+            protocolo: true,
+            status: true,
+            tratativaLiberadaEm: true,
+            prazoTratativaEm: true,
+            alertaPrazoTratativaEnviadoEm: true,
+            colaboradorResponsavel: {
+              select: {
+                nome: true,
+              },
+            },
+            _count: {
+              select: {
+                tratativas: true,
+              },
+            },
+          },
+        })
+      : [];
+
+  const notificacoesDenunciasCliente =
+    denunciasParaNotificacao
+      .flatMap(denuncia => {
+        const itens: NotificacaoDenunciaPainel[] = [];
+
+        const href =
+          membroComite
+            ? `/minhas-denuncias/${denuncia.id}`
+            : "/minhas-denuncias";
+
+        if (denuncia.tratativaLiberadaEm) {
+          itens.push({
+            id: `direcionamento-${denuncia.id}`,
+            tipo: "DIRECIONAMENTO",
+            titulo: "Denúncia direcionada para tratativa",
+            descricao:
+              administradorCliente
+                ? `Protocolo ${denuncia.protocolo} foi direcionado para ${denuncia.colaboradorResponsavel?.nome || "o responsável designado"}.`
+                : `O protocolo ${denuncia.protocolo} foi direcionado para sua tratativa.`,
+            data: denuncia.tratativaLiberadaEm,
+            protocolo: denuncia.protocolo,
+            href,
+          });
+        }
+
+        const prazoVencido =
+          Boolean(denuncia.prazoTratativaEm) &&
+          denuncia._count.tratativas === 0 &&
+          denuncia.status !== "CONCLUIDA" &&
+          denuncia.status !== "ARQUIVADA" &&
+          new Date(
+            denuncia.prazoTratativaEm!
+          ).getTime() <= agora.getTime();
+
+        if (prazoVencido) {
+          itens.push({
+            id: `prazo-${denuncia.id}`,
+            tipo: "PRAZO_VENCIDO",
+            titulo: "Prazo de tratativa vencido",
+            descricao: `O protocolo ${denuncia.protocolo} ultrapassou o prazo de 5 dias úteis sem registro da primeira tratativa.`,
+            data: denuncia.prazoTratativaEm!,
+            protocolo: denuncia.protocolo,
+            href,
+          });
+        }
+
+        return itens;
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.data).getTime() -
+          new Date(a.data).getTime()
+      )
+      .slice(0, 8);
+
   const descricaoDashboard = gestorCliente
     ? "Acompanhe exclusivamente as Avaliações de Desempenho atribuídas ao seu usuário."
     : administradorCliente
@@ -477,24 +594,33 @@ export default async function ClienteDashboardPage() {
       : "Painel do Comitê de Ética para acompanhamento das denúncias disponibilizadas ao seu usuário.";
 
   return (
-    <main className="min-h-screen bg-slate-100">
+    <main className="min-h-screen min-w-0 overflow-x-hidden bg-slate-100">
       <header className="bg-white px-4 py-6 shadow-sm sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
-            Dashboard
-          </p>
+        <div className="mx-auto flex w-full max-w-7xl min-w-0 items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
+              Dashboard
+            </p>
 
-          <h1 className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">
-            {cliente.empresa || cliente.nome || "Minha empresa"}
-          </h1>
+            <h1 className="mt-2 break-words text-2xl font-black text-slate-900 sm:text-3xl">
+              {cliente.empresa || cliente.nome || "Minha empresa"}
+            </h1>
 
-          <p className="mt-1 max-w-3xl text-sm text-slate-500 sm:text-base">
-            {descricaoDashboard}
-          </p>
+            <p className="mt-1 max-w-3xl text-sm text-slate-500 sm:text-base">
+              {descricaoDashboard}
+            </p>
+          </div>
+
+          {(administradorCliente || membroComite) && (
+            <SinoNotificacoesCliente
+              notificacoes={notificacoesDenunciasCliente}
+              membroComite={membroComite}
+            />
+          )}
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+      <section className="mx-auto w-full max-w-7xl min-w-0 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         {gestorCliente && (
           <Bloco titulo="Avaliação de Desempenho">
             <Card
@@ -591,6 +717,175 @@ export default async function ClienteDashboardPage() {
       </section>
     </main>
   );
+}
+
+type NotificacaoDenunciaPainel = {
+  id: string;
+  tipo:
+    | "DIRECIONAMENTO"
+    | "PRAZO_VENCIDO";
+  titulo: string;
+  descricao: string;
+  data: Date | string;
+  protocolo: string;
+  href: string;
+};
+
+function SinoNotificacoesCliente({
+  notificacoes,
+  membroComite,
+}: {
+  notificacoes: NotificacaoDenunciaPainel[];
+  membroComite: boolean;
+}) {
+  const quantidade =
+    notificacoes.length;
+
+  return (
+    <details className="group relative shrink-0">
+      <summary
+        aria-label={`Notificações do Canal de Denúncias: ${quantidade}`}
+        className="relative flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 [&::-webkit-details-marker]:hidden"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+
+        {quantidade > 0 && (
+          <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white">
+            {quantidade > 9
+              ? "9+"
+              : quantidade}
+          </span>
+        )}
+      </summary>
+
+      <div className="absolute right-0 top-full z-50 mt-3 w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="border-b border-slate-100 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="font-black text-slate-900">
+                Notificações
+              </h2>
+
+              <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                {membroComite
+                  ? "Direcionamentos atribuídos a você"
+                  : "Canal de Denúncias"}
+              </p>
+            </div>
+
+            <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
+              {quantidade}
+            </span>
+          </div>
+        </div>
+
+        {notificacoes.length === 0 ? (
+          <div className="px-4 py-6 text-sm text-slate-500">
+            Nenhuma notificação pendente ou recente.
+          </div>
+        ) : (
+          <div className="max-h-[min(70vh,32rem)] overflow-y-auto overscroll-contain">
+            {notificacoes.map(notificacao => {
+              const prazoVencido =
+                notificacao.tipo === "PRAZO_VENCIDO";
+
+              return (
+                <Link
+                  key={notificacao.id}
+                  href={notificacao.href}
+                  className={`block border-b border-slate-100 px-4 py-3 transition last:border-b-0 ${
+                    prazoVencido
+                      ? "bg-red-50/70 hover:bg-red-50"
+                      : "hover:bg-slate-50"
+                  }`}
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span
+                      className={`mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${
+                        prazoVencido
+                          ? "bg-red-500"
+                          : "bg-blue-500"
+                      }`}
+                    />
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            prazoVencido
+                              ? "bg-red-100 text-red-700"
+                              : "bg-blue-100 text-blue-700"
+                          }`}
+                        >
+                          {prazoVencido
+                            ? "Prazo vencido"
+                            : "Direcionamento"}
+                        </span>
+
+                        <span className="text-[11px] font-semibold text-slate-400">
+                          {formatarDataHoraNotificacao(
+                            notificacao.data
+                          )}
+                        </span>
+                      </div>
+
+                      <p className="mt-1.5 break-words text-sm font-bold text-slate-900">
+                        {notificacao.titulo}
+                      </p>
+
+                      <p className="mt-1 break-words text-xs leading-5 text-slate-600">
+                        {notificacao.descricao}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
+          <Link
+            href="/minhas-denuncias"
+            className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700"
+          >
+            Ver denúncias
+          </Link>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function formatarDataHoraNotificacao(
+  valor: Date | string
+) {
+  const data = new Date(valor);
+
+  if (Number.isNaN(data.getTime())) {
+    return "Data indisponível";
+  }
+
+  return new Intl.DateTimeFormat(
+    "pt-BR",
+    {
+      dateStyle: "short",
+      timeStyle: "short",
+      timeZone: "America/Sao_Paulo",
+    }
+  ).format(data);
 }
 
 function AcessoIndisponivel({

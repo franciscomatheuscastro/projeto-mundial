@@ -1,7 +1,11 @@
 import type React from "react";
 
+import Link from "next/link";
+
 import {
+  OrigemAtorDenuncia,
   PerfilUsuario,
+  TipoEventoDenuncia,
   TipoModuloPesquisa,
 } from "@prisma/client";
 import { redirect } from "next/navigation";
@@ -537,6 +541,111 @@ export default async function DashboardPage({
       }),
     ]);
 
+  /*
+   * Feed operacional do Canal de Denúncias.
+   *
+   * Mostra:
+   * - novas denúncias recebidas;
+   * - tratativas registradas pelo cliente/comitê do cliente.
+   *
+   * O filtro de cliente do dashboard também é respeitado.
+   */
+  const [
+    novasDenunciasNotificacao,
+    tratativasClienteNotificacao,
+  ] = await Promise.all([
+    prisma.denuncia.findMany({
+      where: whereDenuncia,
+      orderBy: {
+        criadoEm: "desc",
+      },
+      take: 10,
+      select: {
+        id: true,
+        protocolo: true,
+        criadoEm: true,
+        cliente: {
+          select: {
+            nome: true,
+            empresa: true,
+          },
+        },
+      },
+    }),
+
+    prisma.historicoDenuncia.findMany({
+      where: {
+        tipo:
+          TipoEventoDenuncia.TRATATIVA_CRIADA,
+        origemAtor: {
+          in: [
+            OrigemAtorDenuncia.CLIENTE,
+            OrigemAtorDenuncia.COMITE_CLIENTE,
+          ],
+        },
+        ...(temFiltroCliente
+          ? {
+              denuncia: {
+                clienteId,
+              },
+            }
+          : {}),
+      },
+      orderBy: {
+        criadoEm: "desc",
+      },
+      take: 10,
+      select: {
+        id: true,
+        atorNome: true,
+        criadoEm: true,
+        denuncia: {
+          select: {
+            id: true,
+            protocolo: true,
+            cliente: {
+              select: {
+                nome: true,
+                empresa: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  const notificacoesDenunciasMundial:
+    NotificacaoDenunciaMundial[] = [
+      ...novasDenunciasNotificacao.map(
+        denuncia => ({
+          id: `nova-${denuncia.id}`,
+          tipo: "NOVA_DENUNCIA" as const,
+          titulo: "Nova denúncia recebida",
+          descricao: `${denuncia.cliente.empresa || denuncia.cliente.nome} registrou o protocolo ${denuncia.protocolo}.`,
+          data: denuncia.criadoEm,
+          href: `/denuncias/${denuncia.id}`,
+        })
+      ),
+
+      ...tratativasClienteNotificacao.map(
+        evento => ({
+          id: `tratativa-${evento.id}`,
+          tipo: "TRATATIVA_CLIENTE" as const,
+          titulo: "Tratativa registrada pelo cliente",
+          descricao: `${evento.atorNome || "Responsável do cliente"} registrou uma tratativa no protocolo ${evento.denuncia.protocolo} · ${evento.denuncia.cliente.empresa || evento.denuncia.cliente.nome}.`,
+          data: evento.criadoEm,
+          href: `/denuncias/${evento.denuncia.id}`,
+        })
+      ),
+    ]
+      .sort(
+        (a, b) =>
+          new Date(b.data).getTime() -
+          new Date(a.data).getTime()
+      )
+      .slice(0, 10);
+
   const clienteSelecionado =
     clienteId ===
     "todos"
@@ -554,29 +663,31 @@ export default async function DashboardPage({
         "Cliente selecionado";
 
   return (
-    <main className="min-h-screen bg-slate-100">
+    <main className="min-h-screen min-w-0 overflow-x-hidden bg-slate-100">
       <header className="bg-white px-4 py-6 shadow-sm sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
-            Dashboard
-          </p>
+        <div className="mx-auto flex w-full max-w-7xl min-w-0 items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600">
+              Dashboard
+            </p>
 
-          <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">
-                Painel Mundial
-              </h1>
+            <h1 className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">
+              Painel Mundial
+            </h1>
 
-              <p className="mt-1 max-w-3xl text-sm text-slate-500 sm:text-base">
-                Visão executiva de Pesquisa de Clima, Avaliação de Desempenho,
-                Gestão de Riscos Psicossociais, planos de ação e Canal de Denúncias.
-              </p>
-            </div>
+            <p className="mt-1 max-w-3xl text-sm text-slate-500 sm:text-base">
+              Visão executiva de Pesquisa de Clima, Avaliação de Desempenho,
+              Gestão de Riscos Psicossociais, planos de ação e Canal de Denúncias.
+            </p>
           </div>
+
+          <SinoNotificacoesMundial
+            notificacoes={notificacoesDenunciasMundial}
+          />
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 lg:px-8">
+      <section className="mx-auto w-full max-w-7xl min-w-0 space-y-8 px-4 py-6 sm:px-6 lg:px-8">
         {/* =================================================
          * VISÃO GERAL
          * =============================================== */}
@@ -950,6 +1061,166 @@ export default async function DashboardPage({
 /* =========================================================
  * COMPONENTES
  * ======================================================= */
+
+type NotificacaoDenunciaMundial = {
+  id: string;
+  tipo:
+    | "NOVA_DENUNCIA"
+    | "TRATATIVA_CLIENTE";
+  titulo: string;
+  descricao: string;
+  data: Date | string;
+  href: string;
+};
+
+function SinoNotificacoesMundial({
+  notificacoes,
+}: {
+  notificacoes: NotificacaoDenunciaMundial[];
+}) {
+  const quantidade =
+    notificacoes.length;
+
+  return (
+    <details className="group relative shrink-0">
+      <summary
+        aria-label={`Notificações do Canal de Denúncias: ${quantidade}`}
+        className="relative flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 [&::-webkit-details-marker]:hidden"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+
+        {quantidade > 0 && (
+          <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white">
+            {quantidade > 9
+              ? "9+"
+              : quantidade}
+          </span>
+        )}
+      </summary>
+
+      <div className="absolute right-0 top-full z-50 mt-3 w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="border-b border-slate-100 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="font-black text-slate-900">
+                Notificações
+              </h2>
+
+              <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                Canal de Denúncias
+              </p>
+            </div>
+
+            <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
+              {quantidade}
+            </span>
+          </div>
+        </div>
+
+        {notificacoes.length === 0 ? (
+          <div className="px-4 py-6 text-sm text-slate-500">
+            Nenhuma notificação recente.
+          </div>
+        ) : (
+          <div className="max-h-[min(70vh,32rem)] overflow-y-auto overscroll-contain">
+            {notificacoes.map(notificacao => {
+              const novaDenuncia =
+                notificacao.tipo === "NOVA_DENUNCIA";
+
+              return (
+                <Link
+                  key={notificacao.id}
+                  href={notificacao.href}
+                  className="block border-b border-slate-100 px-4 py-3 transition last:border-b-0 hover:bg-slate-50"
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span
+                      className={`mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${
+                        novaDenuncia
+                          ? "bg-purple-500"
+                          : "bg-emerald-500"
+                      }`}
+                    />
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            novaDenuncia
+                              ? "bg-purple-100 text-purple-700"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {novaDenuncia
+                            ? "Nova denúncia"
+                            : "Nova tratativa"}
+                        </span>
+
+                        <span className="text-[11px] font-semibold text-slate-400">
+                          {formatarDataHoraNotificacao(
+                            notificacao.data
+                          )}
+                        </span>
+                      </div>
+
+                      <p className="mt-1.5 break-words text-sm font-bold text-slate-900">
+                        {notificacao.titulo}
+                      </p>
+
+                      <p className="mt-1 break-words text-xs leading-5 text-slate-600">
+                        {notificacao.descricao}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
+          <Link
+            href="/denuncias"
+            className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700"
+          >
+            Ver todas as denúncias
+          </Link>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function formatarDataHoraNotificacao(
+  valor: Date | string
+) {
+  const data = new Date(valor);
+
+  if (Number.isNaN(data.getTime())) {
+    return "Data indisponível";
+  }
+
+  return new Intl.DateTimeFormat(
+    "pt-BR",
+    {
+      dateStyle: "short",
+      timeStyle: "short",
+      timeZone: "America/Sao_Paulo",
+    }
+  ).format(data);
+}
 
 function CabecalhoBloco({
   titulo,
