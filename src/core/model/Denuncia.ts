@@ -47,6 +47,7 @@ export type LiberarTratativaInput = {
 export type TratativaDenuncia = {
   id: string;
   denunciaId?: string;
+
   titulo: string;
   descricao: string;
 
@@ -64,8 +65,10 @@ export type TratativaDenuncia = {
 export type RespostaPerguntaCanalDenuncia = {
   id: string;
   perguntaId?: string | null;
+
   perguntaEnunciado: string;
   perguntaTipo: TipoPerguntaCanalDenuncia;
+
   resposta: unknown;
   complemento?: string | null;
 
@@ -93,6 +96,7 @@ export type EditarTratativaInput = {
 export type HistoricoDenuncia = {
   id: string;
   tipo: TipoEventoDenuncia;
+
   titulo: string;
   descricao?: string | null;
 
@@ -103,6 +107,7 @@ export type HistoricoDenuncia = {
   atorNome?: string | null;
 
   visivelPublicamente: boolean;
+
   criadoEm: Date | string;
 };
 
@@ -116,6 +121,7 @@ export type AnexoDenunciaInput = {
   nomeOriginal: string;
   tipoMime: string;
   tamanho: number;
+
   tipo: TipoAnexoDenuncia;
   visibilidade: VisibilidadeAnexoDenuncia;
 };
@@ -134,6 +140,11 @@ export type DenunciaPublica = {
   descricao: string;
   categoriaId: string;
 
+  /*
+   * Mantido opcional no model para compatibilidade
+   * com denúncias antigas. As telas novas validam
+   * este campo como obrigatório.
+   */
   pessoaOuSetorDenunciado?: string | null;
 
   localOcorrido?: string | null;
@@ -273,6 +284,7 @@ export type DenunciaResumoMaster = {
   id: string;
   clienteId: string;
   protocolo: string;
+
   status: StatusDenuncia;
 
   criadoEm: Date | string;
@@ -319,10 +331,6 @@ export type DenunciaDetalhada =
       | string
       | null;
 
-    /*
-     * Esses campos são opcionais enquanto algumas
-     * consultas antigas ainda não os projetarem.
-     */
     prazoTratativaEm?:
       | Date
       | string
@@ -343,6 +351,7 @@ export type DenunciaDetalhada =
 
 export type ConsultaDenunciaPublica = {
   protocolo: string;
+
   status: StatusDenuncia;
 
   respostaPublica:
@@ -354,10 +363,17 @@ export type ConsultaDenunciaPublica = {
 
   historico: Array<{
     id: string;
+
     titulo: string;
     descricao?: string | null;
-    statusNovo?: StatusDenuncia | null;
-    criadoEm: Date | string;
+
+    statusNovo?:
+      | StatusDenuncia
+      | null;
+
+    criadoEm:
+      | Date
+      | string;
   }>;
 };
 
@@ -386,6 +402,51 @@ export type FiltroRelatorioDenuncias = {
   clienteId?: string;
 };
 
+/*
+ * Histórico enxuto utilizado especificamente
+ * no relatório gerencial.
+ *
+ * Não inclui ator, origem do ator ou flag de visibilidade
+ * porque esses campos não são necessários na impressão.
+ */
+export type HistoricoRelatorioDenuncia = {
+  id: string;
+
+  tipo: TipoEventoDenuncia;
+
+  titulo: string;
+  descricao?: string | null;
+
+  statusAnterior?:
+    | StatusDenuncia
+    | null;
+
+  statusNovo?:
+    | StatusDenuncia
+    | null;
+
+  criadoEm:
+    | Date
+    | string;
+};
+
+/*
+ * Estrutura específica para o relatório.
+ *
+ * Parte do resumo normal da denúncia e acrescenta
+ * somente os dados necessários para histórico
+ * e conclusão final.
+ */
+export type DenunciaRelatorio =
+  DenunciaResumo & {
+    respostaPublica:
+      | string
+      | null;
+
+    historico:
+      HistoricoRelatorioDenuncia[];
+  };
+
 export type DadosRelatorioDenuncias = {
   contexto:
     | "mundial"
@@ -405,5 +466,11 @@ export type DadosRelatorioDenuncias = {
     | Date
     | string;
 
-  denuncias: DenunciaResumo[];
+  /*
+   * IMPORTANTE:
+   * O relatório precisa de respostaPublica + historico.
+   * Por isso não pode usar DenunciaResumo[] aqui.
+   */
+  denuncias:
+    DenunciaRelatorio[];
 };

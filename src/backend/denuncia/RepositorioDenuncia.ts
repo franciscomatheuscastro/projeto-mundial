@@ -15,6 +15,7 @@ import {
   Denuncia,
   DenunciaDetalhada,
   DenunciaPublica,
+  DenunciaRelatorio,
   DenunciaResumo,
   EditarTratativaInput,
   LiberarTratativaInput,
@@ -2133,7 +2134,7 @@ export default class RepositorioDenuncia {
       clienteId?: string;
       colaboradorId?: string;
     }
-  ): Promise<DenunciaResumo[]> {
+  ): Promise<DenunciaRelatorio[]> {
     let inicio: Date | undefined;
     let fim: Date | undefined;
 
@@ -2186,13 +2187,15 @@ export default class RepositorioDenuncia {
                 criadoEm: {
                   ...(inicio
                     ? {
-                        gte: inicio,
+                        gte:
+                          inicio,
                       }
                     : {}),
 
                   ...(fim
                     ? {
-                        lte: fim,
+                        lte:
+                          fim,
                       }
                     : {}),
                 },
@@ -2201,10 +2204,14 @@ export default class RepositorioDenuncia {
 
           ...(filtro.colaboradorId
             ? {
-                tratativaLiberada: true,
+                tratativaLiberada:
+                  true,
+
                 OR: [
                   {
-                    destinoTratativa: "COLABORADOR",
+                    destinoTratativa:
+                      "COLABORADOR",
+
                     colaboradorResponsavelId:
                       filtro.colaboradorId,
                   },
@@ -2223,29 +2230,122 @@ export default class RepositorioDenuncia {
 
         orderBy: [
           {
-            gravidade: "desc",
+            gravidade:
+              "desc",
           },
           {
-            criadoEm: "desc",
+            criadoEm:
+              "desc",
           },
         ],
 
         include: {
-          cliente: true,
-          categoria: true,
-          colaboradorResponsavel: true,
+          cliente:
+            true,
+
+          categoria:
+            true,
+
+          colaboradorResponsavel:
+            true,
+
+          visualizadores: {
+            include: {
+              colaborador:
+                true,
+            },
+          },
+
+          /*
+           * O relatório exibe somente o histórico
+           * disponibilizado no acompanhamento da denúncia.
+           *
+           * Tratativas internas, mudanças internas de
+           * classificação e demais eventos restritos
+           * continuam fora do relatório.
+           */
+          historico: {
+            where: {
+              visivelPublicamente:
+                true,
+            },
+
+            orderBy: {
+              criadoEm:
+                "asc",
+            },
+
+            select: {
+              id:
+                true,
+
+              tipo:
+                true,
+
+              titulo:
+                true,
+
+              descricao:
+                true,
+
+              statusAnterior:
+                true,
+
+              statusNovo:
+                true,
+
+              criadoEm:
+                true,
+            },
+          },
 
           _count: {
             select: {
-              anexos: true,
+              anexos:
+                true,
             },
           },
         },
       });
 
-    return denuncias.map(montarResumo);
-  }
+    return denuncias.map(
+      (denuncia): DenunciaRelatorio => ({
+        ...montarResumo(
+          denuncia
+        ),
 
+        respostaPublica:
+          denuncia.respostaPublica ||
+          null,
+
+        historico:
+          denuncia.historico.map(
+            evento => ({
+              id:
+                evento.id,
+
+              tipo:
+                evento.tipo,
+
+              titulo:
+                evento.titulo,
+
+              descricao:
+                evento.descricao,
+
+              statusAnterior:
+                evento.statusAnterior,
+
+              statusNovo:
+                evento.statusNovo,
+
+              criadoEm:
+                evento.criadoEm,
+            })
+          ),
+      })
+    );
+  }
 
   static async obterPorClienteMaster(
     clienteId: string

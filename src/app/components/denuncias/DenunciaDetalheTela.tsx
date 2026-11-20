@@ -319,7 +319,7 @@ export default function DenunciaDetalheTela({
           ? "Direcionamento atualizado com sucesso."
           : destino === "MUNDIAL"
             ? "Tratativa liberada exclusivamente para a Mundial."
-            : "Tratativa direcionada exclusivamente ao colaborador."
+            : "Tratativa direcionada exclusivamente ao Comitê de Ética do cliente."
       );
     } catch (error) {
       setErroLocal(
@@ -725,7 +725,7 @@ export default function DenunciaDetalheTela({
               <p className="mt-1 text-sm leading-6 text-amber-800">
                 {denunciaSelecionada.tratativaLiberada
                   ? "Altere o responsável pela tratativa e os acessos somente leitura enquanto ainda não houver tratativas registradas."
-                  : "Defina o responsável exclusivo pelas tratativas e, opcionalmente, colaboradores adicionais com acesso somente para visualização."}
+                  : "Defina o integrante responsável do Comitê de Ética do cliente e, opcionalmente, colaboradores adicionais com acesso somente para visualização."}
               </p>
 
               <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -741,19 +741,19 @@ export default function DenunciaDetalheTela({
                 >
                   <option value="MUNDIAL">Mundial</option>
                   <option value="COLABORADOR">
-                    Colaborador do cliente
+                    Comitê de Ética do cliente
                   </option>
                 </CampoSelect>
 
                 {destino === "COLABORADOR" && (
                   <CampoSelect
-                    label="Colaborador responsável"
+                    label="Integrante responsável"
                     value={colaboradorId}
                     disabled={processando}
                     onChange={setColaboradorId}
                   >
                     <option value="">
-                      Selecione o colaborador
+                      Selecione o integrante responsável
                     </option>
                     {colaboradoresDisponiveis.map(
                       (colaborador) => (

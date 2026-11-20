@@ -209,6 +209,19 @@ export default function CanalDenunciasPublicoTela({
     const form = event.currentTarget;
     const formData = new FormData(form);
 
+    const pessoaOuSetorDenunciado =
+      String(
+        formData.get("pessoaOuSetorDenunciado") || ""
+      ).trim();
+
+    if (!pessoaOuSetorDenunciado) {
+      setErroLocal(
+        "Informe a pessoa e o setor do denunciado."
+      );
+
+      return;
+    }
+
     const dataOcorridoNormalizada =
       naoLembraData
         ? ""
@@ -263,10 +276,7 @@ export default function CanalDenunciasPublicoTela({
 
         categoriaId,
 
-        pessoaOuSetorDenunciado:
-          String(
-            formData.get("pessoaOuSetorDenunciado") || ""
-          ).trim() || null,
+        pessoaOuSetorDenunciado,
 
         localOcorrido:
           String(formData.get("localOcorrido") || "").trim() || null,
@@ -626,12 +636,13 @@ export default function CanalDenunciasPublicoTela({
               <div className="md:col-span-2">
                 <Campo
                   name="pessoaOuSetorDenunciado"
-                  label="Pessoa ou setor denunciado"
-                  placeholder="Ex.: João da Silva, Setor Financeiro, Gestão..."
+                  label="Pessoa e setor do denunciado"
+                  placeholder="Ex.: João da Silva — Setor Financeiro"
+                  required
                   disabled={enviando}
                 />
                 <p className="mt-2 text-xs leading-5 text-slate-500">
-                  Se souber, informe o nome da pessoa envolvida ou o setor relacionado ao fato.
+                  Informe a pessoa denunciada e o setor relacionado ao fato.
                 </p>
               </div>
 

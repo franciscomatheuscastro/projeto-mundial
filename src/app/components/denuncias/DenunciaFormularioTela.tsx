@@ -114,6 +114,19 @@ export default function DenunciaFormularioTela({
     const formulario = event.currentTarget;
     const form = new FormData(formulario);
 
+    const pessoaOuSetorDenunciado =
+      String(
+        form.get("pessoaOuSetorDenunciado") || ""
+      ).trim();
+
+    if (!pessoaOuSetorDenunciado) {
+      setErroLocal(
+        "Informe a pessoa e o setor do denunciado."
+      );
+
+      return;
+    }
+
     setErroLocal(null);
 
     const denuncia: Denuncia = {
@@ -131,10 +144,7 @@ export default function DenunciaFormularioTela({
 
       categoriaId,
 
-      pessoaOuSetorDenunciado:
-        String(
-          form.get("pessoaOuSetorDenunciado") || ""
-        ).trim() || null,
+      pessoaOuSetorDenunciado,
 
       localOcorrido:
         String(
@@ -335,15 +345,15 @@ export default function DenunciaFormularioTela({
 
             <div className="lg:col-span-2">
               <Campo
-                label="Pessoa ou setor denunciado"
+                label="Pessoa e setor do denunciado"
                 name="pessoaOuSetorDenunciado"
+                required
                 disabled={enviando}
-                placeholder="Ex.: João da Silva, Setor Financeiro, Gestão..."
+                placeholder="Ex.: João da Silva — Setor Financeiro"
               />
 
               <p className="mt-2 text-xs leading-5 text-slate-500">
-                Informe, se souber, o nome da pessoa envolvida ou o setor
-                relacionado ao fato.
+                Informe a pessoa denunciada e o setor relacionado ao fato.
               </p>
             </div>
 
