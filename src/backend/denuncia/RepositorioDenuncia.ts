@@ -1415,295 +1415,872 @@ export default class RepositorioDenuncia {
     }
 
     if (!dados.denunciaId?.trim()) {
-      throw new Error("Denúncia não encontrada.");
+      throw new Error(
+        "Denúncia não encontrada."
+      );
     }
 
     if (
       dados.destino !== "MUNDIAL" &&
       dados.destino !== "COLABORADOR"
     ) {
-      throw new Error("Destino da tratativa inválido.");
-    }
-
-    const denuncia = await prisma.denuncia.findUnique({
-      where: { id: dados.denunciaId },
-      select: {
-        id: true,
-        clienteId: true,
-        tratativaLiberada: true,
-        destinoTratativa: true,
-        colaboradorResponsavelId: true,
-        status: true,
-        visualizadores: {
-          select: {
-            colaboradorId: true,
-          },
-        },
-        tratativas: {
-          select: { id: true },
-          take: 1,
-        },
-      },
-    });
-
-    if (!denuncia) {
-      throw new Error("Denúncia não encontrada.");
-    }
-
-    if (denuncia.tratativas.length > 0) {
       throw new Error(
-        "Não é possível alterar o direcionamento porque já existem tratativas registradas."
+        "Destino da tratativa inválido."
       );
     }
 
-    let colaboradorId: string | null = null;
-    let colaboradorNome: string | null = null;
-    let colaboradorEmail: string | null = null;
+    const denuncia =
+      await prisma.denuncia.findUnique({
+        where: {
+          id:
+            dados.denunciaId,
+        },
 
-    if (dados.destino === "COLABORADOR") {
-      if (!dados.colaboradorId?.trim()) {
+        select: {
+          id:
+            true,
+
+          clienteId:
+            true,
+
+          tratativaLiberada:
+            true,
+
+          destinoTratativa:
+            true,
+
+          colaboradorResponsavelId:
+            true,
+
+          status:
+            true,
+
+          prazoTratativaEm:
+            true,
+
+          visualizadores: {
+            select: {
+              colaboradorId:
+                true,
+            },
+          },
+
+          tratativas: {
+            select: {
+              id:
+                true,
+            },
+
+            take:
+              1,
+          },
+        },
+      });
+
+    if (!denuncia) {
+      throw new Error(
+        "Denúncia não encontrada."
+      );
+    }
+
+    if (
+      denuncia.status ===
+        "CONCLUIDA" ||
+      denuncia.status ===
+        "ARQUIVADA"
+    ) {
+      throw new Error(
+        "Não é possível adicionar responsáveis enquanto a denúncia estiver concluída ou arquivada."
+      );
+    }
+
+    const possuiTratativas =
+      denuncia.tratativas.length >
+      0;
+
+    /*
+     * Depois que já existe uma tratativa, a Mundial
+     * pode adicionar novos co-responsáveis, mas não
+     * pode trocar o destino nem o integrante principal.
+     * Isso preserva a rastreabilidade do caso.
+     */
+    if (
+      possuiTratativas
+    ) {
+      if (
+        !denuncia.tratativaLiberada ||
+        denuncia.destinoTratativa !==
+          "COLABORADOR"
+      ) {
         throw new Error(
-          "Selecione o colaborador responsável pela tratativa."
+          "Esta denúncia não possui um direcionamento ao Comitê de Ética do cliente que possa receber integrantes adicionais."
         );
       }
 
-      const colaborador =
+      if (
+        dados.destino !==
+        "COLABORADOR"
+      ) {
+        throw new Error(
+          "Depois que existem tratativas, o destino não pode mais ser alterado."
+        );
+      }
+
+      if (
+        !denuncia.colaboradorResponsavelId ||
+        dados.colaboradorId?.trim() !==
+          denuncia.colaboradorResponsavelId
+      ) {
+        throw new Error(
+          "Depois que existem tratativas, o integrante principal não pode mais ser alterado."
+        );
+      }
+    }
+
+    let colaboradorPrincipal:
+      | {
+          id: string;
+          nome: string;
+          email: string | null;
+          usuario: {
+            email: string | null;
+          } | null;
+        }
+      | null =
+      null;
+
+    if (
+      dados.destino ===
+      "COLABORADOR"
+    ) {
+      if (
+        !dados.colaboradorId?.trim()
+      ) {
+        throw new Error(
+          "Selecione o integrante principal responsável pela tratativa."
+        );
+      }
+
+      colaboradorPrincipal =
         await prisma.colaboradorCliente.findFirst({
           where: {
-            id: dados.colaboradorId,
-            clienteId: denuncia.clienteId,
-            ativo: true,
-            podeTratarDenuncias: true,
-            podeVerDenuncias: true,
+            id:
+              dados.colaboradorId,
+
+            clienteId:
+              denuncia.clienteId,
+
+            ativo:
+              true,
+
+            podeTratarDenuncias:
+              true,
+
+            podeVerDenuncias:
+              true,
           },
+
           select: {
-            id: true,
-            nome: true,
-            email: true,
+            id:
+              true,
+
+            nome:
+              true,
+
+            email:
+              true,
+
             usuario: {
               select: {
-                email: true,
+                email:
+                  true,
               },
             },
           },
         });
 
-      if (!colaborador) {
+      if (
+        !colaboradorPrincipal
+      ) {
         throw new Error(
-          "O colaborador selecionado não pertence ao cliente ou não possui permissão para tratar denúncias."
+          "O integrante principal selecionado não pertence ao cliente ou não possui permissão para tratar denúncias."
         );
       }
 
-      colaboradorId = colaborador.id;
-      colaboradorNome = colaborador.nome;
-      colaboradorEmail = obterEmailResponsavel(colaborador);
-
-      if (!colaboradorEmail) {
+      if (
+        !obterEmailResponsavel(
+          colaboradorPrincipal
+        )
+      ) {
         throw new Error(
-          "O colaborador responsável precisa possuir um e-mail cadastrado para receber o direcionamento da tratativa."
+          "O integrante principal precisa possuir um e-mail cadastrado."
         );
       }
     }
 
-    const visualizadorIdsRecebidos = Array.from(
-      new Set(
-        (dados.visualizadorIds || [])
-          .map((id) => id?.trim())
-          .filter((id): id is string => Boolean(id))
-      )
-    ).filter((id) => id !== colaboradorId);
+    const idsAdicionaisRecebidos =
+      dados.destino ===
+      "COLABORADOR"
+        ? Array.from(
+            new Set(
+              (
+                dados.visualizadorIds ||
+                []
+              )
+                .map(
+                  id =>
+                    id?.trim()
+                )
+                .filter(
+                  (
+                    id
+                  ): id is string =>
+                    Boolean(
+                      id
+                    )
+                )
+            )
+          ).filter(
+            id =>
+              id !==
+              colaboradorPrincipal?.id
+          )
+        : [];
 
-    const visualizadores =
-      visualizadorIdsRecebidos.length > 0
+    const idsAdicionaisAtuais =
+      denuncia.visualizadores.map(
+        item =>
+          item.colaboradorId
+      );
+
+    /*
+     * Quando já há tratativas, os responsáveis que
+     * já participaram do fluxo não podem ser removidos.
+     * A operação passa a ser exclusivamente aditiva.
+     */
+    if (
+      possuiTratativas
+    ) {
+      const idsRecebidosSet =
+        new Set(
+          idsAdicionaisRecebidos
+        );
+
+      const tentouRemover =
+        idsAdicionaisAtuais.some(
+          id =>
+            !idsRecebidosSet.has(
+              id
+            )
+        );
+
+      if (
+        tentouRemover
+      ) {
+        throw new Error(
+          "Depois que existem tratativas, integrantes já autorizados não podem ser removidos. É permitido apenas adicionar novos integrantes."
+        );
+      }
+    }
+
+    const colaboradoresAdicionais =
+      idsAdicionaisRecebidos.length >
+      0
         ? await prisma.colaboradorCliente.findMany({
             where: {
               id: {
-                in: visualizadorIdsRecebidos,
+                in:
+                  idsAdicionaisRecebidos,
               },
-              clienteId: denuncia.clienteId,
-              ativo: true,
-              podeVerDenuncias: true,
+
+              clienteId:
+                denuncia.clienteId,
+
+              ativo:
+                true,
+
+              podeVerDenuncias:
+                true,
+
+              podeTratarDenuncias:
+                true,
             },
+
             select: {
-              id: true,
-              nome: true,
+              id:
+                true,
+
+              nome:
+                true,
+
+              email:
+                true,
+
+              usuario: {
+                select: {
+                  email:
+                    true,
+                },
+              },
             },
           })
         : [];
 
-    if (visualizadores.length !== visualizadorIdsRecebidos.length) {
+    if (
+      colaboradoresAdicionais.length !==
+      idsAdicionaisRecebidos.length
+    ) {
       throw new Error(
-        "Um ou mais colaboradores selecionados para visualização são inválidos ou não possuem permissão."
+        "Um ou mais integrantes adicionais são inválidos ou não possuem permissão para tratar denúncias."
       );
     }
 
-    const visualizadorIdsAtuais = denuncia.visualizadores
-      .map((item) => item.colaboradorId)
-      .sort();
+    for (
+      const colaborador of
+      colaboradoresAdicionais
+    ) {
+      if (
+        !obterEmailResponsavel(
+          colaborador
+        )
+      ) {
+        throw new Error(
+          `O integrante ${colaborador.nome} precisa possuir um e-mail cadastrado.`
+        );
+      }
+    }
 
-    const visualizadorIdsNovos = visualizadores
-      .map((item) => item.id)
-      .sort();
-
-    const visualizadoresAlterados =
-      visualizadorIdsAtuais.length !== visualizadorIdsNovos.length ||
-      visualizadorIdsAtuais.some(
-        (id, indice) => id !== visualizadorIdsNovos[indice]
+    const idsAdicionaisAtuaisSet =
+      new Set(
+        idsAdicionaisAtuais
       );
+
+    const novosColaboradoresAdicionais =
+      colaboradoresAdicionais.filter(
+        colaborador =>
+          !idsAdicionaisAtuaisSet.has(
+            colaborador.id
+          )
+      );
+
+    /*
+     * Fluxo posterior:
+     * se já existe tratativa, não reescrevemos
+     * direcionamento, prazo ou responsáveis anteriores.
+     * Apenas acrescentamos novos co-responsáveis.
+     */
+    if (
+      possuiTratativas
+    ) {
+      if (
+        novosColaboradoresAdicionais.length ===
+        0
+      ) {
+        return this.obterPorId(
+          denuncia.id
+        );
+      }
+
+      await prisma.$transaction(
+        async tx => {
+          await tx.denunciaVisualizador.createMany({
+            data:
+              novosColaboradoresAdicionais.map(
+                colaborador => ({
+                  denunciaId:
+                    denuncia.id,
+
+                  colaboradorId:
+                    colaborador.id,
+                })
+              ),
+
+            skipDuplicates:
+              true,
+          });
+
+          await tx.historicoDenuncia.create({
+            data: {
+              denunciaId:
+                denuncia.id,
+
+              tipo:
+                "RESPONSAVEL_ATRIBUIDO",
+
+              titulo:
+                "Novos integrantes autorizados para a tratativa",
+
+              descricao:
+                `A Mundial adicionou os seguintes integrantes para realizar novas tratativas: ${novosColaboradoresAdicionais
+                  .map(
+                    colaborador =>
+                      colaborador.nome
+                  )
+                  .join(
+                    ", "
+                  )}.`,
+
+              statusNovo:
+                denuncia.status,
+
+              origemAtor:
+                ator.origem,
+
+              atorId:
+                ator.usuarioId,
+
+              atorNome:
+                ator.nome,
+
+              visivelPublicamente:
+                false,
+            },
+          });
+        }
+      );
+
+      /*
+       * A inclusão posterior não reinicia o SLA global
+       * de 5 dias úteis, pois já existe uma tratativa.
+       * O e-mail é enviado sem novo prazo.
+       */
+      try {
+        const dadosEmail =
+          await prisma.denuncia.findUnique({
+            where: {
+              id:
+                denuncia.id,
+            },
+
+            select: {
+              id:
+                true,
+
+              protocolo:
+                true,
+
+              cliente: {
+                select: {
+                  nome:
+                    true,
+
+                  empresa:
+                    true,
+                },
+              },
+            },
+          });
+
+        if (
+          dadosEmail
+        ) {
+          for (
+            const responsavel of
+            novosColaboradoresAdicionais
+          ) {
+            const responsavelEmail =
+              obterEmailResponsavel(
+                responsavel
+              );
+
+            if (
+              !responsavelEmail
+            ) {
+              continue;
+            }
+
+            try {
+              await enviarEmailDirecionamentoTratativaCliente({
+                denunciaId:
+                  dadosEmail.id,
+
+                protocolo:
+                  dadosEmail.protocolo,
+
+                clienteNome:
+                  dadosEmail.cliente.empresa ||
+                  dadosEmail.cliente.nome,
+
+                responsavelNome:
+                  responsavel.nome,
+
+                responsavelEmail,
+
+                prazoTratativaEm:
+                  null,
+              });
+            } catch (
+              error
+            ) {
+              console.error(
+                `Erro ao enviar e-mail de nova atribuição da denúncia ${dadosEmail.protocolo} para ${responsavel.nome}:`,
+                error
+              );
+            }
+          }
+        }
+      } catch (
+        error
+      ) {
+        console.error(
+          "Erro ao preparar e-mails dos novos responsáveis da tratativa:",
+          error
+        );
+      }
+
+      return this.obterPorId(
+        denuncia.id
+      );
+    }
+
+    /*
+     * Primeira liberação / edição antes de existir tratativa:
+     * mantém o comportamento completo de configuração.
+     */
+    const colaboradorPrincipalId =
+      colaboradorPrincipal?.id ||
+      null;
+
+    const idsAdicionaisNovos =
+      colaboradoresAdicionais
+        .map(
+          colaborador =>
+            colaborador.id
+        )
+        .sort();
+
+    const idsAtuaisOrdenados =
+      [...idsAdicionaisAtuais]
+        .sort();
+
+    const adicionaisAlterados =
+      idsAtuaisOrdenados.length !==
+        idsAdicionaisNovos.length ||
+      idsAtuaisOrdenados.some(
+        (
+          id,
+          indice
+        ) =>
+          id !==
+          idsAdicionaisNovos[
+            indice
+          ]
+      );
+
+    const primeiraLiberacao =
+      !denuncia.tratativaLiberada;
 
     const direcionamentoAlterado =
       denuncia.tratativaLiberada &&
       (
-        denuncia.destinoTratativa !== dados.destino ||
-        denuncia.colaboradorResponsavelId !== colaboradorId ||
-        visualizadoresAlterados
+        denuncia.destinoTratativa !==
+          dados.destino ||
+        denuncia.colaboradorResponsavelId !==
+          colaboradorPrincipalId ||
+        adicionaisAlterados
       );
 
-    const primeiraLiberacao = !denuncia.tratativaLiberada;
-
-    if (!primeiraLiberacao && !direcionamentoAlterado) {
-      return this.obterPorId(denuncia.id);
+    if (
+      !primeiraLiberacao &&
+      !direcionamentoAlterado
+    ) {
+      return this.obterPorId(
+        denuncia.id
+      );
     }
 
-    const novoStatus: StatusDenuncia =
-      denuncia.status === "CONCLUIDA" ||
-      denuncia.status === "ARQUIVADA"
-        ? denuncia.status
-        : "EM_TRATATIVA";
+    const novoStatus:
+      StatusDenuncia =
+      "EM_TRATATIVA";
 
-    const momentoDirecionamento = new Date();
+    const momentoDirecionamento =
+      new Date();
+
     const prazoTratativaEm =
-      dados.destino === "COLABORADOR"
+      dados.destino ===
+      "COLABORADOR"
         ? adicionarDiasUteisTratativa(
             momentoDirecionamento,
             PRAZO_TRATATIVA_DIAS_UTEIS
           )
         : null;
 
-    await prisma.$transaction(async (tx) => {
-      await tx.denuncia.update({
-        where: { id: denuncia.id },
-        data: {
-          tratativaLiberada: true,
-          destinoTratativa: dados.destino,
-          colaboradorResponsavelId: colaboradorId,
-          tratativaLiberadaEm: momentoDirecionamento,
-          tratativaLiberadaPorUsuarioId:
-            ator.usuarioId || null,
-          prazoTratativaEm,
-          alertaPrazoTratativaEnviadoEm: null,
-          status: novoStatus,
-        },
-      });
+    await prisma.$transaction(
+      async tx => {
+        await tx.denuncia.update({
+          where: {
+            id:
+              denuncia.id,
+          },
 
-      await tx.denunciaVisualizador.deleteMany({
-        where: {
-          denunciaId: denuncia.id,
-        },
-      });
+          data: {
+            tratativaLiberada:
+              true,
 
-      if (visualizadores.length > 0) {
-        await tx.denunciaVisualizador.createMany({
-          data: visualizadores.map((colaborador) => ({
-            denunciaId: denuncia.id,
-            colaboradorId: colaborador.id,
-          })),
+            destinoTratativa:
+              dados.destino,
+
+            colaboradorResponsavelId:
+              colaboradorPrincipalId,
+
+            tratativaLiberadaEm:
+              momentoDirecionamento,
+
+            tratativaLiberadaPorUsuarioId:
+              ator.usuarioId ||
+              null,
+
+            prazoTratativaEm,
+
+            alertaPrazoTratativaEnviadoEm:
+              null,
+
+            status:
+              novoStatus,
+          },
         });
-      }
 
-      const nomesVisualizadores = visualizadores
-        .map((colaborador) => colaborador.nome)
-        .join(", ");
+        await tx.denunciaVisualizador.deleteMany({
+          where: {
+            denunciaId:
+              denuncia.id,
+          },
+        });
 
-      await tx.historicoDenuncia.create({
-        data: {
-          denunciaId: denuncia.id,
-          tipo: "RESPONSAVEL_ATRIBUIDO",
-          titulo: primeiraLiberacao
-            ? dados.destino === "MUNDIAL"
-              ? "Tratativa liberada para a Mundial"
-              : "Tratativa direcionada para colaborador"
-            : "Direcionamento da denúncia atualizado",
-          descricao: [
-            dados.destino === "MUNDIAL"
-              ? "A Mundial será a responsável exclusiva pelas tratativas desta denúncia."
-              : `${colaboradorNome} será o responsável exclusivo pelas tratativas desta denúncia.`,
-            visualizadores.length > 0
-              ? `Visualização adicional liberada para: ${nomesVisualizadores}.`
-              : "Nenhum colaborador adicional recebeu acesso de visualização.",
-          ].join(" "),
-          statusNovo: novoStatus,
-          origemAtor: ator.origem,
-          atorId: ator.usuarioId,
-          atorNome: ator.nome,
-          visivelPublicamente: false,
-        },
-      });
+        if (
+          colaboradoresAdicionais.length >
+          0
+        ) {
+          await tx.denunciaVisualizador.createMany({
+            data:
+              colaboradoresAdicionais.map(
+                colaborador => ({
+                  denunciaId:
+                    denuncia.id,
 
-      if (denuncia.status !== novoStatus) {
-        const mensagemPublica =
-          obterMensagemPublicaStatus(novoStatus);
+                  colaboradorId:
+                    colaborador.id,
+                })
+              ),
+          });
+        }
+
+        const nomesAdicionais =
+          colaboradoresAdicionais
+            .map(
+              colaborador =>
+                colaborador.nome
+            )
+            .join(
+              ", "
+            );
 
         await tx.historicoDenuncia.create({
           data: {
-            denunciaId: denuncia.id,
-            tipo: "STATUS_ALTERADO",
-            titulo: mensagemPublica.titulo,
-            descricao: mensagemPublica.descricao,
-            statusAnterior: denuncia.status,
-            statusNovo: novoStatus,
-            origemAtor: ator.origem,
-            atorId: ator.usuarioId,
-            atorNome: ator.nome,
-            visivelPublicamente: true,
+            denunciaId:
+              denuncia.id,
+
+            tipo:
+              "RESPONSAVEL_ATRIBUIDO",
+
+            titulo:
+              primeiraLiberacao
+                ? dados.destino ===
+                  "MUNDIAL"
+                  ? "Tratativa liberada para a Mundial"
+                  : "Tratativa direcionada ao Comitê de Ética do cliente"
+                : "Responsáveis da tratativa atualizados",
+
+            descricao:
+              dados.destino ===
+              "MUNDIAL"
+                ? "A Mundial será a responsável pelas tratativas desta denúncia."
+                : [
+                    `${colaboradorPrincipal?.nome} será o integrante principal responsável pela tratativa.`,
+                    colaboradoresAdicionais.length >
+                    0
+                      ? `Também poderão registrar e editar tratativas: ${nomesAdicionais}.`
+                      : "Nenhum integrante adicional foi autorizado para a tratativa.",
+                  ].join(
+                    " "
+                  ),
+
+            statusNovo:
+              novoStatus,
+
+            origemAtor:
+              ator.origem,
+
+            atorId:
+              ator.usuarioId,
+
+            atorNome:
+              ator.nome,
+
+            visivelPublicamente:
+              false,
           },
         });
+
+        if (
+          denuncia.status !==
+          novoStatus
+        ) {
+          const mensagemPublica =
+            obterMensagemPublicaStatus(
+              novoStatus
+            );
+
+          await tx.historicoDenuncia.create({
+            data: {
+              denunciaId:
+                denuncia.id,
+
+              tipo:
+                "STATUS_ALTERADO",
+
+              titulo:
+                mensagemPublica.titulo,
+
+              descricao:
+                mensagemPublica.descricao,
+
+              statusAnterior:
+                denuncia.status,
+
+              statusNovo:
+                novoStatus,
+
+              origemAtor:
+                ator.origem,
+
+              atorId:
+                ator.usuarioId,
+
+              atorNome:
+                ator.nome,
+
+              visivelPublicamente:
+                true,
+            },
+          });
+        }
       }
-    });
+    );
 
     if (
-      dados.destino === "COLABORADOR" &&
-      colaboradorNome &&
-      colaboradorEmail &&
+      dados.destino ===
+        "COLABORADOR" &&
+      colaboradorPrincipal &&
       prazoTratativaEm
     ) {
       try {
-        const dadosEmail = await prisma.denuncia.findUnique({
-          where: { id: denuncia.id },
-          select: {
-            id: true,
-            protocolo: true,
-            cliente: { select: { nome: true, empresa: true } },
-          },
-        });
+        const dadosEmail =
+          await prisma.denuncia.findUnique({
+            where: {
+              id:
+                denuncia.id,
+            },
 
-        if (dadosEmail) {
-          await enviarEmailDirecionamentoTratativaCliente({
-            denunciaId: dadosEmail.id,
-            protocolo: dadosEmail.protocolo,
-            clienteNome:
-              dadosEmail.cliente.empresa || dadosEmail.cliente.nome,
-            responsavelNome: colaboradorNome,
-            responsavelEmail: colaboradorEmail,
-            prazoTratativaEm,
+            select: {
+              id:
+                true,
+
+              protocolo:
+                true,
+
+              cliente: {
+                select: {
+                  nome:
+                    true,
+
+                  empresa:
+                    true,
+                },
+              },
+            },
           });
+
+        if (
+          dadosEmail
+        ) {
+          const destinatarios = [
+            colaboradorPrincipal,
+            ...colaboradoresAdicionais,
+          ];
+
+          for (
+            const responsavel of
+            destinatarios
+          ) {
+            const responsavelEmail =
+              obterEmailResponsavel(
+                responsavel
+              );
+
+            if (
+              !responsavelEmail
+            ) {
+              continue;
+            }
+
+            try {
+              await enviarEmailDirecionamentoTratativaCliente({
+                denunciaId:
+                  dadosEmail.id,
+
+                protocolo:
+                  dadosEmail.protocolo,
+
+                clienteNome:
+                  dadosEmail.cliente.empresa ||
+                  dadosEmail.cliente.nome,
+
+                responsavelNome:
+                  responsavel.nome,
+
+                responsavelEmail,
+
+                prazoTratativaEm,
+              });
+            } catch (
+              error
+            ) {
+              console.error(
+                `Erro ao enviar e-mail de direcionamento da denúncia ${dadosEmail.protocolo} para ${responsavel.nome}:`,
+                error
+              );
+            }
+          }
         }
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
-          "Erro ao enviar e-mail de direcionamento da tratativa ao cliente:",
+          "Erro ao preparar os e-mails de direcionamento da tratativa ao cliente:",
           error
         );
       }
     }
 
-    return this.obterPorId(denuncia.id);
+    return this.obterPorId(
+      denuncia.id
+    );
   }
 
   private static validarPermissaoTratativa(
     denuncia: {
       tratativaLiberada: boolean;
-      destinoTratativa: "MUNDIAL" | "COLABORADOR" | null;
-      colaboradorResponsavelId: string | null;
+      destinoTratativa:
+        | "MUNDIAL"
+        | "COLABORADOR"
+        | null;
+      colaboradorResponsavelId:
+        | string
+        | null;
+      visualizadores?: Array<{
+        colaboradorId: string;
+      }>;
     },
     ator: AtorDenuncia,
     colaboradorId?: string | null
@@ -1714,24 +2291,54 @@ export default class RepositorioDenuncia {
       );
     }
 
-    if (denuncia.destinoTratativa === "MUNDIAL") {
-      if (ator.origem !== "MUNDIAL") {
+    if (
+      denuncia.destinoTratativa ===
+      "MUNDIAL"
+    ) {
+      if (
+        ator.origem !==
+        "MUNDIAL"
+      ) {
         throw new Error(
-          "Esta denúncia está sob responsabilidade exclusiva da Mundial."
+          "Esta denúncia está sob responsabilidade da Mundial."
         );
       }
 
       return;
     }
 
-    if (denuncia.destinoTratativa === "COLABORADOR") {
+    if (
+      denuncia.destinoTratativa ===
+      "COLABORADOR"
+    ) {
+      const responsavelPrincipal =
+        Boolean(
+          colaboradorId &&
+          colaboradorId ===
+            denuncia.colaboradorResponsavelId
+        );
+
+      const responsavelAdicional =
+        Boolean(
+          colaboradorId &&
+          (denuncia.visualizadores || []).some(
+            item =>
+              item.colaboradorId ===
+              colaboradorId
+          )
+        );
+
       if (
-        ator.origem === "MUNDIAL" ||
+        ator.origem ===
+          "MUNDIAL" ||
         !colaboradorId ||
-        colaboradorId !== denuncia.colaboradorResponsavelId
+        (
+          !responsavelPrincipal &&
+          !responsavelAdicional
+        )
       ) {
         throw new Error(
-          "Esta denúncia está sob responsabilidade exclusiva do colaborador designado."
+          "Esta denúncia não está liberada para este integrante realizar tratativas."
         );
       }
 
@@ -1750,23 +2357,50 @@ export default class RepositorioDenuncia {
     colaboradorId?: string | null
   ): Promise<DenunciaDetalhada> {
     if (!denunciaId?.trim()) {
-      throw new Error("Denúncia não encontrada.");
+      throw new Error(
+        "Denúncia não encontrada."
+      );
     }
 
-    const denuncia = await prisma.denuncia.findUnique({
-      where: { id: denunciaId },
-      select: {
-        id: true,
-        clienteId: true,
-        tratativaLiberada: true,
-        destinoTratativa: true,
-        colaboradorResponsavelId: true,
-        status: true,
-      },
-    });
+    const denuncia =
+      await prisma.denuncia.findUnique({
+        where: {
+          id:
+            denunciaId,
+        },
+
+        select: {
+          id:
+            true,
+
+          clienteId:
+            true,
+
+          tratativaLiberada:
+            true,
+
+          destinoTratativa:
+            true,
+
+          colaboradorResponsavelId:
+            true,
+
+          status:
+            true,
+
+          visualizadores: {
+            select: {
+              colaboradorId:
+                true,
+            },
+          },
+        },
+      });
 
     if (!denuncia) {
-      throw new Error("Denúncia não encontrada.");
+      throw new Error(
+        "Denúncia não encontrada."
+      );
     }
 
     this.validarPermissaoTratativa(
@@ -1775,8 +2409,11 @@ export default class RepositorioDenuncia {
       colaboradorId
     );
 
-    const titulo = tratativa.titulo?.trim();
-    const descricao = tratativa.descricao?.trim();
+    const titulo =
+      tratativa.titulo?.trim();
+
+    const descricao =
+      tratativa.descricao?.trim();
 
     if (!titulo) {
       throw new Error(
@@ -1790,65 +2427,136 @@ export default class RepositorioDenuncia {
       );
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.tratativaDenuncia.create({
-        data: {
-          denunciaId,
-          titulo,
-          descricao,
-          responsavelId:
-            denuncia.destinoTratativa === "COLABORADOR"
-              ? denuncia.colaboradorResponsavelId
-              : null,
-          criadoPorUsuarioId: ator.usuarioId || null,
-          criadoPorNome: ator.nome,
-          criadoPorPerfil: ator.perfil || null,
-          atualizadoPorUsuarioId: ator.usuarioId || null,
-          atualizadoPorNome: ator.nome,
-        },
-      });
+    await prisma.$transaction(
+      async tx => {
+        await tx.tratativaDenuncia.create({
+          data: {
+            denunciaId,
 
-      await tx.denuncia.update({
-        where: { id: denunciaId },
-        data: { status: "EM_TRATATIVA" },
-      });
+            titulo,
 
-      await tx.historicoDenuncia.create({
-        data: {
-          denunciaId,
-          tipo: "TRATATIVA_CRIADA",
-          titulo: "Tratativa interna registrada",
-          origemAtor: ator.origem,
-          atorId: ator.usuarioId,
-          atorNome: ator.nome,
-          visivelPublicamente: false,
-        },
-      });
+            descricao,
 
-      if (denuncia.status !== "EM_TRATATIVA") {
-        const mensagemPublica =
-          obterMensagemPublicaStatus("EM_TRATATIVA");
+            /*
+             * Em tratativas do cliente, grava quem realmente
+             * executou a ação, inclusive quando for um dos
+             * co-responsáveis adicionais.
+             */
+            responsavelId:
+              denuncia.destinoTratativa ===
+              "COLABORADOR"
+                ? colaboradorId ||
+                  null
+                : null,
+
+            criadoPorUsuarioId:
+              ator.usuarioId ||
+              null,
+
+            criadoPorNome:
+              ator.nome,
+
+            criadoPorPerfil:
+              ator.perfil ||
+              null,
+
+            atualizadoPorUsuarioId:
+              ator.usuarioId ||
+              null,
+
+            atualizadoPorNome:
+              ator.nome,
+          },
+        });
+
+        await tx.denuncia.update({
+          where: {
+            id:
+              denunciaId,
+          },
+
+          data: {
+            status:
+              "EM_TRATATIVA",
+          },
+        });
 
         await tx.historicoDenuncia.create({
           data: {
             denunciaId,
-            tipo: "STATUS_ALTERADO",
-            titulo: mensagemPublica.titulo,
-            descricao: mensagemPublica.descricao,
-            statusAnterior: denuncia.status,
-            statusNovo: "EM_TRATATIVA",
-            origemAtor: ator.origem,
-            atorId: ator.usuarioId,
-            atorNome: ator.nome,
-            visivelPublicamente: true,
+
+            tipo:
+              "TRATATIVA_CRIADA",
+
+            titulo:
+              "Tratativa interna registrada",
+
+            origemAtor:
+              ator.origem,
+
+            atorId:
+              ator.usuarioId,
+
+            atorNome:
+              ator.nome,
+
+            visivelPublicamente:
+              false,
           },
         });
+
+        if (
+          denuncia.status !==
+          "EM_TRATATIVA"
+        ) {
+          const mensagemPublica =
+            obterMensagemPublicaStatus(
+              "EM_TRATATIVA"
+            );
+
+          await tx.historicoDenuncia.create({
+            data: {
+              denunciaId,
+
+              tipo:
+                "STATUS_ALTERADO",
+
+              titulo:
+                mensagemPublica.titulo,
+
+              descricao:
+                mensagemPublica.descricao,
+
+              statusAnterior:
+                denuncia.status,
+
+              statusNovo:
+                "EM_TRATATIVA",
+
+              origemAtor:
+                ator.origem,
+
+              atorId:
+                ator.usuarioId,
+
+              atorNome:
+                ator.nome,
+
+              visivelPublicamente:
+                true,
+            },
+          });
+        }
       }
-    });
+    );
 
     if (
-      (ator.origem === "COMITE_CLIENTE" ||
-        ator.origem === "CLIENTE") &&
+      (
+        ator.origem ===
+          "COMITE_CLIENTE" ||
+        ator.origem ===
+          "CLIENTE"
+      ) &&
       colaboradorId
     ) {
       await tentarNotificarTratativaClienteMundial(
@@ -1859,7 +2567,8 @@ export default class RepositorioDenuncia {
     }
 
     if (
-      ator.origem === "COMITE_CLIENTE" &&
+      ator.origem ===
+        "COMITE_CLIENTE" &&
       colaboradorId
     ) {
       return this.obterPorIdECliente(
@@ -1867,12 +2576,15 @@ export default class RepositorioDenuncia {
         denuncia.clienteId,
         {
           colaboradorId,
-          podeVerTratativas: true,
+          podeVerTratativas:
+            true,
         }
       );
     }
 
-    return this.obterPorId(denunciaId);
+    return this.obterPorId(
+      denunciaId
+    );
   }
 
   static async editarTratativa(
@@ -1883,23 +2595,43 @@ export default class RepositorioDenuncia {
     const tratativaAtual =
       await prisma.tratativaDenuncia.findFirst({
         where: {
-          id: dados.id,
-          denunciaId: dados.denunciaId,
+          id:
+            dados.id,
+
+          denunciaId:
+            dados.denunciaId,
         },
+
         include: {
           denuncia: {
             select: {
-              clienteId: true,
-              tratativaLiberada: true,
-              destinoTratativa: true,
-              colaboradorResponsavelId: true,
+              clienteId:
+                true,
+
+              tratativaLiberada:
+                true,
+
+              destinoTratativa:
+                true,
+
+              colaboradorResponsavelId:
+                true,
+
+              visualizadores: {
+                select: {
+                  colaboradorId:
+                    true,
+                },
+              },
             },
           },
         },
       });
 
     if (!tratativaAtual) {
-      throw new Error("Tratativa não encontrada.");
+      throw new Error(
+        "Tratativa não encontrada."
+      );
     }
 
     this.validarPermissaoTratativa(
@@ -1908,42 +2640,73 @@ export default class RepositorioDenuncia {
       colaboradorId
     );
 
-    const titulo = dados.titulo?.trim();
-    const descricao = dados.descricao?.trim();
+    const titulo =
+      dados.titulo?.trim();
 
-    if (!titulo || !descricao) {
+    const descricao =
+      dados.descricao?.trim();
+
+    if (
+      !titulo ||
+      !descricao
+    ) {
       throw new Error(
         "Título e descrição da tratativa são obrigatórios."
       );
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.tratativaDenuncia.update({
-        where: { id: dados.id },
-        data: {
-          titulo,
-          descricao,
-          atualizadoPorUsuarioId:
-            ator.usuarioId || null,
-          atualizadoPorNome: ator.nome,
-        },
-      });
+    await prisma.$transaction(
+      async tx => {
+        await tx.tratativaDenuncia.update({
+          where: {
+            id:
+              dados.id,
+          },
 
-      await tx.historicoDenuncia.create({
-        data: {
-          denunciaId: dados.denunciaId,
-          tipo: "TRATATIVA_EDITADA",
-          titulo: "Tratativa interna atualizada",
-          origemAtor: ator.origem,
-          atorId: ator.usuarioId,
-          atorNome: ator.nome,
-          visivelPublicamente: false,
-        },
-      });
-    });
+          data: {
+            titulo,
+
+            descricao,
+
+            atualizadoPorUsuarioId:
+              ator.usuarioId ||
+              null,
+
+            atualizadoPorNome:
+              ator.nome,
+          },
+        });
+
+        await tx.historicoDenuncia.create({
+          data: {
+            denunciaId:
+              dados.denunciaId,
+
+            tipo:
+              "TRATATIVA_EDITADA",
+
+            titulo:
+              "Tratativa interna atualizada",
+
+            origemAtor:
+              ator.origem,
+
+            atorId:
+              ator.usuarioId,
+
+            atorNome:
+              ator.nome,
+
+            visivelPublicamente:
+              false,
+          },
+        });
+      }
+    );
 
     if (
-      ator.origem === "COMITE_CLIENTE" &&
+      ator.origem ===
+        "COMITE_CLIENTE" &&
       colaboradorId
     ) {
       return this.obterPorIdECliente(
@@ -1951,104 +2714,286 @@ export default class RepositorioDenuncia {
         tratativaAtual.denuncia.clienteId,
         {
           colaboradorId,
-          podeVerTratativas: true,
+          podeVerTratativas:
+            true,
         }
       );
     }
 
-    return this.obterPorId(dados.denunciaId);
+    return this.obterPorId(
+      dados.denunciaId
+    );
   }
 
   static async processarAlertasPrazoTratativaVencido() {
-    const agora = new Date();
+    const agora =
+      new Date();
 
-    const denuncias = await prisma.denuncia.findMany({
-      where: {
-        tratativaLiberada: true,
-        destinoTratativa: "COLABORADOR",
-        colaboradorResponsavelId: { not: null },
-        prazoTratativaEm: { lte: agora },
-        alertaPrazoTratativaEnviadoEm: null,
-        status: {
-          notIn: [
-            StatusDenuncia.CONCLUIDA,
-            StatusDenuncia.ARQUIVADA,
-          ],
-        },
-        tratativas: { none: {} },
-      },
-      select: {
-        id: true,
-        protocolo: true,
-        prazoTratativaEm: true,
-        cliente: { select: { nome: true, empresa: true } },
-        colaboradorResponsavel: {
-          select: {
-            nome: true,
-            email: true,
-            usuario: { select: { email: true } },
+    const denuncias =
+      await prisma.denuncia.findMany({
+        where: {
+          tratativaLiberada:
+            true,
+
+          destinoTratativa:
+            "COLABORADOR",
+
+          colaboradorResponsavelId: {
+            not:
+              null,
+          },
+
+          prazoTratativaEm: {
+            lte:
+              agora,
+          },
+
+          alertaPrazoTratativaEnviadoEm:
+            null,
+
+          status: {
+            notIn: [
+              StatusDenuncia.CONCLUIDA,
+              StatusDenuncia.ARQUIVADA,
+            ],
+          },
+
+          tratativas: {
+            none: {},
           },
         },
-      },
-    });
 
-    let enviados = 0;
-    let falhas = 0;
-    let semEmail = 0;
+        select: {
+          id:
+            true,
 
-    for (const denuncia of denuncias) {
-      const responsavel = denuncia.colaboradorResponsavel;
-      const emailResponsavel = obterEmailResponsavel(responsavel);
+          protocolo:
+            true,
 
-      if (!responsavel || !emailResponsavel || !denuncia.prazoTratativaEm) {
-        semEmail += 1;
-        console.warn(
-          `Alerta de prazo não enviado para ${denuncia.protocolo}: responsável sem e-mail cadastrado.`
-        );
+          prazoTratativaEm:
+            true,
+
+          cliente: {
+            select: {
+              nome:
+                true,
+
+              empresa:
+                true,
+            },
+          },
+
+          colaboradorResponsavel: {
+            select: {
+              id:
+                true,
+
+              nome:
+                true,
+
+              email:
+                true,
+
+              usuario: {
+                select: {
+                  email:
+                    true,
+                },
+              },
+            },
+          },
+
+          /*
+           * Relação histórica chamada visualizadores.
+           * Agora estes integrantes também podem tratar a denúncia.
+           */
+          visualizadores: {
+            select: {
+              colaborador: {
+                select: {
+                  id:
+                    true,
+
+                  nome:
+                    true,
+
+                  email:
+                    true,
+
+                  usuario: {
+                    select: {
+                      email:
+                        true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+    let enviados =
+      0;
+
+    let emailsEnviados =
+      0;
+
+    let falhas =
+      0;
+
+    let semEmail =
+      0;
+
+    for (
+      const denuncia of
+      denuncias
+    ) {
+      if (
+        !denuncia.prazoTratativaEm
+      ) {
         continue;
       }
 
-      try {
-        await enviarEmailPrazoTratativaVencidoCliente({
-          denunciaId: denuncia.id,
-          protocolo: denuncia.protocolo,
-          clienteNome: denuncia.cliente.empresa || denuncia.cliente.nome,
-          responsavelNome: responsavel.nome,
-          responsavelEmail: emailResponsavel,
-          prazoTratativaEm: denuncia.prazoTratativaEm,
-        });
+      const mapaResponsaveis =
+        new Map<
+          string,
+          {
+            id: string;
+            nome: string;
+            email: string | null;
+            usuario: {
+              email: string | null;
+            } | null;
+          }
+        >();
 
-        const atualizado = await prisma.denuncia.updateMany({
-          where: {
-            id: denuncia.id,
-            alertaPrazoTratativaEnviadoEm: null,
-            tratativas: { none: {} },
-          },
-          data: {
-            alertaPrazoTratativaEnviadoEm: new Date(),
-          },
-        });
-
-        if (atualizado.count > 0) {
-          enviados += 1;
-        }
-      } catch (error) {
-        falhas += 1;
-        console.error(
-          `Erro ao enviar alerta de prazo vencido da denúncia ${denuncia.protocolo}:`,
-          error
+      if (
+        denuncia.colaboradorResponsavel
+      ) {
+        mapaResponsaveis.set(
+          denuncia.colaboradorResponsavel.id,
+          denuncia.colaboradorResponsavel
         );
+      }
+
+      for (
+        const vinculo of
+        denuncia.visualizadores
+      ) {
+        mapaResponsaveis.set(
+          vinculo.colaborador.id,
+          vinculo.colaborador
+        );
+      }
+
+      let houveEnvio =
+        false;
+
+      for (
+        const responsavel of
+        mapaResponsaveis.values()
+      ) {
+        const emailResponsavel =
+          obterEmailResponsavel(
+            responsavel
+          );
+
+        if (!emailResponsavel) {
+          semEmail +=
+            1;
+
+          console.warn(
+            `Alerta de prazo não enviado para ${denuncia.protocolo}: ${responsavel.nome} está sem e-mail cadastrado.`
+          );
+
+          continue;
+        }
+
+        try {
+          await enviarEmailPrazoTratativaVencidoCliente({
+            denunciaId:
+              denuncia.id,
+
+            protocolo:
+              denuncia.protocolo,
+
+            clienteNome:
+              denuncia.cliente.empresa ||
+              denuncia.cliente.nome,
+
+            responsavelNome:
+              responsavel.nome,
+
+            responsavelEmail:
+              emailResponsavel,
+
+            prazoTratativaEm:
+              denuncia.prazoTratativaEm,
+          });
+
+          emailsEnviados +=
+            1;
+
+          houveEnvio =
+            true;
+        } catch (error) {
+          falhas +=
+            1;
+
+          console.error(
+            `Erro ao enviar alerta de prazo vencido da denúncia ${denuncia.protocolo} para ${responsavel.nome}:`,
+            error
+          );
+        }
+      }
+
+      if (!houveEnvio) {
+        continue;
+      }
+
+      const atualizado =
+        await prisma.denuncia.updateMany({
+          where: {
+            id:
+              denuncia.id,
+
+            alertaPrazoTratativaEnviadoEm:
+              null,
+
+            tratativas: {
+              none: {},
+            },
+          },
+
+          data: {
+            alertaPrazoTratativaEnviadoEm:
+              new Date(),
+          },
+        });
+
+      if (
+        atualizado.count >
+        0
+      ) {
+        enviados +=
+          1;
       }
     }
 
     return {
-      analisadas: denuncias.length,
+      analisadas:
+        denuncias.length,
+
       enviados,
+
+      emailsEnviados,
+
       falhas,
+
       semEmail,
     };
   }
-
 
   static async obterTodos(): Promise<
     DenunciaResumo[]
@@ -2516,59 +3461,104 @@ export default class RepositorioDenuncia {
     visualizadorAdicional: boolean;
   }> {
     if (!denunciaId?.trim()) {
-      throw new Error("Denúncia não informada.");
+      throw new Error(
+        "Denúncia não informada."
+      );
     }
 
     if (!clienteId?.trim()) {
-      throw new Error("Cliente não informado.");
+      throw new Error(
+        "Cliente não informado."
+      );
     }
 
     if (!colaboradorId?.trim()) {
-      throw new Error("Colaborador não informado.");
+      throw new Error(
+        "Colaborador não informado."
+      );
     }
 
-    const denuncia = await prisma.denuncia.findFirst({
-      where: {
-        id: denunciaId,
-        clienteId,
-        tratativaLiberada: true,
-      },
-      select: {
-        destinoTratativa: true,
-        colaboradorResponsavelId: true,
-        visualizadores: {
-          where: {
-            colaboradorId,
-          },
-          select: {
-            colaboradorId: true,
-          },
-          take: 1,
+    const denuncia =
+      await prisma.denuncia.findFirst({
+        where: {
+          id:
+            denunciaId,
+
+          clienteId,
+
+          tratativaLiberada:
+            true,
         },
-      },
-    });
+
+        select: {
+          destinoTratativa:
+            true,
+
+          colaboradorResponsavelId:
+            true,
+
+          visualizadores: {
+            where: {
+              colaboradorId,
+            },
+
+            select: {
+              colaboradorId:
+                true,
+            },
+
+            take:
+              1,
+          },
+        },
+      });
 
     if (!denuncia) {
       return {
-        possuiAcesso: false,
-        responsavelPrincipal: false,
-        visualizadorAdicional: false,
+        possuiAcesso:
+          false,
+
+        responsavelPrincipal:
+          false,
+
+        visualizadorAdicional:
+          false,
       };
     }
 
-    const responsavelPrincipal =
-      denuncia.destinoTratativa === "COLABORADOR" &&
-      denuncia.colaboradorResponsavelId === colaboradorId;
+    const ehPrincipal =
+      denuncia.destinoTratativa ===
+        "COLABORADOR" &&
+      denuncia.colaboradorResponsavelId ===
+        colaboradorId;
 
-    const visualizadorAdicional =
-      denuncia.visualizadores.length > 0;
+    const ehAdicional =
+      denuncia.destinoTratativa ===
+        "COLABORADOR" &&
+      denuncia.visualizadores.length >
+        0;
+
+    const possuiAcesso =
+      ehPrincipal ||
+      ehAdicional;
 
     return {
-      possuiAcesso:
-        responsavelPrincipal ||
-        visualizadorAdicional,
-      responsavelPrincipal,
-      visualizadorAdicional,
+      possuiAcesso,
+
+      /*
+       * Mantido por compatibilidade com as camadas já existentes.
+       * A partir desta regra, qualquer integrante autorizado
+       * é considerado responsável para fins de permissão.
+       */
+      responsavelPrincipal:
+        possuiAcesso,
+
+      /*
+       * Nome legado do vínculo N:N. Agora indica que o usuário
+       * é um co-responsável adicional, e não somente visualizador.
+       */
+      visualizadorAdicional:
+        ehAdicional,
     };
   }
 
@@ -2610,13 +3600,13 @@ export default class RepositorioDenuncia {
     }
 
     /*
-     * Não confiamos apenas na flag recebida pela camada superior.
-     * Mesmo que podeVerTratativas=true seja enviado por engano,
-     * somente o responsável principal recebe as tratativas.
+     * Todos os integrantes autorizados pela Mundial podem
+     * visualizar as tratativas. A flag da camada superior
+     * continua necessária como segunda barreira de permissão.
      */
     const podeVerTratativas =
       opcoes.podeVerTratativas === true &&
-      acesso.responsavelPrincipal;
+      acesso.possuiAcesso;
 
     const denuncia = await prisma.denuncia.findFirst({
       where: {

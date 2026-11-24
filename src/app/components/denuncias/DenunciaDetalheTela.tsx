@@ -189,10 +189,26 @@ export default function DenunciaDetalheTela({
     (denunciaSelecionada?.tratativas?.length ?? 0) > 0;
 
   const podeEditarDirecionamento =
-    podeLiberarTratativa &&
-    !possuiTratativa;
+    podeLiberarTratativa;
 
-  const responsavelExclusivo = useMemo(() => {
+  const visualizadorIdsOriginais =
+    useMemo(
+      () =>
+        new Set(
+          (
+            denunciaSelecionada?.visualizadores ||
+            []
+          ).map(
+            colaborador =>
+              colaborador.id
+          )
+        ),
+      [
+        denunciaSelecionada?.visualizadores,
+      ]
+    );
+
+  const responsaveisTratativa = useMemo(() => {
     if (!denunciaSelecionada?.tratativaLiberada) {
       return "Não definido";
     }
@@ -203,10 +219,19 @@ export default function DenunciaDetalheTela({
       return "Mundial";
     }
 
-    return (
-      denunciaSelecionada.colaboradorResponsavel?.nome ||
-      "Colaborador não localizado"
+    const nomes = [
+      denunciaSelecionada.colaboradorResponsavel?.nome,
+      ...(denunciaSelecionada.visualizadores || []).map(
+        (colaborador) => colaborador.nome
+      ),
+    ].filter(
+      (nome): nome is string =>
+        Boolean(nome?.trim())
     );
+
+    return nomes.length > 0
+      ? nomes.join(", ")
+      : "Nenhum integrante localizado";
   }, [denunciaSelecionada]);
 
   const usuarioPodeExecutarTratativa = useMemo(() => {
@@ -223,11 +248,26 @@ export default function DenunciaDetalheTela({
       return usuarioMundial;
     }
 
-    return Boolean(
-      !usuarioMundial &&
-        colaboradorLogadoId &&
-        colaboradorLogadoId ===
-          denunciaSelecionada.colaboradorResponsavelId
+    if (
+      usuarioMundial ||
+      !colaboradorLogadoId
+    ) {
+      return false;
+    }
+
+    const responsavelPrincipal =
+      colaboradorLogadoId ===
+      denunciaSelecionada.colaboradorResponsavelId;
+
+    const colaboradorAdicional =
+      (denunciaSelecionada.visualizadores || []).some(
+        (colaborador) =>
+          colaborador.id === colaboradorLogadoId
+      );
+
+    return (
+      responsavelPrincipal ||
+      colaboradorAdicional
     );
   }, [
     podeTratar,
@@ -284,6 +324,9 @@ export default function DenunciaDetalheTela({
     const jaEstavaLiberada =
       denunciaSelecionada.tratativaLiberada;
 
+    const jaPossuiaTratativa =
+      possuiTratativa;
+
     try {
       const resultado =
         await liberarTratativa({
@@ -293,6 +336,11 @@ export default function DenunciaDetalheTela({
             destino === "COLABORADOR"
               ? colaboradorId
               : null,
+          /*
+           * O nome visualizadorIds é mantido no contrato atual
+           * apenas por compatibilidade. Estes IDs agora representam
+           * co-responsáveis com permissão de criar e editar tratativas.
+           */
           visualizadorIds,
         });
 
@@ -315,11 +363,13 @@ export default function DenunciaDetalheTela({
       );
 
       setMensagem(
-        jaEstavaLiberada
-          ? "Direcionamento atualizado com sucesso."
-          : destino === "MUNDIAL"
-            ? "Tratativa liberada exclusivamente para a Mundial."
-            : "Tratativa direcionada exclusivamente ao Comitê de Ética do cliente."
+        jaPossuiaTratativa
+          ? "Novos integrantes autorizados para a tratativa com sucesso."
+          : jaEstavaLiberada
+            ? "Direcionamento atualizado com sucesso."
+            : destino === "MUNDIAL"
+              ? "Tratativa liberada exclusivamente para a Mundial."
+              : "Tratativa direcionada aos integrantes selecionados do Comitê de Ética do cliente."
       );
     } catch (error) {
       setErroLocal(
@@ -522,8 +572,8 @@ export default function DenunciaDetalheTela({
               }
             />
             <Info
-              label="Responsável pelas tratativas"
-              valor={responsavelExclusivo}
+              label="Responsáveis pelas tratativas"
+              valor={responsaveisTratativa}
             />
             <Info
               label="Tratativa liberada"
@@ -534,7 +584,7 @@ export default function DenunciaDetalheTela({
               }
             />
             <Info
-              label="Visualizadores adicionais"
+              label="Co-responsáveis adicionais"
               valor={
                 denunciaSelecionada.visualizadores?.length
                   ? denunciaSelecionada.visualizadores
@@ -717,22 +767,29 @@ export default function DenunciaDetalheTela({
               className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6"
             >
               <h2 className="text-lg font-bold text-amber-950">
-                {denunciaSelecionada.tratativaLiberada
-                  ? "Editar direcionamento"
-                  : "Liberar tratativa"}
+                {!denunciaSelecionada.tratativaLiberada
+                  ? "Liberar tratativa"
+                  : possuiTratativa
+                    ? "Adicionar integrantes à tratativa"
+                    : "Editar direcionamento"}
               </h2>
 
               <p className="mt-1 text-sm leading-6 text-amber-800">
-                {denunciaSelecionada.tratativaLiberada
-                  ? "Altere o responsável pela tratativa e os acessos somente leitura enquanto ainda não houver tratativas registradas."
-                  : "Defina o integrante responsável do Comitê de Ética do cliente e, opcionalmente, colaboradores adicionais com acesso somente para visualização."}
+                {!denunciaSelecionada.tratativaLiberada
+                  ? "Defina o integrante principal e, se necessário, outros integrantes do Comitê de Ética do cliente que também poderão registrar e editar tratativas."
+                  : possuiTratativa
+                    ? "Como já existem tratativas registradas, o responsável principal e os integrantes já autorizados são preservados. Você pode adicionar novos integrantes para realizar novas tratativas."
+                    : "Altere os integrantes autorizados antes do início das tratativas."}
               </p>
 
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <CampoSelect
-                  label="Responsável exclusivo"
+                  label="Responsável pela tratativa"
                   value={destino}
-                  disabled={processando}
+                  disabled={
+                    processando ||
+                    possuiTratativa
+                  }
                   onChange={(valor) =>
                     setDestino(
                       valor as DestinoTratativaDenuncia
@@ -747,13 +804,16 @@ export default function DenunciaDetalheTela({
 
                 {destino === "COLABORADOR" && (
                   <CampoSelect
-                    label="Integrante responsável"
+                    label="Integrante principal"
                     value={colaboradorId}
-                    disabled={processando}
+                    disabled={
+                      processando ||
+                      possuiTratativa
+                    }
                     onChange={setColaboradorId}
                   >
                     <option value="">
-                      Selecione o integrante responsável
+                      Selecione o integrante principal
                     </option>
                     {colaboradoresDisponiveis.map(
                       (colaborador) => (
@@ -772,52 +832,65 @@ export default function DenunciaDetalheTela({
                 )}
               </div>
 
-              <div className="mt-5">
-                <p className="text-sm font-semibold text-amber-950">
-                  Colaboradores com acesso somente para visualização
-                </p>
-                <p className="mt-1 text-xs leading-5 text-amber-800">
-                  Eles poderão abrir e visualizar a denúncia, mas não poderão
-                  registrar nem editar tratativas. O responsável principal já
-                  possui acesso e não precisa ser selecionado novamente.
-                </p>
+              {destino === "COLABORADOR" && (
+                <div className="mt-5">
+                  <p className="text-sm font-semibold text-amber-950">
+                    Outros integrantes autorizados para a tratativa
+                  </p>
 
-                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                  {colaboradoresDisponiveis
-                    .filter(
-                      (colaborador) =>
-                        colaborador.id !== colaboradorId
-                    )
-                    .map((colaborador) => (
-                      <label
-                        key={colaborador.id}
-                        className="flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-white px-3 py-3 text-sm text-slate-700"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={visualizadorIds.includes(
-                            colaborador.id
-                          )}
-                          disabled={processando}
-                          onChange={() =>
-                            alternarVisualizador(colaborador.id)
-                          }
-                          className="mt-1"
-                        />
-                        <span>
-                          <strong className="block text-slate-900">
-                            {colaborador.nome}
-                          </strong>
-                          <span className="text-xs text-slate-500">
-                            {[colaborador.cargo, colaborador.setor]
-                              .filter(Boolean)
-                              .join(" • ") || "Colaborador"}
+                  <p className="mt-1 text-xs leading-5 text-amber-800">
+                    {possuiTratativa
+                      ? "Os integrantes já autorizados permanecem vinculados para preservar a rastreabilidade. Marque novos integrantes para que também possam visualizar, registrar e editar novas tratativas."
+                      : "Os integrantes selecionados terão o mesmo acesso operacional às tratativas: poderão visualizar, registrar e editar. O integrante principal já possui acesso e não precisa ser selecionado novamente."}
+                  </p>
+
+                  <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    {colaboradoresDisponiveis
+                      .filter(
+                        (colaborador) =>
+                          colaborador.id !== colaboradorId
+                      )
+                      .map((colaborador) => (
+                        <label
+                          key={colaborador.id}
+                          className="flex cursor-pointer items-start gap-3 rounded-xl border border-amber-200 bg-white px-3 py-3 text-sm text-slate-700"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={visualizadorIds.includes(
+                              colaborador.id
+                            )}
+                            disabled={
+                              processando ||
+                              (
+                                possuiTratativa &&
+                                visualizadorIdsOriginais.has(
+                                  colaborador.id
+                                )
+                              )
+                            }
+                            onChange={() =>
+                              alternarVisualizador(colaborador.id)
+                            }
+                            className="mt-1"
+                          />
+
+                          <span>
+                            <strong className="block text-slate-900">
+                              {colaborador.nome}
+                            </strong>
+
+                            <span className="text-xs text-slate-500">
+                              {[colaborador.cargo, colaborador.setor]
+                                .filter(Boolean)
+                                .join(" • ") || "Integrante"}
+                            </span>
                           </span>
-                        </span>
-                      </label>
-                    ))}
+                        </label>
+                      ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <button
                 type="submit"
@@ -829,32 +902,20 @@ export default function DenunciaDetalheTela({
                 className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-60 sm:w-auto"
               >
                 {processando
-                  ? denunciaSelecionada.tratativaLiberada
-                    ? "Atualizando..."
-                    : "Liberando..."
-                  : denunciaSelecionada.tratativaLiberada
-                    ? "Salvar novo direcionamento"
-                    : "Liberar tratativa"}
+                  ? possuiTratativa
+                    ? "Adicionando..."
+                    : denunciaSelecionada.tratativaLiberada
+                      ? "Atualizando..."
+                      : "Liberando..."
+                  : possuiTratativa
+                    ? "Adicionar novos integrantes"
+                    : denunciaSelecionada.tratativaLiberada
+                      ? "Salvar novo direcionamento"
+                      : "Liberar tratativa"}
               </button>
             </form>
           )}
 
-        {podeLiberarTratativa &&
-          denunciaSelecionada.tratativaLiberada &&
-          possuiTratativa && (
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <h2 className="text-lg font-bold text-slate-900">
-                Direcionamento da tratativa
-              </h2>
-
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Responsável atual:{" "}
-                <strong>{responsavelExclusivo}</strong>.
-                O direcionamento não pode mais ser alterado porque
-                já existe pelo menos uma tratativa registrada.
-              </p>
-            </div>
-          )}
 
         {podeGerenciar && (
           <form
@@ -950,7 +1011,7 @@ export default function DenunciaDetalheTela({
               Tratativas internas
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Responsável exclusivo: {responsavelExclusivo}.
+              Responsáveis autorizados: {responsaveisTratativa}.
             </p>
 
             <div className="mt-5 space-y-4">
@@ -1091,8 +1152,8 @@ export default function DenunciaDetalheTela({
             {!usuarioPodeExecutarTratativa &&
               denunciaSelecionada.tratativaLiberada && (
                 <p className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
-                  As tratativas desta denúncia são exclusivas de{" "}
-                  {responsavelExclusivo}.
+                  As tratativas desta denúncia estão liberadas somente para{" "}
+                  {responsaveisTratativa}.
                 </p>
               )}
           </section>

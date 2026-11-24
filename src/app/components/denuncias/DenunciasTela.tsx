@@ -219,9 +219,9 @@ export default function DenunciasTela({
 
   const quantidadeColunas =
     usuarioMundial
-      ? 8
+      ? 7
       : usuarioComite
-        ? 7
+        ? 6
         : 3;
 
   function validarPeriodo() {
@@ -669,14 +669,18 @@ export default function DenunciasTela({
             <table
               className={`w-full border-collapse ${
                 usuarioMundial
-                  ? "min-w-[1100px]"
+                  ? "min-w-[900px]"
                   : usuarioComite
-                    ? "min-w-[900px]"
+                    ? "min-w-[720px]"
                     : "min-w-[650px]"
               }`}
             >
               <thead className="bg-slate-50">
                 <tr>
+                  {podeAbrirDetalhes && (
+                    <Th>Ações</Th>
+                  )}
+
                   <Th>Data</Th>
                   <Th>Protocolo</Th>
 
@@ -687,16 +691,11 @@ export default function DenunciasTela({
                   {exibirConteudoSensivel && (
                     <>
                       <Th>Categoria</Th>
-                      <Th>Título</Th>
                       <Th>Gravidade</Th>
                     </>
                   )}
 
                   <Th>Status</Th>
-
-                  {podeAbrirDetalhes && (
-                    <Th direita>Opções</Th>
-                  )}
                 </tr>
               </thead>
 
@@ -722,6 +721,17 @@ export default function DenunciasTela({
                         key={denuncia.id}
                         className="border-t border-slate-100 transition hover:bg-slate-50/70"
                       >
+                        {podeAbrirDetalhes && (
+                          <td className="whitespace-nowrap px-4 py-4">
+                            <Link
+                              href={`${baseHref}/${denuncia.id}`}
+                              className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                            >
+                              Abrir
+                            </Link>
+                          </td>
+                        )}
+
                         <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-700">
                           {formatarData(
                             denuncia.criadoEm
@@ -746,15 +756,9 @@ export default function DenunciasTela({
                         {exibirConteudoSensivel && (
                           <>
                             <td className="px-4 py-4 text-sm text-slate-700">
-                              <div className="max-w-[200px] truncate">
+                              <div className="max-w-[220px] truncate">
                                 {denuncia.categoria?.nome ||
                                   "Sem categoria"}
-                              </div>
-                            </td>
-
-                            <td className="px-4 py-4 text-sm text-slate-700">
-                              <div className="max-w-xs truncate">
-                                {denuncia.titulo}
                               </div>
                             </td>
 
@@ -778,16 +782,6 @@ export default function DenunciasTela({
                           />
                         </td>
 
-                        {podeAbrirDetalhes && (
-                          <td className="px-4 py-4 text-right">
-                            <Link
-                              href={`${baseHref}/${denuncia.id}`}
-                              className="inline-flex rounded-lg px-3 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-50 hover:text-blue-800"
-                            >
-                              Abrir
-                            </Link>
-                          </td>
-                        )}
                       </tr>
                     )
                   )

@@ -1269,21 +1269,78 @@ export async function enviarEmailDirecionamentoTratativaCliente(dados: {
   clienteNome: string;
   responsavelNome: string;
   responsavelEmail: string;
-  prazoTratativaEm: Date | string;
+  prazoTratativaEm?: Date | string | null;
 }) {
+  const possuiPrazo =
+    Boolean(
+      dados.prazoTratativaEm
+    );
+
   return enviarAlertaDenuncia({
-    destinatarios: [{ nome: dados.responsavelNome, email: dados.responsavelEmail }],
-    assunto: `[MundialSafe] Denúncia direcionada para tratativa — ${dados.protocolo}`,
-    titulo: "Tratativa atribuída",
-    mensagem: "A Mundial direcionou uma denúncia para sua tratativa. O prazo para registrar a primeira tratativa é de 5 dias úteis.",
-    linhas: [
-      { rotulo: "Protocolo", valor: dados.protocolo },
-      { rotulo: "Empresa", valor: dados.clienteNome },
-      { rotulo: "Responsável", valor: dados.responsavelNome },
-      { rotulo: "Prazo", valor: formatarDataDenuncia(dados.prazoTratativaEm) },
+    destinatarios: [
+      {
+        nome:
+          dados.responsavelNome,
+        email:
+          dados.responsavelEmail,
+      },
     ],
-    url: urlDenunciaCliente(dados.denunciaId),
-    textoBotao: "Abrir denúncia",
+
+    assunto:
+      `[MundialSafe] Denúncia direcionada para tratativa — ${dados.protocolo}`,
+
+    titulo:
+      possuiPrazo
+        ? "Tratativa atribuída"
+        : "Nova atribuição de tratativa",
+
+    mensagem:
+      possuiPrazo
+        ? "A Mundial direcionou uma denúncia para sua tratativa. O prazo para registrar a primeira tratativa é de 5 dias úteis."
+        : "A Mundial adicionou você como integrante autorizado para realizar novas tratativas nesta denúncia.",
+
+    linhas: [
+      {
+        rotulo:
+          "Protocolo",
+        valor:
+          dados.protocolo,
+      },
+      {
+        rotulo:
+          "Empresa",
+        valor:
+          dados.clienteNome,
+      },
+      {
+        rotulo:
+          "Responsável",
+        valor:
+          dados.responsavelNome,
+      },
+      ...(
+        dados.prazoTratativaEm
+          ? [
+              {
+                rotulo:
+                  "Prazo",
+                valor:
+                  formatarDataDenuncia(
+                    dados.prazoTratativaEm
+                  ),
+              },
+            ]
+          : []
+      ),
+    ],
+
+    url:
+      urlDenunciaCliente(
+        dados.denunciaId
+      ),
+
+    textoBotao:
+      "Abrir denúncia",
   });
 }
 
