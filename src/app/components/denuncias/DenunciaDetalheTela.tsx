@@ -208,6 +208,23 @@ export default function DenunciaDetalheTela({
       ]
     );
 
+  const podeSelecionarCoResponsaveis =
+    destino ===
+      "COLABORADOR" ||
+    (
+      possuiTratativa &&
+      destino ===
+        "MUNDIAL"
+    );
+
+  const possuiNovoCoResponsavel =
+    visualizadorIds.some(
+      id =>
+        !visualizadorIdsOriginais.has(
+          id
+        )
+    );
+
   const responsaveisTratativa = useMemo(() => {
     if (!denunciaSelecionada?.tratativaLiberada) {
       return "Não definido";
@@ -216,7 +233,25 @@ export default function DenunciaDetalheTela({
     if (
       denunciaSelecionada.destinoTratativa === "MUNDIAL"
     ) {
-      return "Mundial";
+      const nomesAdicionais =
+        (
+          denunciaSelecionada.visualizadores ||
+          []
+        )
+          .map(
+            colaborador =>
+              colaborador.nome
+          )
+          .filter(
+            nome =>
+              Boolean(
+                nome?.trim()
+              )
+          );
+
+      return nomesAdicionais.length > 0
+        ? `Mundial, ${nomesAdicionais.join(", ")}`
+        : "Mundial";
     }
 
     const nomes = [
@@ -245,7 +280,26 @@ export default function DenunciaDetalheTela({
     if (
       denunciaSelecionada.destinoTratativa === "MUNDIAL"
     ) {
-      return usuarioMundial;
+      if (
+        usuarioMundial
+      ) {
+        return true;
+      }
+
+      if (
+        !colaboradorLogadoId
+      ) {
+        return false;
+      }
+
+      return (
+        denunciaSelecionada.visualizadores ||
+        []
+      ).some(
+        colaborador =>
+          colaborador.id ===
+          colaboradorLogadoId
+      );
     }
 
     if (
@@ -832,16 +886,22 @@ export default function DenunciaDetalheTela({
                 )}
               </div>
 
-              {destino === "COLABORADOR" && (
+              {podeSelecionarCoResponsaveis && (
                 <div className="mt-5">
                   <p className="text-sm font-semibold text-amber-950">
-                    Outros integrantes autorizados para a tratativa
+                    {destino ===
+                    "MUNDIAL"
+                      ? "Integrantes do Comitê de Ética também autorizados"
+                      : "Outros integrantes autorizados para a tratativa"}
                   </p>
 
                   <p className="mt-1 text-xs leading-5 text-amber-800">
-                    {possuiTratativa
-                      ? "Os integrantes já autorizados permanecem vinculados para preservar a rastreabilidade. Marque novos integrantes para que também possam visualizar, registrar e editar novas tratativas."
-                      : "Os integrantes selecionados terão o mesmo acesso operacional às tratativas: poderão visualizar, registrar e editar. O integrante principal já possui acesso e não precisa ser selecionado novamente."}
+                    {destino ===
+                      "MUNDIAL"
+                      ? "A Mundial continua responsável pelo caso. Selecione integrantes do Comitê de Ética do cliente que também poderão visualizar, registrar e editar novas tratativas."
+                      : possuiTratativa
+                        ? "Os integrantes já autorizados permanecem vinculados para preservar a rastreabilidade. Marque novos integrantes para que também possam visualizar, registrar e editar novas tratativas."
+                        : "Os integrantes selecionados terão o mesmo acesso operacional às tratativas: poderão visualizar, registrar e editar. O integrante principal já possui acesso e não precisa ser selecionado novamente."}
                   </p>
 
                   <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
@@ -896,8 +956,17 @@ export default function DenunciaDetalheTela({
                 type="submit"
                 disabled={
                   processando ||
-                  (destino === "COLABORADOR" &&
-                    !colaboradorId)
+                  (
+                    destino ===
+                      "COLABORADOR" &&
+                    !colaboradorId
+                  ) ||
+                  (
+                    possuiTratativa &&
+                    destino ===
+                      "MUNDIAL" &&
+                    !possuiNovoCoResponsavel
+                  )
                 }
                 className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-60 sm:w-auto"
               >

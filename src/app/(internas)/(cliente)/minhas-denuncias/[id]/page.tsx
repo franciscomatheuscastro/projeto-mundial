@@ -143,11 +143,11 @@ export default async function ClienteDenunciaDetalhePage({
         tratativaLiberada:
           true,
 
-        destinoTratativa:
-          DestinoTratativaDenuncia.COLABORADOR,
-
         OR: [
           {
+            destinoTratativa:
+              DestinoTratativaDenuncia.COLABORADOR,
+
             colaboradorResponsavelId:
               colaborador.id,
           },

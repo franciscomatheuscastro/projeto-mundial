@@ -1499,37 +1499,46 @@ export default class RepositorioDenuncia {
       0;
 
     /*
-     * Depois que já existe uma tratativa, a Mundial
-     * pode adicionar novos co-responsáveis, mas não
-     * pode trocar o destino nem o integrante principal.
-     * Isso preserva a rastreabilidade do caso.
+     * Depois que já existe uma tratativa:
+     *
+     * - o destino principal é preservado;
+     * - se o destino principal for Comitê, o integrante
+     *   principal também é preservado;
+     * - a Mundial pode apenas acrescentar novos
+     *   co-responsáveis do Comitê de Ética.
+     *
+     * Isso permite atuação conjunta Mundial + Comitê
+     * sem reescrever a responsabilidade histórica.
      */
     if (
       possuiTratativas
     ) {
       if (
         !denuncia.tratativaLiberada ||
-        denuncia.destinoTratativa !==
-          "COLABORADOR"
+        !denuncia.destinoTratativa
       ) {
         throw new Error(
-          "Esta denúncia não possui um direcionamento ao Comitê de Ética do cliente que possa receber integrantes adicionais."
+          "A denúncia não possui um direcionamento válido."
         );
       }
 
       if (
         dados.destino !==
-        "COLABORADOR"
+        denuncia.destinoTratativa
       ) {
         throw new Error(
-          "Depois que existem tratativas, o destino não pode mais ser alterado."
+          "Depois que existem tratativas, o responsável principal da denúncia não pode mais ser alterado. É permitido apenas adicionar integrantes do Comitê de Ética como co-responsáveis."
         );
       }
 
       if (
-        !denuncia.colaboradorResponsavelId ||
-        dados.colaboradorId?.trim() !==
-          denuncia.colaboradorResponsavelId
+        denuncia.destinoTratativa ===
+          "COLABORADOR" &&
+        (
+          !denuncia.colaboradorResponsavelId ||
+          dados.colaboradorId?.trim() !==
+            denuncia.colaboradorResponsavelId
+        )
       ) {
         throw new Error(
           "Depois que existem tratativas, o integrante principal não pode mais ser alterado."
@@ -1618,9 +1627,19 @@ export default class RepositorioDenuncia {
       }
     }
 
-    const idsAdicionaisRecebidos =
+    const permiteCoResponsaveis =
       dados.destino ===
-      "COLABORADOR"
+        "COLABORADOR" ||
+      (
+        possuiTratativas &&
+        denuncia.destinoTratativa ===
+          "MUNDIAL" &&
+        dados.destino ===
+          "MUNDIAL"
+      );
+
+    const idsAdicionaisRecebidos =
+      permiteCoResponsaveis
         ? Array.from(
             new Set(
               (
@@ -1811,14 +1830,24 @@ export default class RepositorioDenuncia {
                 "Novos integrantes autorizados para a tratativa",
 
               descricao:
-                `A Mundial adicionou os seguintes integrantes para realizar novas tratativas: ${novosColaboradoresAdicionais
-                  .map(
-                    colaborador =>
-                      colaborador.nome
-                  )
-                  .join(
-                    ", "
-                  )}.`,
+                denuncia.destinoTratativa ===
+                  "MUNDIAL"
+                  ? `A Mundial permanece responsável pelo caso e autorizou também os seguintes integrantes do Comitê de Ética do cliente para realizar novas tratativas: ${novosColaboradoresAdicionais
+                      .map(
+                        colaborador =>
+                          colaborador.nome
+                      )
+                      .join(
+                        ", "
+                      )}.`
+                  : `A Mundial adicionou os seguintes integrantes do Comitê de Ética do cliente para realizar novas tratativas: ${novosColaboradoresAdicionais
+                      .map(
+                        colaborador =>
+                          colaborador.nome
+                      )
+                      .join(
+                        ", "
+                      )}.`,
 
               statusNovo:
                 denuncia.status,
@@ -2296,11 +2325,30 @@ export default class RepositorioDenuncia {
       "MUNDIAL"
     ) {
       if (
-        ator.origem !==
+        ator.origem ===
         "MUNDIAL"
       ) {
+        return;
+      }
+
+      const coResponsavelComite =
+        Boolean(
+          colaboradorId &&
+          (
+            denuncia.visualizadores ||
+            []
+          ).some(
+            item =>
+              item.colaboradorId ===
+              colaboradorId
+          )
+        );
+
+      if (
+        !coResponsavelComite
+      ) {
         throw new Error(
-          "Esta denúncia está sob responsabilidade da Mundial."
+          "Esta denúncia está sob responsabilidade da Mundial e não foi compartilhada com este integrante do Comitê de Ética."
         );
       }
 
@@ -2443,11 +2491,8 @@ export default class RepositorioDenuncia {
              * co-responsáveis adicionais.
              */
             responsavelId:
-              denuncia.destinoTratativa ===
-              "COLABORADOR"
-                ? colaboradorId ||
-                  null
-                : null,
+              colaboradorId ||
+              null,
 
             criadoPorUsuarioId:
               ator.usuarioId ||
@@ -3533,10 +3578,8 @@ export default class RepositorioDenuncia {
         colaboradorId;
 
     const ehAdicional =
-      denuncia.destinoTratativa ===
-        "COLABORADOR" &&
       denuncia.visualizadores.length >
-        0;
+      0;
 
     const possuiAcesso =
       ehPrincipal ||
