@@ -15,16 +15,6 @@ export type MetodoAnalise =
   | "RISCO_PSICOSSOCIAL";
 
 
-export type DimensaoModelo = {
-  id: string;
-  nome: string;
-  descricao?: string | null;
-  ordem: number;
-  peso: number;
-  fatorRisco?: string | null;
-};
-
-
 export type FaixaInterpretacaoModelo = {
   id: string;
   nome: string;
@@ -32,6 +22,28 @@ export type FaixaInterpretacaoModelo = {
   maximo: number;
   classificacao: string;
   ordem: number;
+};
+
+
+export type DimensaoModelo = {
+  id: string;
+  nome: string;
+  descricao?: string | null;
+  ordem: number;
+  peso: number;
+  fatorRisco?: string | null;
+
+  /*
+   * Faixas específicas da dimensão.
+   *
+   * Campo opcional para manter compatibilidade
+   * com todos os modelos já existentes.
+   *
+   * Quando vazio ou ausente, o motor analítico
+   * deverá utilizar as faixas gerais existentes
+   * em configuracaoAnalise.faixas.
+   */
+  faixas?: FaixaInterpretacaoModelo[];
 };
 
 
@@ -109,13 +121,26 @@ export function criarConfiguracaoAnalisePadrao(
     TipoModuloPesquisa.CLIMA
   ) {
     return {
-      metodo: "FAVORABILIDADE",
-      escalaMinima: 1,
-      escalaMaxima: 5,
-      favoravel: [4, 5],
-      neutro: [3],
-      desfavoravel: [1, 2],
-      faixas: [],
+      metodo:
+        "FAVORABILIDADE",
+
+      escalaMinima:
+        1,
+
+      escalaMaxima:
+        5,
+
+      favoravel:
+        [4, 5],
+
+      neutro:
+        [3],
+
+      desfavoravel:
+        [1, 2],
+
+      faixas:
+        [],
     };
   }
 
@@ -125,24 +150,50 @@ export function criarConfiguracaoAnalisePadrao(
     TipoModuloPesquisa.AVALIACAO_DESEMPENHO
   ) {
     return {
-      metodo: "DESEMPENHO",
-      escalaMinima: 1,
-      escalaMaxima: 5,
-      favoravel: [],
-      neutro: [],
-      desfavoravel: [],
-      faixas: [],
+      metodo:
+        "DESEMPENHO",
+
+      escalaMinima:
+        1,
+
+      escalaMaxima:
+        5,
+
+      favoravel:
+        [],
+
+      neutro:
+        [],
+
+      desfavoravel:
+        [],
+
+      faixas:
+        [],
     };
   }
 
 
   return {
-    metodo: "RISCO_PSICOSSOCIAL",
-    escalaMinima: 1,
-    escalaMaxima: 5,
-    favoravel: [],
-    neutro: [],
-    desfavoravel: [],
-    faixas: [],
+    metodo:
+      "RISCO_PSICOSSOCIAL",
+
+    escalaMinima:
+      1,
+
+    escalaMaxima:
+      5,
+
+    favoravel:
+      [],
+
+    neutro:
+      [],
+
+    desfavoravel:
+      [],
+
+    faixas:
+      [],
   };
 }

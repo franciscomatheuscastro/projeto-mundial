@@ -108,6 +108,17 @@ type AcumuladorScore = {
   totalRespostas: number;
 
   respondentes: Set<string>;
+
+  /*
+   * Faixas efetivamente aplicáveis à dimensão psicossocial.
+   *
+   * Quando a dimensão possui faixas próprias, elas prevalecem.
+   * Caso contrário, são utilizadas as faixas gerais do instrumento.
+   *
+   * Opcional porque este mesmo acumulador também é utilizado
+   * pelo motor de Avaliação de Desempenho.
+   */
+  faixas?: FaixaInterpretacaoModelo[];
 };
 
 type DistribuicaoInformacaoAdicional = {
@@ -730,6 +741,18 @@ function normalizarDimensoes(
           fatorRisco:
             item.fatorRisco?.trim() ||
             null,
+
+          /*
+           * Faixas específicas da dimensão.
+           *
+           * Modelos antigos não possuem este campo e continuam
+           * normalmente com array vazio. O motor psicossocial
+           * fará fallback para configuracaoAnalise.faixas.
+           */
+          faixas:
+            normalizarFaixas(
+              item.faixas
+            ),
         };
       }
     )
@@ -1279,6 +1302,99 @@ function assinaturaFaixas(
         })
       )
   );
+}
+
+
+type ReferenciaFaixasPsicossociais = {
+  faixas: FaixaInterpretacaoModelo[];
+  assinatura: string;
+  compativeis: boolean;
+};
+
+
+/*
+ * Retorna as faixas efetivamente aplicáveis a uma dimensão.
+ *
+ * Prioridade:
+ * 1. faixas próprias da dimensão;
+ * 2. faixas gerais de configuracaoAnalise.
+ *
+ * Dessa forma, modelos antigos continuam funcionando sem
+ * qualquer alteração, enquanto HSE/COPSOQ podem possuir
+ * pontos de corte específicos por dimensão.
+ */
+function obterFaixasEfetivasDimensao(
+  dimensao: DimensaoModelo,
+  configuracao: ConfiguracaoAnaliseModelo
+): FaixaInterpretacaoModelo[] {
+  const especificas =
+    Array.isArray(
+      dimensao.faixas
+    )
+      ? dimensao.faixas
+      : [];
+
+
+  return especificas.length >
+    0
+    ? especificas
+    : configuracao.faixas;
+}
+
+
+/*
+ * Registra as faixas usadas por uma mesma dimensão/fator
+ * durante uma consolidação.
+ *
+ * Se duas aplicações trouxerem cortes diferentes para o mesmo
+ * fator, a referência é marcada como incompatível e nenhuma
+ * classificação é forçada no consolidado. O score continua
+ * sendo exibido normalmente.
+ */
+function registrarFaixasPsicossociais(
+  mapa: Map<
+    string,
+    ReferenciaFaixasPsicossociais
+  >,
+  chave: string,
+  faixas: FaixaInterpretacaoModelo[]
+) {
+  const assinatura =
+    assinaturaFaixas(
+      faixas
+    );
+
+
+  const atual =
+    mapa.get(
+      chave
+    );
+
+
+  if (
+    !atual
+  ) {
+    mapa.set(
+      chave,
+      {
+        faixas,
+        assinatura,
+        compativeis:
+          true,
+      }
+    );
+
+    return;
+  }
+
+
+  if (
+    atual.assinatura !==
+    assinatura
+  ) {
+    atual.compativeis =
+      false;
+  }
 }
 
 /*
@@ -3322,6 +3438,12 @@ function analisarPesquisaPsicossocial(
             )
           ),
 
+        faixas:
+          obterFaixasEfetivasDimensao(
+            dimensao,
+            configuracao
+          ),
+
         soma:
           0,
 
@@ -3459,6 +3581,10 @@ function analisarPesquisaPsicossocial(
             pesoDimensao:
               item.pesoDimensao,
 
+            faixas:
+              item.faixas ||
+              configuracao.faixas,
+
             score:
               item.pesoPerguntasTotal >
               0
@@ -3497,6 +3623,14 @@ function montarAnalisePsicossocial(
       }
     >();
 
+
+  const faixasPorFator =
+    new Map<
+      string,
+      ReferenciaFaixasPsicossociais
+    >();
+
+
   for (
     const pesquisa
     of pesquisasBanco
@@ -3506,6 +3640,7 @@ function montarAnalisePsicossocial(
         pesquisa
       );
 
+
     for (
       const fator
       of resultado.fatores
@@ -3514,10 +3649,19 @@ function montarAnalisePsicossocial(
         fator.fatorRisco ||
         fator.nome;
 
+
       const chave =
         chaveTexto(
           nomeChave
         );
+
+
+      registrarFaixasPsicossociais(
+        faixasPorFator,
+        chave,
+        fator.faixas
+      );
+
 
       const atual =
         mapaFatores.get(
@@ -3552,12 +3696,15 @@ function montarAnalisePsicossocial(
             new Set<string>(),
         };
 
+
       atual.somaPonderada +=
         fator.score *
         fator.pesoDimensao;
 
+
       atual.pesoTotal +=
         fator.pesoDimensao;
+
 
       for (
         const respondente
@@ -3568,6 +3715,7 @@ function montarAnalisePsicossocial(
         );
       }
 
+
       mapaFatores.set(
         chave,
         atual
@@ -3575,23 +3723,35 @@ function montarAnalisePsicossocial(
     }
   }
 
-  const faixas =
-    obterFaixasCompativeis(
-      pesquisasBanco
-    );
 
   const fatores =
     Array.from(
-      mapaFatores.values()
+      mapaFatores.entries()
     )
       .map(
-        item => {
+        ([
+          chave,
+          item,
+        ]) => {
           const score =
             item.pesoTotal >
             0
               ? item.somaPonderada /
                 item.pesoTotal
               : null;
+
+
+          const referenciaFaixas =
+            faixasPorFator.get(
+              chave
+            );
+
+
+          const faixas =
+            referenciaFaixas?.compativeis
+              ? referenciaFaixas.faixas
+              : [];
+
 
           const faixa =
             score !==
@@ -3601,6 +3761,7 @@ function montarAnalisePsicossocial(
                   faixas
                 )
               : null;
+
 
           return {
             id:
@@ -3639,10 +3800,12 @@ function montarAnalisePsicossocial(
           )
       );
 
+
   return {
     fatores,
   };
 }
+
 
 function montarDimensoesPsicossociais(
   pesquisasBanco: any[]
@@ -3660,6 +3823,14 @@ function montarDimensoesPsicossociais(
       }
     >();
 
+
+  const faixasPorDimensao =
+    new Map<
+      string,
+      ReferenciaFaixasPsicossociais
+    >();
+
+
   for (
     const pesquisa
     of pesquisasBanco
@@ -3669,6 +3840,7 @@ function montarDimensoesPsicossociais(
         pesquisa
       );
 
+
     for (
       const dimensao
       of resultado.fatores
@@ -3677,6 +3849,14 @@ function montarDimensoesPsicossociais(
         chaveTexto(
           dimensao.nome
         );
+
+
+      registrarFaixasPsicossociais(
+        faixasPorDimensao,
+        chave,
+        dimensao.faixas
+      );
+
 
       const atual =
         mapaDimensoes.get(
@@ -3701,12 +3881,15 @@ function montarDimensoesPsicossociais(
             new Set<string>(),
         };
 
+
       atual.somaPonderada +=
         dimensao.score *
         dimensao.pesoDimensao;
 
+
       atual.pesoTotal +=
         dimensao.pesoDimensao;
+
 
       for (
         const respondente
@@ -3717,6 +3900,7 @@ function montarDimensoesPsicossociais(
         );
       }
 
+
       mapaDimensoes.set(
         chave,
         atual
@@ -3724,22 +3908,34 @@ function montarDimensoesPsicossociais(
     }
   }
 
-  const faixas =
-    obterFaixasCompativeis(
-      pesquisasBanco
-    );
 
   return Array.from(
-    mapaDimensoes.values()
+    mapaDimensoes.entries()
   )
     .map(
-      item => {
+      ([
+        chave,
+        item,
+      ]) => {
         const score =
           item.pesoTotal >
           0
             ? item.somaPonderada /
               item.pesoTotal
             : null;
+
+
+        const referenciaFaixas =
+          faixasPorDimensao.get(
+            chave
+          );
+
+
+        const faixas =
+          referenciaFaixas?.compativeis
+            ? referenciaFaixas.faixas
+            : [];
+
 
         const faixa =
           score !==
@@ -3749,6 +3945,7 @@ function montarDimensoesPsicossociais(
                 faixas
               )
             : null;
+
 
         return {
           id:
@@ -3773,6 +3970,7 @@ function montarDimensoesPsicossociais(
       }
     );
 }
+
 
 /* =========================================================
  * HEATMAP PSICOSSOCIAL — SETOR × FATOR
@@ -3824,6 +4022,14 @@ function montarHeatmapPsicossocial(
       string,
       string
     >();
+
+
+  const faixasPorFator =
+    new Map<
+      string,
+      ReferenciaFaixasPsicossociais
+    >();
+
 
   for (
     const pesquisa
@@ -4054,6 +4260,21 @@ function montarHeatmapPsicossocial(
           nomeFator
         );
 
+
+        const faixasDimensao =
+          obterFaixasEfetivasDimensao(
+            dimensao,
+            configuracao
+          );
+
+
+        registrarFaixasPsicossociais(
+          faixasPorFator,
+          chaveFator,
+          faixasDimensao
+        );
+
+
         const peso =
           Math.max(
             0,
@@ -4108,11 +4329,6 @@ function montarHeatmapPsicossocial(
     }
   }
 
-  const faixas =
-    obterFaixasCompativeis(
-      pesquisasBanco
-    );
-
   const fatoresOrdenados =
     Array.from(
       nomesFatores.entries()
@@ -4158,6 +4374,18 @@ function montarHeatmapPsicossocial(
                     ? acumulador.somaPonderada /
                       acumulador.pesoTotal
                     : null;
+
+                const referenciaFaixas =
+                  faixasPorFator.get(
+                    chaveFator
+                  );
+
+
+                const faixas =
+                  referenciaFaixas?.compativeis
+                    ? referenciaFaixas.faixas
+                    : [];
+
 
                 const faixa =
                   score !==

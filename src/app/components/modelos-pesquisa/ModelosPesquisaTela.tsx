@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import {
+  ChangeEvent,
   FormEvent,
   useEffect,
   useState,
@@ -25,6 +26,7 @@ import type {
   ConfiguracaoAnaliseModelo,
   DimensaoModelo,
   FaixaInterpretacaoModelo,
+  ModeloPesquisa,
   PerguntaModelo,
   SentidoPontuacao,
 } from "@/src/core/model/ModeloPesquisa";
@@ -141,6 +143,108 @@ const CLASSIFICACOES_PSICOSSOCIAL: ClassificacaoFaixaFixa[] = [
 
     nomePadrao:
       "Intolerável",
+  },
+];
+
+
+/*
+ * Classificações permitidas nas faixas específicas
+ * das dimensões psicossociais.
+ *
+ * BAIXO / MODERADO / ALTO atendem instrumentos como HSE.
+ * FAVORAVEL / INTERMEDIARIO / RISCO permitem instrumentos
+ * com leitura em semáforo, como COPSOQ.
+ *
+ * As classificações legadas permanecem disponíveis para
+ * compatibilidade com modelos já existentes.
+ */
+const CLASSIFICACOES_PSICOSSOCIAL_DIMENSAO: ClassificacaoFaixaFixa[] = [
+  {
+    valor:
+      "BAIXO",
+
+    nomePadrao:
+      "Risco baixo",
+  },
+
+  {
+    valor:
+      "MODERADO",
+
+    nomePadrao:
+      "Risco moderado",
+  },
+
+  {
+    valor:
+      "ALTO",
+
+    nomePadrao:
+      "Risco alto",
+  },
+
+  {
+    valor:
+      "FAVORAVEL",
+
+    nomePadrao:
+      "Situação favorável",
+  },
+
+  {
+    valor:
+      "INTERMEDIARIO",
+
+    nomePadrao:
+      "Situação intermédia",
+  },
+
+  {
+    valor:
+      "RISCO",
+
+    nomePadrao:
+      "Risco para a saúde",
+  },
+
+  {
+    valor:
+      "TRIVIAL",
+
+    nomePadrao:
+      "Trivial",
+  },
+
+  {
+    valor:
+      "TOLERÁVEL",
+
+    nomePadrao:
+      "Tolerável",
+  },
+
+  {
+    valor:
+      "SUBSTANCIAL",
+
+    nomePadrao:
+      "Substancial",
+  },
+
+  {
+    valor:
+      "INTOLERÁVEL",
+
+    nomePadrao:
+      "Intolerável",
+  },
+
+  {
+    valor:
+      "CRITICO",
+
+    nomePadrao:
+      "Crítico",
   },
 ];
 
@@ -375,6 +479,1069 @@ function nomeMetodo(
 }
 
 
+
+/* =========================================================
+ * IMPORTAÇÃO DE PLANILHA
+ * ======================================================= */
+
+type LinhaPlanilha =
+  Record<string, unknown>;
+
+
+type PreviaImportacaoModelo = {
+  nomeArquivo: string;
+  modelo: ModeloPesquisa;
+  totalDimensoes: number;
+  totalFaixas: number;
+  totalPerguntas: number;
+  avisos: string[];
+};
+
+
+const ABAS_IMPORTACAO = [
+  "Modelo",
+  "Dimensoes",
+  "Faixas",
+  "Perguntas",
+] as const;
+
+
+function textoPlanilha(
+  valor: unknown
+) {
+  return String(
+    valor ?? ""
+  ).trim();
+}
+
+
+function numeroPlanilha(
+  valor: unknown,
+  campo: string,
+  obrigatorio = true
+) {
+  const texto =
+    textoPlanilha(
+      valor
+    ).replace(
+      ",",
+      "."
+    );
+
+
+  if (
+    !texto &&
+    !obrigatorio
+  ) {
+    return null;
+  }
+
+
+  const numero =
+    Number(
+      texto
+    );
+
+
+  if (
+    !Number.isFinite(
+      numero
+    )
+  ) {
+    throw new Error(
+      `Valor inválido no campo "${campo}".`
+    );
+  }
+
+
+  return numero;
+}
+
+
+function booleanoPlanilha(
+  valor: unknown,
+  padrao: boolean
+) {
+  if (
+    typeof valor ===
+    "boolean"
+  ) {
+    return valor;
+  }
+
+
+  const texto =
+    textoPlanilha(
+      valor
+    ).toLowerCase();
+
+
+  if (
+    !texto
+  ) {
+    return padrao;
+  }
+
+
+  if (
+    [
+      "true",
+      "verdadeiro",
+      "sim",
+      "1",
+      "yes",
+    ].includes(
+      texto
+    )
+  ) {
+    return true;
+  }
+
+
+  if (
+    [
+      "false",
+      "falso",
+      "não",
+      "nao",
+      "0",
+      "no",
+    ].includes(
+      texto
+    )
+  ) {
+    return false;
+  }
+
+
+  throw new Error(
+    `Valor booleano inválido: "${textoPlanilha(valor)}".`
+  );
+}
+
+
+function opcoesPlanilha(
+  valor: unknown
+) {
+  const texto =
+    textoPlanilha(
+      valor
+    );
+
+
+  if (
+    !texto
+  ) {
+    return [];
+  }
+
+
+  return texto
+    .split(
+      /\r?\n|\|/
+    )
+    .map(
+      item =>
+        item.trim()
+    )
+    .filter(
+      Boolean
+    );
+}
+
+
+function validarTipoModuloImportado(
+  valor: unknown
+): TipoModuloPesquisa {
+  const tipo =
+    textoPlanilha(
+      valor
+    );
+
+
+  if (
+    tipo !==
+      TIPO_MODULO.CLIMA &&
+    tipo !==
+      TIPO_MODULO.AVALIACAO_DESEMPENHO &&
+    tipo !==
+      TIPO_MODULO.AVALIACAO_PSICOSSOCIAL
+  ) {
+    throw new Error(
+      `Tipo de modelo inválido na aba Modelo: "${tipo}".`
+    );
+  }
+
+
+  return tipo as TipoModuloPesquisa;
+}
+
+
+function validarTipoPerguntaImportada(
+  valor: unknown,
+  linha: number
+): TipoPergunta {
+  const tipo =
+    textoPlanilha(
+      valor
+    );
+
+
+  const tiposValidos =
+    Object.values(
+      TIPO_PERGUNTA
+    ) as string[];
+
+
+  if (
+    !tiposValidos.includes(
+      tipo
+    )
+  ) {
+    throw new Error(
+      `Tipo de pergunta inválido na linha ${linha} da aba Perguntas: "${tipo}".`
+    );
+  }
+
+
+  return tipo as TipoPergunta;
+}
+
+
+function lerCamposModelo(
+  linhas: LinhaPlanilha[]
+) {
+  const campos =
+    new Map<
+      string,
+      unknown
+    >();
+
+
+  for (
+    const linha
+    of linhas
+  ) {
+    const campo =
+      textoPlanilha(
+        linha.campo
+      );
+
+
+    if (
+      !campo
+    ) {
+      continue;
+    }
+
+
+    campos.set(
+      campo,
+      linha.valor
+    );
+  }
+
+
+  return campos;
+}
+
+
+async function lerModeloDePlanilha(
+  arquivo: File
+): Promise<PreviaImportacaoModelo> {
+  if (
+    !arquivo.name
+      .toLowerCase()
+      .match(/\.(xlsx|xls)$/)
+  ) {
+    throw new Error(
+      "Selecione um arquivo Excel .xlsx ou .xls."
+    );
+  }
+
+
+  const XLSX =
+    await import(
+      "xlsx"
+    );
+
+
+  const buffer =
+    await arquivo.arrayBuffer();
+
+
+  const workbook =
+    XLSX.read(
+      buffer,
+      {
+        type:
+          "array",
+      }
+    );
+
+
+  for (
+    const nomeAba
+    of ABAS_IMPORTACAO
+  ) {
+    if (
+      !workbook.SheetNames.includes(
+        nomeAba
+      )
+    ) {
+      throw new Error(
+        `A planilha precisa conter a aba "${nomeAba}".`
+      );
+    }
+  }
+
+
+  function linhasDaAba(
+    nomeAba: string
+  ): LinhaPlanilha[] {
+    const aba =
+      workbook.Sheets[
+        nomeAba
+      ];
+
+
+    if (
+      !aba
+    ) {
+      return [];
+    }
+
+
+    return XLSX.utils.sheet_to_json<LinhaPlanilha>(
+      aba,
+      {
+        defval:
+          "",
+        raw:
+          true,
+      }
+    );
+  }
+
+
+  const camposModelo =
+    lerCamposModelo(
+      linhasDaAba(
+        "Modelo"
+      )
+    );
+
+
+  const titulo =
+    textoPlanilha(
+      camposModelo.get(
+        "titulo"
+      )
+    );
+
+
+  if (
+    !titulo
+  ) {
+    throw new Error(
+      "O campo titulo é obrigatório na aba Modelo."
+    );
+  }
+
+
+  const tipo =
+    validarTipoModuloImportado(
+      camposModelo.get(
+        "tipo"
+      )
+    );
+
+
+  const configuracaoAnalise =
+    criarConfiguracaoAnalisePadraoCliente(
+      tipo
+    );
+
+
+  const escalaMinima =
+    numeroPlanilha(
+      camposModelo.get(
+        "escalaMinima"
+      ),
+      "escalaMinima"
+    );
+
+
+  const escalaMaxima =
+    numeroPlanilha(
+      camposModelo.get(
+        "escalaMaxima"
+      ),
+      "escalaMaxima"
+    );
+
+
+  if (
+    escalaMinima ===
+      null ||
+    escalaMaxima ===
+      null ||
+    escalaMinima >=
+      escalaMaxima
+  ) {
+    throw new Error(
+      "A escala da aba Modelo é inválida. A escala mínima deve ser menor que a máxima."
+    );
+  }
+
+
+  const metodoInformado =
+    textoPlanilha(
+      camposModelo.get(
+        "metodo"
+      )
+    );
+
+
+  if (
+    metodoInformado &&
+    metodoInformado !==
+      configuracaoAnalise.metodo
+  ) {
+    throw new Error(
+      `O método "${metodoInformado}" não corresponde ao tipo "${tipo}". Para esse módulo o método esperado é "${configuracaoAnalise.metodo}".`
+    );
+  }
+
+
+  configuracaoAnalise.escalaMinima =
+    escalaMinima;
+
+  configuracaoAnalise.escalaMaxima =
+    escalaMaxima;
+
+
+  const linhasDimensoes =
+    linhasDaAba(
+      "Dimensoes"
+    );
+
+
+  const codigoParaId =
+    new Map<
+      string,
+      string
+    >();
+
+
+  const dimensoes: DimensaoModelo[] =
+    linhasDimensoes.map(
+      (
+        linha,
+        index
+      ) => {
+        const numeroLinha =
+          index +
+          2;
+
+
+        const codigo =
+          textoPlanilha(
+            linha.codigo
+          );
+
+
+        const nome =
+          textoPlanilha(
+            linha.nome
+          );
+
+
+        if (
+          !codigo
+        ) {
+          throw new Error(
+            `Código da dimensão não informado na linha ${numeroLinha} da aba Dimensoes.`
+          );
+        }
+
+
+        if (
+          !nome
+        ) {
+          throw new Error(
+            `Nome da dimensão não informado na linha ${numeroLinha} da aba Dimensoes.`
+          );
+        }
+
+
+        if (
+          codigoParaId.has(
+            codigo
+          )
+        ) {
+          throw new Error(
+            `Código de dimensão duplicado na aba Dimensoes: "${codigo}".`
+          );
+        }
+
+
+        const peso =
+          numeroPlanilha(
+            linha.peso,
+            `peso da dimensão ${codigo}`,
+            false
+          ) ??
+          1;
+
+
+        if (
+          peso <
+          0
+        ) {
+          throw new Error(
+            `O peso da dimensão "${codigo}" não pode ser negativo.`
+          );
+        }
+
+
+        const id =
+          gerarIdLocal(
+            "dim"
+          );
+
+
+        codigoParaId.set(
+          codigo,
+          id
+        );
+
+
+        return {
+          id,
+          nome,
+          descricao:
+            textoPlanilha(
+              linha.descricao
+            ) ||
+            null,
+          ordem:
+            index +
+            1,
+          peso,
+          fatorRisco:
+            textoPlanilha(
+              linha.fatorRisco
+            ) ||
+            null,
+          faixas:
+            [],
+        };
+      }
+    );
+
+
+  const linhasFaixas =
+    linhasDaAba(
+      "Faixas"
+    );
+
+
+  for (
+    let index = 0;
+    index < linhasFaixas.length;
+    index++
+  ) {
+    const linha =
+      linhasFaixas[
+        index
+      ];
+
+    const numeroLinha =
+      index +
+      2;
+
+    const codigoDimensao =
+      textoPlanilha(
+        linha.dimensao
+      );
+
+
+    if (
+      !codigoDimensao
+    ) {
+      throw new Error(
+        `Dimensão não informada na linha ${numeroLinha} da aba Faixas.`
+      );
+    }
+
+
+    const dimensaoId =
+      codigoParaId.get(
+        codigoDimensao
+      );
+
+
+    if (
+      !dimensaoId
+    ) {
+      throw new Error(
+        `A dimensão "${codigoDimensao}" da linha ${numeroLinha} da aba Faixas não existe na aba Dimensoes.`
+      );
+    }
+
+
+    const nome =
+      textoPlanilha(
+        linha.nome
+      );
+
+    const classificacao =
+      textoPlanilha(
+        linha.classificacao
+      );
+
+    const minimo =
+      numeroPlanilha(
+        linha.minimo,
+        `mínimo da faixa na linha ${numeroLinha}`
+      );
+
+    const maximo =
+      numeroPlanilha(
+        linha.maximo,
+        `máximo da faixa na linha ${numeroLinha}`
+      );
+
+
+    if (
+      !nome ||
+      !classificacao ||
+      minimo ===
+        null ||
+      maximo ===
+        null
+    ) {
+      throw new Error(
+        `A linha ${numeroLinha} da aba Faixas está incompleta.`
+      );
+    }
+
+
+    if (
+      minimo <
+        0 ||
+      maximo >
+        100 ||
+      minimo >
+        maximo
+    ) {
+      throw new Error(
+        `Os limites da faixa na linha ${numeroLinha} devem estar entre 0 e 100 e mínimo não pode ser maior que máximo.`
+      );
+    }
+
+
+    const dimensao =
+      dimensoes.find(
+        item =>
+          item.id ===
+          dimensaoId
+      );
+
+
+    if (
+      !dimensao
+    ) {
+      throw new Error(
+        `Não foi possível vincular a faixa da linha ${numeroLinha}.`
+      );
+    }
+
+
+    const ordemInformada =
+      numeroPlanilha(
+        linha.ordem,
+        `ordem da faixa na linha ${numeroLinha}`,
+        false
+      );
+
+
+    dimensao.faixas = [
+      ...(
+        dimensao.faixas ??
+        []
+      ),
+      {
+        id:
+          gerarIdLocal(
+            "faixa"
+          ),
+        nome,
+        minimo,
+        maximo,
+        classificacao,
+        ordem:
+          ordemInformada ??
+          (
+            dimensao.faixas?.length ??
+            0
+          ) +
+          1,
+      },
+    ];
+  }
+
+
+  for (
+    const dimensao
+    of dimensoes
+  ) {
+    dimensao.faixas = [
+      ...(
+        dimensao.faixas ??
+        []
+      ),
+    ]
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          a.ordem -
+          b.ordem
+      )
+      .map(
+        (
+          faixa,
+          index
+        ) => ({
+          ...faixa,
+          ordem:
+            index +
+            1,
+        })
+      );
+  }
+
+
+  const linhasPerguntas =
+    linhasDaAba(
+      "Perguntas"
+    );
+
+
+  if (
+    linhasPerguntas.length ===
+    0
+  ) {
+    throw new Error(
+      "A aba Perguntas precisa possuir pelo menos uma pergunta."
+    );
+  }
+
+
+  const ordensPerguntas =
+    new Set<number>();
+
+
+  const perguntas: PerguntaModelo[] =
+    linhasPerguntas.map(
+      (
+        linha,
+        index
+      ) => {
+        const numeroLinha =
+          index +
+          2;
+
+
+        const ordem =
+          numeroPlanilha(
+            linha.ordem,
+            `ordem da pergunta na linha ${numeroLinha}`
+          );
+
+
+        if (
+          ordem ===
+            null ||
+          !Number.isInteger(
+            ordem
+          ) ||
+          ordem <
+            1
+        ) {
+          throw new Error(
+            `A ordem da pergunta na linha ${numeroLinha} deve ser um número inteiro maior que zero.`
+          );
+        }
+
+
+        if (
+          ordensPerguntas.has(
+            ordem
+          )
+        ) {
+          throw new Error(
+            `A ordem ${ordem} está duplicada na aba Perguntas.`
+          );
+        }
+
+
+        ordensPerguntas.add(
+          ordem
+        );
+
+
+        const tituloPergunta =
+          textoPlanilha(
+            linha.titulo
+          );
+
+
+        if (
+          !tituloPergunta
+        ) {
+          throw new Error(
+            `Título da pergunta não informado na linha ${numeroLinha} da aba Perguntas.`
+          );
+        }
+
+
+        const tipoPergunta =
+          validarTipoPerguntaImportada(
+            linha.tipo,
+            numeroLinha
+          );
+
+
+        const codigoDimensao =
+          textoPlanilha(
+            linha.dimensao
+          );
+
+
+        const dimensaoId =
+          codigoDimensao
+            ? codigoParaId.get(
+                codigoDimensao
+              ) ??
+              null
+            : null;
+
+
+        if (
+          codigoDimensao &&
+          !dimensaoId
+        ) {
+          throw new Error(
+            `A dimensão "${codigoDimensao}" da pergunta na linha ${numeroLinha} não existe na aba Dimensoes.`
+          );
+        }
+
+
+        if (
+          tipo ===
+            TIPO_MODULO.AVALIACAO_PSICOSSOCIAL &&
+          !dimensaoId
+        ) {
+          throw new Error(
+            `A pergunta da linha ${numeroLinha} precisa estar vinculada a uma dimensão no módulo psicossocial.`
+          );
+        }
+
+
+        const peso =
+          numeroPlanilha(
+            linha.peso,
+            `peso da pergunta na linha ${numeroLinha}`,
+            false
+          ) ??
+          1;
+
+
+        if (
+          peso <=
+          0
+        ) {
+          throw new Error(
+            `O peso da pergunta na linha ${numeroLinha} deve ser maior que zero.`
+          );
+        }
+
+
+        let sentidoPontuacao: SentidoPontuacao =
+          "POSITIVO";
+
+
+        if (
+          tipoPergunta ===
+          TIPO_PERGUNTA.NOTA
+        ) {
+          const sentido =
+            textoPlanilha(
+              linha.sentido
+            ) ||
+            "POSITIVO";
+
+
+          if (
+            sentido !==
+              "POSITIVO" &&
+            sentido !==
+              "NEGATIVO"
+          ) {
+            throw new Error(
+              `Sentido inválido na linha ${numeroLinha} da aba Perguntas. Use POSITIVO ou NEGATIVO.`
+            );
+          }
+
+
+          sentidoPontuacao =
+            sentido as SentidoPontuacao;
+        }
+
+
+        const opcoes =
+          tipoPergunta ===
+            TIPO_PERGUNTA.MULTIPLA_ESCOLHA
+            ? opcoesPlanilha(
+                linha.opcoes
+              )
+            : [];
+
+
+        if (
+          tipoPergunta ===
+            TIPO_PERGUNTA.MULTIPLA_ESCOLHA &&
+          opcoes.length ===
+            0
+        ) {
+          throw new Error(
+            `A pergunta de múltipla escolha na linha ${numeroLinha} precisa informar opções na coluna opcoes, separadas por | ou por quebra de linha.`
+          );
+        }
+
+
+        return {
+          id:
+            gerarIdLocal(
+              "pergunta"
+            ),
+          titulo:
+            tituloPergunta,
+          descricao:
+            textoPlanilha(
+              linha.descricao
+            ) ||
+            null,
+          tipo:
+            tipoPergunta,
+          ordem,
+          obrigatoria:
+            booleanoPlanilha(
+              linha.obrigatoria,
+              true
+            ),
+          opcoes,
+          dimensaoId,
+          peso,
+          sentidoPontuacao,
+        };
+      }
+    )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          a.ordem -
+          b.ordem
+      )
+      .map(
+        (
+          pergunta,
+          index
+        ) => ({
+          ...pergunta,
+          ordem:
+            index +
+            1,
+        })
+      );
+
+
+  const avisos: string[] =
+    [];
+
+
+  if (
+    dimensoes.length ===
+    0
+  ) {
+    avisos.push(
+      "O modelo não possui dimensões cadastradas."
+    );
+  }
+
+
+  const totalFaixas =
+    dimensoes.reduce(
+      (
+        total,
+        dimensao
+      ) =>
+        total +
+        (
+          dimensao.faixas?.length ??
+          0
+        ),
+      0
+    );
+
+
+  return {
+    nomeArquivo:
+      arquivo.name,
+    modelo: {
+      titulo,
+      descricao:
+        textoPlanilha(
+          camposModelo.get(
+            "descricao"
+          )
+        ) ||
+        null,
+      tipo,
+      ativo:
+        booleanoPlanilha(
+          camposModelo.get(
+            "ativo"
+          ),
+          true
+        ),
+      modeloPadrao:
+        booleanoPlanilha(
+          camposModelo.get(
+            "modeloPadrao"
+          ),
+          false
+        ),
+      perguntas,
+      dimensoes,
+      configuracaoAnalise,
+    },
+    totalDimensoes:
+      dimensoes.length,
+    totalFaixas,
+    totalPerguntas:
+      perguntas.length,
+    avisos,
+  };
+}
+
+
 function nomeTipoPergunta(
   tipo: TipoPergunta
 ) {
@@ -500,6 +1667,32 @@ export default function ModelosPesquisaTela({
     useState<EtapaEditor>(
       "dados"
     );
+
+
+
+  const [
+    previaImportacao,
+    setPreviaImportacao,
+  ] =
+    useState<PreviaImportacaoModelo | null>(
+      null
+    );
+
+
+  const [
+    erroImportacao,
+    setErroImportacao,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+
+  const [
+    lendoPlanilha,
+    setLendoPlanilha,
+  ] =
+    useState(false);
 
 
   useEffect(() => {
@@ -681,6 +1874,121 @@ export default function ModelosPesquisaTela({
   }
 
 
+
+  async function selecionarPlanilha(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    const arquivo =
+      event.target.files?.[
+        0
+      ];
+
+
+    event.target.value =
+      "";
+
+
+    if (
+      !arquivo
+    ) {
+      return;
+    }
+
+
+    try {
+      setLendoPlanilha(
+        true
+      );
+
+      setErroImportacao(
+        null
+      );
+
+      setPreviaImportacao(
+        null
+      );
+
+
+      const previa =
+        await lerModeloDePlanilha(
+          arquivo
+        );
+
+
+      if (
+        modelos.some(
+          modelo =>
+            modelo.titulo
+              .trim()
+              .toLowerCase() ===
+            previa.modelo.titulo
+              .trim()
+              .toLowerCase()
+        )
+      ) {
+        previa.avisos.push(
+          "Já existe um modelo com o mesmo título. A importação criará outro modelo se você confirmar."
+        );
+      }
+
+
+      setPreviaImportacao(
+        previa
+      );
+    } catch (error) {
+      setErroImportacao(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível ler a planilha."
+      );
+    } finally {
+      setLendoPlanilha(
+        false
+      );
+    }
+  }
+
+
+  async function confirmarImportacao() {
+    if (
+      !previaImportacao
+    ) {
+      return;
+    }
+
+
+    try {
+      setErroImportacao(
+        null
+      );
+
+
+      const resultado =
+        await salvarModelo(
+          previaImportacao.modelo
+        );
+
+
+      setPreviaImportacao(
+        null
+      );
+
+
+      router.push(
+        `/modelos-pesquisa/${resultado.id}`
+      );
+
+      router.refresh();
+    } catch (error) {
+      setErroImportacao(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível importar o modelo."
+      );
+    }
+  }
+
+
   function adicionarDimensao() {
     setDimensoes(
       atual => [
@@ -707,6 +2015,9 @@ export default function ModelosPesquisaTela({
 
           fatorRisco:
             null,
+
+          faixas:
+            [],
         },
       ]
     );
@@ -826,12 +2137,34 @@ export default function ModelosPesquisaTela({
             </div>
 
 
-            <Link
-              href="/modelos-pesquisa/novo"
-              className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700"
-            >
-              + Novo modelo
-            </Link>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm font-bold text-blue-700 transition hover:bg-blue-100">
+                {lendoPlanilha
+                  ? "Lendo planilha..."
+                  : "Importar planilha"}
+
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  disabled={
+                    lendoPlanilha ||
+                    processando
+                  }
+                  onChange={
+                    selecionarPlanilha
+                  }
+                  className="hidden"
+                />
+              </label>
+
+
+              <Link
+                href="/modelos-pesquisa/novo"
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700"
+              >
+                + Novo modelo
+              </Link>
+            </div>
           </div>
         </header>
 
@@ -842,6 +2175,132 @@ export default function ModelosPesquisaTela({
               erro
             }
           />
+
+
+          {erroImportacao && (
+            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              {erroImportacao}
+            </div>
+          )}
+
+
+          {previaImportacao && (
+            <div className="mb-6 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-blue-200">
+              <div className="border-b border-blue-100 bg-blue-50 px-5 py-4 sm:px-6">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
+                  Prévia da importação
+                </p>
+
+
+                <h2 className="mt-1 text-lg font-black text-slate-900">
+                  {previaImportacao.modelo.titulo}
+                </h2>
+
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Arquivo: {previaImportacao.nomeArquivo}
+                </p>
+              </div>
+
+
+              <div className="p-5 sm:p-6">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <ResumoImportacao
+                    titulo="Módulo"
+                    valor={
+                      nomeModulo(
+                        previaImportacao.modelo.tipo ??
+                        (TIPO_MODULO.CLIMA as TipoModuloPesquisa)
+                      )
+                    }
+                  />
+
+                  <ResumoImportacao
+                    titulo="Dimensões"
+                    valor={
+                      String(
+                        previaImportacao.totalDimensoes
+                      )
+                    }
+                  />
+
+                  <ResumoImportacao
+                    titulo="Faixas"
+                    valor={
+                      String(
+                        previaImportacao.totalFaixas
+                      )
+                    }
+                  />
+
+                  <ResumoImportacao
+                    titulo="Perguntas"
+                    valor={
+                      String(
+                        previaImportacao.totalPerguntas
+                      )
+                    }
+                  />
+                </div>
+
+
+                {previaImportacao.avisos.length > 0 && (
+                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    {previaImportacao.avisos.map(
+                      aviso => (
+                        <p
+                          key={
+                            aviso
+                          }
+                          className="text-xs font-semibold leading-5 text-amber-800"
+                        >
+                          {aviso}
+                        </p>
+                      )
+                    )}
+                  </div>
+                )}
+
+
+                <div className="mt-5 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreviaImportacao(
+                        null
+                      );
+
+                      setErroImportacao(
+                        null
+                      );
+                    }}
+                    disabled={
+                      processando
+                    }
+                    className="min-h-11 rounded-2xl border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    Cancelar
+                  </button>
+
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void confirmarImportacao()
+                    }
+                    disabled={
+                      processando
+                    }
+                    className="min-h-11 rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {processando
+                      ? "Importando..."
+                      : "Importar modelo"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
 
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -2077,6 +3536,9 @@ function FaixasEditor({
   tipo,
   faixas,
   onChange,
+  classificacoesPersonalizadas,
+  titulo,
+  descricao,
 }: {
   tipo: TipoModuloPesquisa;
 
@@ -2085,6 +3547,12 @@ function FaixasEditor({
   onChange: (
     valor: FaixaInterpretacaoModelo[]
   ) => void;
+
+  classificacoesPersonalizadas?: ClassificacaoFaixaFixa[];
+
+  titulo?: string;
+
+  descricao?: string;
 }) {
   const psicossocial =
     tipo ===
@@ -2092,6 +3560,7 @@ function FaixasEditor({
 
 
   const classificacoes =
+    classificacoesPersonalizadas ??
     obterClassificacoesFaixa(
       tipo
     );
@@ -2238,14 +3707,16 @@ function FaixasEditor({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-black text-slate-900">
-            Faixas de interpretação
+            {titulo ??
+              "Faixas de interpretação"}
           </p>
 
 
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            {psicossocial
-              ? "Use as classificações padronizadas da Gestão de Riscos Psicossociais. Os limites devem permanecer entre 0 e 100."
-              : "Use as classificações de desempenho padronizadas. Os limites devem permanecer entre 0 e 100."}
+            {descricao ??
+              (psicossocial
+                ? "Use as classificações padronizadas da Gestão de Riscos Psicossociais. Os limites devem permanecer entre 0 e 100."
+                : "Use as classificações de desempenho padronizadas. Os limites devem permanecer entre 0 e 100.")}
           </p>
         </div>
 
@@ -2620,6 +4091,31 @@ function DimensaoCard({
           </div>
         )}
       </div>
+
+
+      {psicossocial && (
+        <FaixasEditor
+          tipo={
+            TIPO_MODULO.AVALIACAO_PSICOSSOCIAL as TipoModuloPesquisa
+          }
+          faixas={
+            dimensao.faixas ??
+            []
+          }
+          classificacoesPersonalizadas={
+            CLASSIFICACOES_PSICOSSOCIAL_DIMENSAO
+          }
+          titulo="Faixas específicas da dimensão"
+          descricao="Opcional. Quando cadastradas, estas faixas substituem as faixas gerais somente nesta dimensão. Se nenhuma faixa for informada, o sistema utiliza as faixas gerais da configuração analítica."
+          onChange={(
+            faixas
+          ) =>
+            onChange({
+              faixas,
+            })
+          }
+        />
+      )}
     </article>
   );
 }
@@ -3586,6 +5082,33 @@ function StatusBadge({
         ? "Ativo"
         : "Inativo"}
     </span>
+  );
+}
+
+
+
+/* =========================================================
+ * RESUMO DA IMPORTAÇÃO
+ * ======================================================= */
+
+function ResumoImportacao({
+  titulo,
+  valor,
+}: {
+  titulo: string;
+  valor: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+        {titulo}
+      </p>
+
+
+      <p className="mt-1 text-sm font-black text-slate-900">
+        {valor}
+      </p>
+    </div>
   );
 }
 

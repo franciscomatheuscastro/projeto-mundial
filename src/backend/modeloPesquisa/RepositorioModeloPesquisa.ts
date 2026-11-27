@@ -87,83 +87,6 @@ function pesoPerguntaSeguro(
 
 
 /* =========================================================
- * DIMENSÕES
- * ======================================================= */
-
-function normalizarDimensoes(
-  dimensoes: unknown
-): DimensaoModelo[] {
-  if (
-    !Array.isArray(
-      dimensoes
-    )
-  ) {
-    return [];
-  }
-
-
-  return dimensoes
-    .map(
-      (
-        dimensao,
-        index
-      ): DimensaoModelo => {
-        const item =
-          dimensao as Partial<DimensaoModelo>;
-
-
-        return {
-          id:
-            item.id ||
-            randomUUID(),
-
-          nome:
-            item.nome?.trim() ||
-            `Dimensão ${index + 1}`,
-
-          descricao:
-            item.descricao?.trim() ||
-            null,
-
-          ordem:
-            item.ordem ||
-            index + 1,
-
-          peso:
-            pesoSeguro(
-              item.peso
-            ),
-
-          fatorRisco:
-            item.fatorRisco?.trim() ||
-            null,
-        };
-      }
-    )
-    .sort(
-      (
-        a,
-        b
-      ) =>
-        a.ordem -
-        b.ordem
-    )
-    .map(
-      (
-        dimensao,
-        index
-      ) => ({
-        ...dimensao,
-
-        ordem:
-          index +
-          1,
-      })
-    );
-}
-
-
-/* =========================================================
  * FAIXAS
  * ======================================================= */
 
@@ -249,6 +172,98 @@ function normalizarFaixas(
         index
       ) => ({
         ...faixa,
+
+        ordem:
+          index +
+          1,
+      })
+    );
+}
+
+
+/* =========================================================
+ * DIMENSÕES
+ * ======================================================= */
+
+function normalizarDimensoes(
+  dimensoes: unknown
+): DimensaoModelo[] {
+  if (
+    !Array.isArray(
+      dimensoes
+    )
+  ) {
+    return [];
+  }
+
+
+  return dimensoes
+    .map(
+      (
+        dimensao,
+        index
+      ): DimensaoModelo => {
+        const item =
+          dimensao as Partial<DimensaoModelo>;
+
+
+        return {
+          id:
+            item.id ||
+            randomUUID(),
+
+          nome:
+            item.nome?.trim() ||
+            `Dimensão ${index + 1}`,
+
+          descricao:
+            item.descricao?.trim() ||
+            null,
+
+          ordem:
+            item.ordem ||
+            index + 1,
+
+          peso:
+            pesoSeguro(
+              item.peso
+            ),
+
+          fatorRisco:
+            item.fatorRisco?.trim() ||
+            null,
+
+          /*
+           * Faixas específicas da dimensão.
+           *
+           * Modelos antigos sem esse campo continuam
+           * normalmente com array vazio.
+           *
+           * A ausência de faixas específicas fará
+           * o motor analítico utilizar as faixas
+           * gerais de configuracaoAnalise.
+           */
+          faixas:
+            normalizarFaixas(
+              item.faixas
+            ),
+        };
+      }
+    )
+    .sort(
+      (
+        a,
+        b
+      ) =>
+        a.ordem -
+        b.ordem
+    )
+    .map(
+      (
+        dimensao,
+        index
+      ) => ({
+        ...dimensao,
 
         ordem:
           index +
@@ -565,7 +580,8 @@ function criarPerguntaPadrao(): PerguntaModelo {
     obrigatoria:
       true,
 
-    opcoes: [],
+    opcoes:
+      [],
 
     dimensaoId:
       null,
@@ -1299,6 +1315,32 @@ export default class RepositorioModeloPesquisa {
             ordem:
               index +
               1,
+
+            /*
+             * As faixas também recebem novos IDs.
+             *
+             * Isso evita que a cópia mantenha
+             * identificadores internos do modelo original.
+             */
+            faixas:
+              (
+                dimensao.faixas ||
+                []
+              ).map(
+                (
+                  faixa,
+                  faixaIndex
+                ) => ({
+                  ...faixa,
+
+                  id:
+                    randomUUID(),
+
+                  ordem:
+                    faixaIndex +
+                    1,
+                })
+              ),
           };
         }
       );
