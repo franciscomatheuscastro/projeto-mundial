@@ -216,10 +216,25 @@ export function useClientes(
                 try {
                   setErro(null);
 
-                  const resultado =
+                  const resposta =
                     await Backend.clientes.salvarUsuarioMaster(
                       dados
                     );
+
+                  if (!resposta.sucesso) {
+                    const erro =
+                      new Error(
+                        resposta.erro
+                      );
+
+                    setErro(
+                      resposta.erro
+                    );
+
+                    reject(erro);
+
+                    return;
+                  }
 
                   const clienteAtualizado =
                     await Backend.clientes.obterPorId(
@@ -230,15 +245,17 @@ export function useClientes(
                     clienteAtualizado
                   );
 
-                  resolve(resultado);
+                  resolve(
+                    resposta.dados
+                  );
                 } catch (error) {
                   const mensagem =
-                    error instanceof
-                    Error
+                    error instanceof Error
                       ? error.message
                       : "Erro ao salvar usuário master.";
 
                   setErro(mensagem);
+
                   reject(error);
                 }
               }
