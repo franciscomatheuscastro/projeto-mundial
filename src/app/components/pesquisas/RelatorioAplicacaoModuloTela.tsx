@@ -106,34 +106,7 @@ export default function RelatorioAplicacaoModuloTela({
   const totalPerguntas =
     relatorio.perguntas?.length ||
     0;
-
-
-  const totalConvites =
-    Number(
-      relatorio.totalConvites ||
-      0
-    );
-
-
-  const totalRespondidos =
-    Number(
-      relatorio.totalConvitesRespondidos ||
-      0
-    );
-
-
-  const adesao =
-    totalConvites >
-    0
-      ? (
-          totalRespondidos /
-          totalConvites
-        ) *
-        100
-      : null;
-
-
-  const tituloIndicador =
+const tituloIndicador =
     tipo ===
     MODULO.CLIMA
       ? "Pesquisa de Clima"
@@ -221,7 +194,7 @@ export default function RelatorioAplicacaoModuloTela({
         </section>
 
 
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-6 grid gap-4 sm:grid-cols-2">
           <Card
             titulo="Respondentes"
             valor={
@@ -235,32 +208,7 @@ export default function RelatorioAplicacaoModuloTela({
               totalPerguntas
             }
           />
-
-          <Card
-            titulo="Convites"
-            valor={
-              totalConvites ||
-              "—"
-            }
-          />
-
-          <Card
-            titulo="Adesão"
-            valor={
-              adesao ===
-              null
-                ? "—"
-                : `${adesao
-                    .toFixed(
-                      1
-                    )
-                    .replace(
-                      ".",
-                      ","
-                    )}%`
-            }
-          />
-        </div>
+</div>
 
 
         <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-6">
